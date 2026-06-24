@@ -1,0 +1,113 @@
+{
+  "schema_version": 1,
+  "review_guidance": [
+    "Treat fixture failures as CLI UX contract changes, not simple text snapshots.",
+    "For intentional wording changes, update the fixture with the PR rationale and keep assertions behavior-focused.",
+    "Do not replace specific actionable phrases with broad substrings unless the user-facing contract truly changed."
+  ],
+  "cases": [
+    {
+      "id": "top-level-help-groups-daily-agent-maintainer-lanes",
+      "args": ["--help"],
+      "returncode": 0,
+      "stdout_contains": [
+        "Daily commands:",
+        "Agent and automation:",
+        "Maintainer commands:",
+        "kit palette",
+        "kit completion zsh",
+        "kit command-map --json"
+      ],
+      "stdout_not_contains": ["usage:"]
+    },
+    {
+      "id": "unknown-command-suggests-recovery-without-full-help",
+      "args": ["statuz"],
+      "returncode": 2,
+      "stderr_contains": [
+        "Unknown command: statuz",
+        "Did you mean:",
+        "Next commands:",
+        "kit command-map --json"
+      ],
+      "stderr_not_contains": ["Daily commands:"]
+    },
+    {
+      "id": "agent-mode-parse-error-is-json-and-no-write",
+      "args": ["statuz"],
+      "env": {"KIT_AGENT": "1"},
+      "returncode": 2,
+      "stdout_json_equals": [
+        {"path": "command", "value": "parse-error"},
+        {"path": "target_repo_writes.performed", "value": false},
+        {"path": "sidecar_writes.performed", "value": false},
+        {"path": "non_interactive", "value": true},
+        {"path": "agent_mode", "value": true}
+      ],
+      "stderr_not_contains": ["Unknown command:"]
+    },
+    {
+      "id": "no-input-guide-does-not-prompt",
+      "args": ["--no-input"],
+      "returncode": 0,
+      "stdout_contains": [
+        "kit guide",
+        "Run `kit options`"
+      ],
+      "stdout_not_contains": ["Choose an action:"]
+    },
+    {
+      "id": "command-map-json-stays-machine-readable",
+      "args": ["command-map", "--json"],
+      "returncode": 0,
+      "stdout_json_equals": [
+        {"path": "schema_version", "value": 1},
+        {"path": "command", "value": "command-map"},
+        {"path": "parser_consistency.status", "value": "passed"}
+      ]
+    },
+    {
+      "id": "doctor-human-summary-leads-with-counts",
+      "fixture": "git_repo",
+      "args": ["doctor", "--repo", "{repo}"],
+      "returncode": 0,
+      "stdout_contains": [
+        "kit doctor summary",
+        " - blockers:",
+        " - target writes: false",
+        " - sidecar writes: false",
+        "Details:"
+      ],
+      "stdout_not_contains": ["\u001b["]
+    },
+    {
+      "id": "update-dry-run-summary-leads-with-next-commands",
+      "fixture": "installed_target",
+      "args": ["update", "--repo", "{repo}", "--dry-run"],
+      "returncode": 0,
+      "stdout_contains": [
+        "kit update summary",
+        " - mode: dry-run",
+        " - target writes: false",
+        " - next commands:"
+      ],
+      "stdout_not_contains": ["\u001b["]
+    },
+    {
+      "id": "palette-non-tty-points-to-non-interactive-discovery",
+      "args": ["palette", "--query", "status", "--print-command"],
+      "returncode": 0,
+      "stdout_contains": [
+        "kit palette is TTY-only",
+        "kit command-map --json",
+        "kit options"
+      ]
+    },
+    {
+      "id": "cli-reference-check-proves-generated-docs-current",
+      "args": ["cli-reference", "--check", "docs/cli-reference.md"],
+      "returncode": 0,
+      "stdout_contains": ["CLI reference is current: docs/cli-reference.md"]
+    }
+  ]
+}

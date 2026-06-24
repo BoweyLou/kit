@@ -1,0 +1,307 @@
+{
+  "schema_version": 1,
+  "task": {
+    "id": "AGW-059",
+    "title": "Add external planning and memory adapter examples for task-packet handoffs.",
+    "priority": "P2",
+    "status": "approved",
+    "source": {
+      "type": "backlog",
+      "reference": "research/agentic-workflow-review/backlog.csv:60"
+    }
+  },
+  "context": {
+    "repo_root": "/Volumes/Myrtle/Code/04_Code/repo-contract-kit",
+    "mode": "verification",
+    "problem_statement": "Target repos need examples for linking backlog mirrors to Keryx, Obsidian, issues, or other planning systems without turning repo-contract-kit into a planning application.",
+    "background": [
+      "AGW-059 is repo-contract-kit docs/template work over the existing backlog-status, backlog-check, agent-next, and task-packet surfaces.",
+      "Current Codex_CodeReview backlog status is 2 open, 99 done, 0 partial; AGW-059 is the next open item.",
+      "AGW-058 is committed in repo-contract-kit as d4a22f0 and dogfooded in Codex_CodeReview as 31859f1.",
+      "Current Codex_CodeReview and repo-contract-kit checkouts are clean before this packet is written."
+    ],
+    "non_goals": [
+      "Do not add Keryx, Obsidian, GitHub Issues, Linear, Jira, or hosted planning API clients.",
+      "Do not make repo-contract-kit the source of priority truth for target repos.",
+      "Do not write to external memory systems, vault files, issues, pull requests, labels, or project boards.",
+      "Do not change task-packet schema semantics unless examples expose a strictly necessary documentation-only clarification."
+    ]
+  },
+  "previous_task_state": {
+    "report_sources": [
+      "make backlog-status",
+      "make agent-next",
+      "make agent-task-status",
+      "make kit-status KIT=/Volumes/Myrtle/Code/04_Code/repo-contract-kit",
+      "repo-contract-kit commit d4a22f0",
+      "Codex_CodeReview commit 31859f1"
+    ],
+    "active_tasks": [],
+    "unresolved_blockers": [],
+    "dirty_or_stale_state": [],
+    "finalizer_receipt_paths": [
+      "Codex_CodeReview commit 31859f1 closes AGW-058",
+      "repo-contract-kit commit d4a22f0 implements AGW-058"
+    ],
+    "blocker_receipt_paths": [],
+    "allowed_to_start": true,
+    "notes": "AGW-059 may start after this packet commit; no active sibling tasks or dirty files were reported before packet creation."
+  },
+  "closeout_required_before_start": {
+    "decision": "safe-start",
+    "reason": "The prior task is committed in both repos, kit-status is current, and task-status reports no active tasks or coordination warnings.",
+    "required_next_step": "Commit this AGW-059 packet, then implement only the scoped repo-contract-kit docs/examples/templates work.",
+    "evidence_paths": [
+      "research/agentic-workflow-review/backlog.csv:60",
+      "research/agentic-workflow-review/repo-contract-kit-backlog.csv:29",
+      "research/agentic-workflow-review/task-packets/agw-059-planning-memory-adapter-examples.json",
+      "research/agentic-workflow-review/task-packets/agw-059-planning-memory-adapter-examples.md"
+    ]
+  },
+  "goal_alignment": {
+    "repo_goal": "repo-contract-kit installs local-first docs-as-code and agent workflow guardrails while preserving target-owned planning decisions.",
+    "area_contracts": [
+      {
+        "path": "docs/",
+        "purpose": "Maintainer and operator guidance for backlog mirrors, task packets, and external planning handoffs.",
+        "source": "AGW-059 backlog row; README.md; docs/rollout-guide.md",
+        "status": "aligned",
+        "notes": "Examples should explain adapter boundaries without adding runtime integrations."
+      },
+      {
+        "path": "templates/common/ and templates/profiles/local-agentic/",
+        "purpose": "Installed target-repo guidance where external planning handoff examples should travel with the kit.",
+        "source": "repo-contract-kit managed templates",
+        "status": "aligned",
+        "notes": "Only edit templates if the examples need to be installed into target repos."
+      },
+      {
+        "path": "tests/",
+        "purpose": "Regression coverage for installed docs/templates and freshness checks.",
+        "source": "repo-contract-kit test suite",
+        "status": "aligned",
+        "notes": "Add or adjust tests only if new installed files or command references require coverage."
+      }
+    ],
+    "alignment_decision": "aligned",
+    "adaptation_needed": false,
+    "stop_conditions": [
+      "Stop if the implementation requires external service credentials or network calls.",
+      "Stop if examples would make repo-contract-kit own prioritization instead of mirroring selected external planning state.",
+      "Stop if the work becomes a Keryx, Obsidian, GitHub, Linear, or Jira adapter implementation rather than examples."
+    ]
+  },
+  "scope": {
+    "inspect_first": [
+      "/Volumes/Myrtle/Code/04_Code/repo-contract-kit/README.md",
+      "/Volumes/Myrtle/Code/04_Code/repo-contract-kit/docs/rollout-guide.md",
+      "/Volumes/Myrtle/Code/04_Code/repo-contract-kit/docs/roadmap.md",
+      "/Volumes/Myrtle/Code/04_Code/repo-contract-kit/docs/harness-engineering.md",
+      "/Volumes/Myrtle/Code/04_Code/repo-contract-kit/templates/common/ops-agent-workflow.md",
+      "/Volumes/Myrtle/Code/04_Code/repo-contract-kit/templates/profiles/local-agentic/files/.agent-workflows/README.md",
+      "/Volumes/Myrtle/Code/04_Code/repo-contract-kit/scripts/agent_start.py",
+      "/Volumes/Myrtle/Code/04_Code/repo-contract-kit/scripts/repo_contract_kit.py"
+    ],
+    "allowed_files": [
+      "/Volumes/Myrtle/Code/04_Code/repo-contract-kit/README.md",
+      "/Volumes/Myrtle/Code/04_Code/repo-contract-kit/docs/rollout-guide.md",
+      "/Volumes/Myrtle/Code/04_Code/repo-contract-kit/docs/roadmap.md",
+      "/Volumes/Myrtle/Code/04_Code/repo-contract-kit/docs/harness-engineering.md",
+      "/Volumes/Myrtle/Code/04_Code/repo-contract-kit/docs/planning-adapters.md",
+      "/Volumes/Myrtle/Code/04_Code/repo-contract-kit/templates/common/**",
+      "/Volumes/Myrtle/Code/04_Code/repo-contract-kit/templates/profiles/local-agentic/**",
+      "/Volumes/Myrtle/Code/04_Code/repo-contract-kit/tests/test_install.py",
+      "/Volumes/Myrtle/Code/04_Code/repo-contract-kit/tests/test_check_docs_freshness.py",
+      "/Volumes/Myrtle/Code/04_Code/repo-contract-kit/VERSION",
+      "/Volumes/Myrtle/Code/04_Code/repo-contract-kit/CHANGELOG.md",
+      "/Volumes/Myrtle/Code/04_Code/Codex_CodeReview/research/agentic-workflow-review/**",
+      "/Volumes/Myrtle/Code/04_Code/Codex_CodeReview/.doc-contract-kit/**",
+      "/Volumes/Myrtle/Code/04_Code/Codex_CodeReview/VERSION",
+      "/Volumes/Myrtle/Code/04_Code/Codex_CodeReview/CHANGELOG.md"
+    ],
+    "protected_files": [
+      "External Keryx, Obsidian, GitHub, Linear, Jira, or planning-system state.",
+      "Credentials, tokens, browser sessions, vault files, issue trackers, PRs, labels, and project boards.",
+      "Task-packet schema behavior unless a documentation-only clarification is necessary.",
+      "Agent-workflow-kit prompt source in Codex_CodeReview."
+    ],
+    "expected_outputs": [
+      "Docs/examples showing Keryx/Obsidian/issues/backlog mirrors as planning sources that feed one selected task packet.",
+      "Sample docs/backlog.md mirror patterns with explicit source-of-truth and sync boundaries.",
+      "Installed guidance if needed so target repos receive the planning-handoff examples.",
+      "Validation that examples do not add external writes, credentials, or planning-app behavior.",
+      "Version/changelog updates in repo-contract-kit, followed by dogfood and backlog closeout in Codex_CodeReview."
+    ]
+  },
+  "phase_files": {
+    "needed": false,
+    "reason": "The work should be a bounded docs/examples slice with no external integration code.",
+    "phases": [
+      {
+        "id": "AGW-059-P1",
+        "title": "Planning Adapter Examples",
+        "objective": "Add and validate external planning/memory handoff examples, then dogfood and close AGW-059.",
+        "allowed_scope": [
+          "repo-contract-kit docs/templates/tests/version files",
+          "Codex_CodeReview dogfood metadata and backlog closeout files"
+        ],
+        "completion_evidence": [
+          "repo-contract-kit docs/tests/version checks pass",
+          "Codex_CodeReview kit-status and backlog checks pass",
+          "AGW-059 is marked done in source and mirror backlog files"
+        ],
+        "handoff_notes": "Split a separate task if implementation requires service-specific API clients or writable sync."
+      }
+    ]
+  },
+  "acceptance_criteria": [
+    {
+      "description": "Examples show how external planning or memory systems hand off one selected item into a task packet without becoming repo-contract-kit state.",
+      "verification": "Review docs/examples for explicit source-of-truth, mirror, and one-item task-packet boundaries."
+    },
+    {
+      "description": "Keryx, Obsidian, issues, and docs/backlog.md mirror patterns are described as examples, not built-in adapters.",
+      "verification": "Confirm no new external API clients, credential handling, vault writes, or issue mutation code is added."
+    },
+    {
+      "description": "Installed target guidance is updated where useful and remains local-first.",
+      "verification": "Install or inspect templates and run docs freshness/install tests if installed files change."
+    },
+    {
+      "description": "Operator docs explain what to do when external planning state and repo backlog mirrors disagree.",
+      "verification": "Review guidance for stale mirror handling, human priority authority, and safe task-packet selection."
+    }
+  ],
+  "validation": {
+    "commands": [
+      {
+        "command": "PYTHONDONTWRITEBYTECODE=1 python3 -m unittest tests.test_install tests.test_check_docs_freshness",
+        "required": true,
+        "expected_result": "focused installed-doc and docs-freshness coverage passes if templates changed"
+      },
+      {
+        "command": "PYTHONDONTWRITEBYTECODE=1 make test",
+        "required": true,
+        "expected_result": "full repo-contract-kit test suite passes"
+      },
+      {
+        "command": "make docs-check",
+        "required": true,
+        "expected_result": "repo-contract-kit docs checks pass"
+      },
+      {
+        "command": "make version-check",
+        "required": true,
+        "expected_result": "repo-contract-kit VERSION and CHANGELOG are valid"
+      },
+      {
+        "command": "git diff --check",
+        "required": true,
+        "expected_result": "no whitespace errors in repo-contract-kit"
+      },
+      {
+        "command": "make kit-update KIT=/Volumes/Myrtle/Code/04_Code/repo-contract-kit",
+        "required": true,
+        "expected_result": "Codex_CodeReview dogfood install updates safely from the local kit checkout"
+      },
+      {
+        "command": "make backlog-check && make backlog-split-check && make backlog-status && make agent-next",
+        "required": true,
+        "expected_result": "Codex_CodeReview backlog mirrors remain valid and AGW-059 closeout advances the next item"
+      },
+      {
+        "command": "make kit-status KIT=/Volumes/Myrtle/Code/04_Code/repo-contract-kit",
+        "required": true,
+        "expected_result": "Codex_CodeReview reports the dogfooded kit version/source ref"
+      },
+      {
+        "command": "make docs-check && make version-check && git diff --check",
+        "required": true,
+        "expected_result": "Codex_CodeReview closeout checks pass"
+      }
+    ],
+    "evidence_to_capture": [
+      "Planning adapter docs/template diffs",
+      "Focused and full repo-contract-kit validation output",
+      "Evidence that no external writes/API clients were added",
+      "Dogfood kit-status output in Codex_CodeReview",
+      "Backlog closeout status and next open item"
+    ]
+  },
+  "closeout_requirements": {
+    "final_receipt_path": ".agent-workflows/tasks/AGW-059/receipt.json or sidecar equivalent",
+    "readiness_check": {
+      "command": "make agent-task-ready TASK=AGW-059 TASK_READY_JSON=1 or record why unavailable",
+      "expected_result": "readiness passes or a blocker is recorded before handoff"
+    },
+    "lifecycle_action": {
+      "action": "finish",
+      "command": "make agent-task-finalize TASK=AGW-059 TASK_RECEIPT=.agent-workflows/tasks/AGW-059/receipt.json TASK_FINALIZE_JSON=1 or durable fallback receipt",
+      "expected_result": "task metadata is terminal and final receipt is linked, or fallback receipt is documented"
+    },
+    "final_task_status": {
+      "command": "make agent-task-status TASK_STATUS_INCLUDE_CLOSED=1 TASK_STATUS_JSON=1",
+      "expected_result": "terminal task state, receipt path, and active overlaps are visible or unavailable state is explained"
+    },
+    "closeout_preview": {
+      "command": "make agent-task-closeout TASK_CLOSEOUT_JSON=1",
+      "expected_result": "closeout preview reports expected changes; applying closeout requires explicit approval",
+      "apply_requires_explicit_approval": true
+    },
+    "dirty_state_explanation": "Final handoff must classify any remaining dirty files in both repo-contract-kit and Codex_CodeReview."
+  },
+  "docs_impact": {
+    "expected": "yes",
+    "paths": [
+      "/Volumes/Myrtle/Code/04_Code/repo-contract-kit/docs/planning-adapters.md",
+      "/Volumes/Myrtle/Code/04_Code/repo-contract-kit/README.md",
+      "/Volumes/Myrtle/Code/04_Code/repo-contract-kit/docs/rollout-guide.md",
+      "/Volumes/Myrtle/Code/04_Code/repo-contract-kit/CHANGELOG.md",
+      "/Volumes/Myrtle/Code/04_Code/Codex_CodeReview/research/agentic-workflow-review/summary.md",
+      "/Volumes/Myrtle/Code/04_Code/Codex_CodeReview/CHANGELOG.md"
+    ],
+    "waiver_allowed": false,
+    "notes": "This task is explicitly about docs/examples for planning handoffs."
+  },
+  "risk": {
+    "level": "medium",
+    "known_risks": [
+      "Examples could be mistaken for supported writable adapters.",
+      "Backlog mirrors could be treated as priority truth instead of reviewed copies from an external planner.",
+      "External memory examples could encourage unsafe vault or issue tracker writes.",
+      "Installed docs could duplicate or conflict with existing backlog command guidance."
+    ],
+    "stop_conditions": [
+      "Stop if implementation requires external API credentials, network access, or writable sync.",
+      "Stop if examples cannot state a clear source-of-truth and stale-mirror policy.",
+      "Stop if target repo update produces conflicts that cannot be safely classified."
+    ]
+  },
+  "approval": {
+    "human_approval_required": false,
+    "state": "approved",
+    "approver": "user",
+    "notes": "Approved by the user's serial backlog execution request."
+  },
+  "coordination": {
+    "active_task_count": 0,
+    "active_tasks": [],
+    "overlap_warnings": []
+  },
+  "harness_metrics": {
+    "context_file_count": 8,
+    "token_budget": {
+      "required": false,
+      "notes": "No explicit token budget for the active goal."
+    }
+  },
+  "handoff": {
+    "recommended_prompt": "workflows/prompts/fix-implementer.md",
+    "owner": null,
+    "dependencies": [
+      "Commit this packet before editing repo-contract-kit.",
+      "Commit repo-contract-kit implementation before dogfood closeout in Codex_CodeReview."
+    ],
+    "next_packet_hint": "AGW-060 should remain a separate guided-upgrade-flow task after AGW-059 is closed."
+  }
+}

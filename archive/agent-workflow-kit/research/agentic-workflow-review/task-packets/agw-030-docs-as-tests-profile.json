@@ -1,0 +1,353 @@
+{
+  "schema_version": 1,
+  "task": {
+    "id": "AGW-030",
+    "title": "Prototype docs-as-tests for API docs in an experimental profile.",
+    "priority": "P2",
+    "status": "approved",
+    "source": {
+      "type": "backlog",
+      "reference": "research/agentic-workflow-review/backlog.csv:31"
+    }
+  },
+  "context": {
+    "repo_root": "/Volumes/Myrtle/Code/04_Code/Hermes/doc-contract-kit",
+    "mode": "verification",
+    "problem_statement": "Some documentation claims can be validated as behavior, but docs-freshness currently checks local links, documented commands, script/schema references, and optional semantic receipts. Add an opt-in experimental docs-as-tests profile for API documentation that runs only high-confidence, explicitly declared checks.",
+    "background": [
+      "AGW-018 added docs-impact localization.",
+      "AGW-019 added docs-propose sidecar artifacts for missing docs coverage.",
+      "AGW-030 is scoped to a prototype experimental profile with high-confidence checks only.",
+      "Existing docs-freshness already checks links, documented Make/script/schema references, and optional semantic receipts.",
+      "The installer already supports composable profiles under templates/profiles/ and rejects unknown profiles.",
+      "The source docs/codex-review-trace.md concept from AGW-029 is published in agent-workflow-kit; AGW-030 should not edit source prompt truth."
+    ],
+    "non_goals": [
+      "Do not scrape arbitrary Markdown prose and guess whether claims are testable.",
+      "Do not execute arbitrary fenced code blocks from documentation.",
+      "Do not include the experimental profile in the default, minimal, or agentic presets.",
+      "Do not require network access, running services, browser automation, hosted models, or GitHub API calls.",
+      "Do not attempt a full OpenAPI/YAML validator or generated-client test harness in this slice.",
+      "Do not weaken existing docs-impact, docs-freshness, semantic receipt, or docs-propose behavior.",
+      "Do not edit agent-workflow-kit prompt source except source backlog closeout after kit validation."
+    ]
+  },
+  "previous_task_state": {
+    "report_sources": [
+      "source make agent-task-status TASK_STATUS_INCLUDE_CLOSED=1 TASK_STATUS_JSON=1",
+      "source make agent-next",
+      "git ls-remote origin refs/heads/main for source and kit remotes",
+      "kit git status --short",
+      "kit make agent-task-status attempted and unavailable in the kit checkout"
+    ],
+    "active_tasks": [],
+    "unresolved_blockers": [],
+    "dirty_or_stale_state": [],
+    "finalizer_receipt_paths": [
+      "source main commit 5849f4f54bb299150dc2e0346e153f40a8ce5c2c closed AGW-029",
+      "kit main commit 1a23bb0bb5b3d2f04077ddeacf512b260d9e3221 completed repo-contract-kit 0.4.51"
+    ],
+    "blocker_receipt_paths": [],
+    "allowed_to_start": true,
+    "notes": "AGW-030 packet creation began after AGW-029 was pushed and closed in source, source and kit remotes matched local HEADs, both worktrees were clean, source task-status reported zero active tasks, and source agent-next selected AGW-030. The kit source checkout itself does not expose an installed agent-task-status target; this is recorded as unavailable surface, not active task state."
+  },
+  "closeout_required_before_start": {
+    "decision": "safe-start",
+    "reason": "The previous AGW-029 task has source implementation and closeout commits, matching remote refs, clean worktrees, and no active source task metadata.",
+    "required_next_step": "Proceed with exactly one AGW-030 worker in repo-contract-kit; refresh source and kit status if either repo becomes dirty before worker launch.",
+    "evidence_paths": [
+      "research/agentic-workflow-review/task-packets/agw-030-docs-as-tests-profile.md",
+      "source main commit 5849f4f54bb299150dc2e0346e153f40a8ce5c2c",
+      "kit main commit 1a23bb0bb5b3d2f04077ddeacf512b260d9e3221"
+    ]
+  },
+  "goal_alignment": {
+    "repo_goal": "Keep repo-contract-kit as the install-layer guardrail provider for target repos, with opt-in local checks that improve documentation truth while preserving no-network, no-mutation defaults.",
+    "area_contracts": [
+      {
+        "path": "/Volumes/Myrtle/Code/04_Code/Hermes/doc-contract-kit/scripts/check_docs_freshness.py",
+        "purpose": "Existing local docs freshness gate for links, commands, scripts, schemas, and semantic receipt presence.",
+        "source": "docs-freshness implementation",
+        "status": "aligned"
+      },
+      {
+        "path": "/Volumes/Myrtle/Code/04_Code/Hermes/doc-contract-kit/scripts/repo_contract_kit.py",
+        "purpose": "Stable wrapper CLI for local read-only helper commands and JSON/text output.",
+        "source": "repo-contract-kit CLI",
+        "status": "aligned"
+      },
+      {
+        "path": "/Volumes/Myrtle/Code/04_Code/Hermes/doc-contract-kit/templates/common/kit-makefile.mk",
+        "purpose": "Installed Make target surface for target-repo docs and agent commands.",
+        "source": "installed Make bridge",
+        "status": "aligned"
+      },
+      {
+        "path": "/Volumes/Myrtle/Code/04_Code/Hermes/doc-contract-kit/templates/profiles/",
+        "purpose": "Composable optional install profiles and profile-owned docs/config files.",
+        "source": "installer profile system",
+        "status": "aligned"
+      },
+      {
+        "path": "/Volumes/Myrtle/Code/04_Code/Hermes/doc-contract-kit/templates/common/ops-agent-workflow.md",
+        "purpose": "Installed target-repo operator guidance for docs checks and agent workflows.",
+        "source": "installed workflow docs",
+        "status": "aligned"
+      }
+    ],
+    "alignment_decision": "aligned",
+    "adaptation_needed": false,
+    "stop_conditions": [
+      "Stop if the implementation would execute arbitrary Markdown code blocks or undocumented shell snippets.",
+      "Stop if the experimental profile would be installed by default or added to the agentic preset without a separate decision.",
+      "Stop if checks require network, running services, browser automation, hosted models, or external accounts.",
+      "Stop if the checker treats heuristic prose parsing as pass/fail evidence.",
+      "Stop if docs-as-tests behavior weakens existing docs-freshness, docs-impact, docs-propose, or semantic receipt gates.",
+      "Stop if the task expands into full OpenAPI/YAML validation, generated-client testing, or CI adapter wiring."
+    ]
+  },
+  "scope": {
+    "allowed_files": [
+      "/Volumes/Myrtle/Code/04_Code/Hermes/doc-contract-kit/scripts/check_docs_as_tests.py",
+      "/Volumes/Myrtle/Code/04_Code/Hermes/doc-contract-kit/scripts/repo_contract_kit.py",
+      "/Volumes/Myrtle/Code/04_Code/Hermes/doc-contract-kit/scripts/install.py",
+      "/Volumes/Myrtle/Code/04_Code/Hermes/doc-contract-kit/templates/common/kit-makefile.mk",
+      "/Volumes/Myrtle/Code/04_Code/Hermes/doc-contract-kit/templates/common/ops-agent-workflow.md",
+      "/Volumes/Myrtle/Code/04_Code/Hermes/doc-contract-kit/templates/common/working-rhythm.md",
+      "/Volumes/Myrtle/Code/04_Code/Hermes/doc-contract-kit/templates/profiles/docs-as-tests/",
+      "/Volumes/Myrtle/Code/04_Code/Hermes/doc-contract-kit/README.md",
+      "/Volumes/Myrtle/Code/04_Code/Hermes/doc-contract-kit/docs/rollout-guide.md",
+      "/Volumes/Myrtle/Code/04_Code/Hermes/doc-contract-kit/docs/harness-engineering.md",
+      "/Volumes/Myrtle/Code/04_Code/Hermes/doc-contract-kit/docs/roadmap.md",
+      "/Volumes/Myrtle/Code/04_Code/Hermes/doc-contract-kit/CHANGELOG.md",
+      "/Volumes/Myrtle/Code/04_Code/Hermes/doc-contract-kit/VERSION",
+      "/Volumes/Myrtle/Code/04_Code/Hermes/doc-contract-kit/tests/test_docs_as_tests.py",
+      "/Volumes/Myrtle/Code/04_Code/Hermes/doc-contract-kit/tests/test_install.py",
+      "/Volumes/Myrtle/Code/04_Code/Hermes/doc-contract-kit/tests/test_repo_contract_kit_cli.py",
+      "/Volumes/Myrtle/Code/04_Code/Codex_CodeReview/research/agentic-workflow-review/backlog.csv",
+      "/Volumes/Myrtle/Code/04_Code/Codex_CodeReview/research/agentic-workflow-review/repo-contract-kit-backlog.csv",
+      "/Volumes/Myrtle/Code/04_Code/Codex_CodeReview/research/agentic-workflow-review/summary.md",
+      "/Volumes/Myrtle/Code/04_Code/Codex_CodeReview/research/agentic-workflow-review/feature_matrix.csv"
+    ],
+    "protected_files": [
+      "Do not edit agent-workflow-kit canonical prompts, schemas, or adapters for this kit-owned task.",
+      "Do not add docs-as-tests to the minimal, default, or agentic preset.",
+      "Do not mutate target-owned VERSION or CHANGELOG.md in installed target repos.",
+      "Do not add network, browser, hosted model, or GitHub API dependencies.",
+      "Unrelated backlog rows and unrelated dirty work."
+    ],
+    "inspect_first": [
+      "/Volumes/Myrtle/Code/04_Code/Hermes/doc-contract-kit/scripts/check_docs_freshness.py",
+      "/Volumes/Myrtle/Code/04_Code/Hermes/doc-contract-kit/scripts/repo_contract_kit.py",
+      "/Volumes/Myrtle/Code/04_Code/Hermes/doc-contract-kit/scripts/install.py",
+      "/Volumes/Myrtle/Code/04_Code/Hermes/doc-contract-kit/templates/common/kit-makefile.mk",
+      "/Volumes/Myrtle/Code/04_Code/Hermes/doc-contract-kit/templates/profiles/test-first/manifest.json",
+      "/Volumes/Myrtle/Code/04_Code/Hermes/doc-contract-kit/tests/test_check_docs_freshness.py",
+      "/Volumes/Myrtle/Code/04_Code/Hermes/doc-contract-kit/tests/test_install.py",
+      "/Volumes/Myrtle/Code/04_Code/Hermes/doc-contract-kit/tests/test_repo_contract_kit_cli.py",
+      "/Volumes/Myrtle/Code/04_Code/Hermes/doc-contract-kit/README.md",
+      "/Volumes/Myrtle/Code/04_Code/Hermes/doc-contract-kit/docs/rollout-guide.md"
+    ],
+    "expected_outputs": [
+      "An opt-in experimental docs-as-tests profile, likely named docs-as-tests, that installs example config and operator guidance without joining default or agentic presets.",
+      "A deterministic local checker for explicitly declared high-confidence documentation assertions, with JSON and text output.",
+      "At least one API-doc-oriented assertion type, such as checking that documented HTTP method/path claims exist in a local JSON OpenAPI spec supplied by config.",
+      "No heuristic prose scraping and no execution of arbitrary fenced snippets.",
+      "Safe refusal output for missing config, unsupported assertion kinds, ambiguous selectors, missing local spec files, invalid JSON, network URLs, or command-like unsafe inputs.",
+      "Installed Make target and wrapper CLI exposure if the checker is implemented as a command.",
+      "Docs explaining how the experimental profile relates to docs-freshness, docs-impact, semantic receipts, and future broader docs-as-tests work.",
+      "VERSION and CHANGELOG.md record the repo-contract-kit behavior/profile change.",
+      "Source backlog rows and summary close AGW-030 only after kit validation passes."
+    ]
+  },
+  "acceptance_criteria": [
+    {
+      "description": "An experimental docs-as-tests profile can be installed explicitly and is not included in default/minimal/agentic presets.",
+      "verification": "Install tests cover --profile docs-as-tests or equivalent and assert preset membership is unchanged."
+    },
+    {
+      "description": "The checker runs only manifest/config-declared high-confidence assertions and refuses heuristic Markdown scraping or arbitrary code execution.",
+      "verification": "Focused tests cover pass/fail/refusal cases and inspect JSON output."
+    },
+    {
+      "description": "The prototype validates at least one API-doc assertion against a local artifact, preferably method/path presence in a local JSON OpenAPI spec.",
+      "verification": "Focused tests create sample docs/config/spec and assert passing and failing API operation checks."
+    },
+    {
+      "description": "Output is deterministic and machine-readable, with assertion ids, source doc paths, spec paths, result, failures, omissions/refusals, target_repo_writes false, and network_used false.",
+      "verification": "Focused JSON tests inspect output shape."
+    },
+    {
+      "description": "Installed Make target and wrapper CLI expose the experimental check without making it part of normal docs-check unless the explicit profile/config asks for it.",
+      "verification": "CLI/Make/install smoke tests."
+    },
+    {
+      "description": "Docs make the experimental/high-confidence boundary clear and explain relation to docs-freshness, docs-impact, docs-propose, and semantic receipt review.",
+      "verification": "docs-check and docs-freshness."
+    },
+    {
+      "description": "The behavior/profile change is versioned and documented in repo-contract-kit.",
+      "verification": "VERSION, CHANGELOG.md, and make version-check."
+    },
+    {
+      "description": "Source backlog rows and summary close AGW-030 only after kit validation passes.",
+      "verification": "source backlog checks after closeout."
+    }
+  ],
+  "validation": {
+    "commands": [
+      {
+        "command": "PYTHONDONTWRITEBYTECODE=1 python3 -m unittest tests.test_docs_as_tests tests.test_install tests.test_repo_contract_kit_cli",
+        "required": true,
+        "expected_result": "pass"
+      },
+      {
+        "command": "PYTHONDONTWRITEBYTECODE=1 make test",
+        "required": true,
+        "expected_result": "pass"
+      },
+      {
+        "command": "make docs-check",
+        "required": true,
+        "expected_result": "pass"
+      },
+      {
+        "command": "make docs-freshness",
+        "required": true,
+        "expected_result": "pass"
+      },
+      {
+        "command": "make version-check",
+        "required": true,
+        "expected_result": "pass"
+      },
+      {
+        "command": "git diff --check",
+        "required": true,
+        "expected_result": "pass"
+      },
+      {
+        "command": "Install smoke: python3 scripts/install.py <temp-target> --profile docs-as-tests, then run make docs-as-tests or the installed equivalent against sample config.",
+        "required": true,
+        "expected_result": "pass"
+      },
+      {
+        "command": "make backlog-check",
+        "required": true,
+        "expected_result": "pass in source repo after closeout"
+      },
+      {
+        "command": "make backlog-split-check",
+        "required": true,
+        "expected_result": "pass in source repo after closeout"
+      },
+      {
+        "command": "PYTHONDONTWRITEBYTECODE=1 make agent-verify",
+        "required": true,
+        "expected_result": "pass in source repo after closeout"
+      }
+    ],
+    "evidence_to_capture": [
+      "focused checker/install/CLI test output",
+      "install smoke output for the experimental profile",
+      "full kit test output",
+      "kit docs and version checks",
+      "source backlog and split-backlog validation after closeout",
+      "diff summary and dirty-state explanation"
+    ]
+  },
+  "closeout_requirements": {
+    "final_receipt_path": "/Volumes/Myrtle/Code/04_Code/Hermes/doc-contract-kit/.agent-workflows/tasks/agw-030/receipt.json or sidecar equivalent",
+    "readiness_check": {
+      "command": "make agent-task-ready TASK=AGW-030 TASK_READY_JSON=1 or record why unavailable in the kit source checkout",
+      "expected_result": "ready report passes, or unavailable surface/blocker is recorded"
+    },
+    "lifecycle_action": {
+      "action": "finish",
+      "command": "make agent-task-finalize TASK=AGW-030 TASK_RECEIPT=<path> TASK_FINALIZE_JSON=1 or lifecycle fallback",
+      "expected_result": "metadata is closed and final receipt is linked, or fallback receipt is durable"
+    },
+    "final_task_status": {
+      "command": "make agent-task-status TASK_STATUS_INCLUDE_CLOSED=1 TASK_STATUS_JSON=1 in source and, if available, kit",
+      "expected_result": "no active AGW-030 task metadata after parent closeout, or terminal metadata with linked receipt before cleanup"
+    },
+    "closeout_preview": {
+      "command": "make agent-task-closeout TASK_CLOSEOUT_JSON=1 or record why unavailable in the kit source checkout",
+      "expected_result": "eligible, retained, blocked, or unavailable cleanup state is recorded",
+      "apply_requires_explicit_approval": true
+    },
+    "dirty_state_explanation": "Final handoff must state whether source and kit checkouts are clean, only expected files are dirty, cleanup is blocked, or unrelated dirt was preserved."
+  },
+  "docs_impact": {
+    "expected": "yes",
+    "paths": [
+      "/Volumes/Myrtle/Code/04_Code/Hermes/doc-contract-kit/README.md",
+      "/Volumes/Myrtle/Code/04_Code/Hermes/doc-contract-kit/docs/rollout-guide.md",
+      "/Volumes/Myrtle/Code/04_Code/Hermes/doc-contract-kit/docs/harness-engineering.md",
+      "/Volumes/Myrtle/Code/04_Code/Hermes/doc-contract-kit/templates/common/ops-agent-workflow.md",
+      "/Volumes/Myrtle/Code/04_Code/Hermes/doc-contract-kit/templates/common/working-rhythm.md",
+      "/Volumes/Myrtle/Code/04_Code/Hermes/doc-contract-kit/templates/profiles/docs-as-tests/",
+      "/Volumes/Myrtle/Code/04_Code/Hermes/doc-contract-kit/CHANGELOG.md",
+      "source backlog summary and feature matrix files"
+    ],
+    "waiver_allowed": false,
+    "notes": "This changes installed profile/CLI/Make/docs behavior in repo-contract-kit."
+  },
+  "risk": {
+    "level": "medium",
+    "known_risks": [
+      "Docs-as-tests can become unsafe if it executes arbitrary examples from documentation.",
+      "Heuristic prose parsing could create false confidence or noisy false failures.",
+      "Adding the profile to default presets would make experimental checks unexpectedly visible in target repos.",
+      "OpenAPI YAML support may invite non-stdlib dependencies or partial parsers; prefer JSON-only or explicit refusal in this prototype.",
+      "A checker that writes artifacts by default would violate the docs-check no-mutation expectation."
+    ],
+    "stop_conditions": [
+      "The implementation requires network access, a running app server, browser automation, hosted models, or external accounts.",
+      "The checker cannot make unsafe snippets/refusals explicit in JSON output.",
+      "The profile cannot be installed explicitly without altering default or agentic preset behavior.",
+      "The task needs a full API testing framework rather than a bounded high-confidence prototype.",
+      "Validation fails in a way that requires unrelated kit refactors."
+    ]
+  },
+  "approval": {
+    "human_approval_required": false,
+    "state": "approved",
+    "approver": null,
+    "notes": "User approved implementing the workflow-stack plan and backlog follow-ons serially with one task agent per backlog item."
+  },
+  "coordination": {
+    "active_task_count": 0,
+    "active_tasks": [],
+    "overlap_warnings": [
+      "The kit source checkout does not expose installed task-status/finalizer targets; parent must record unavailable lifecycle surfaces rather than inventing metadata.",
+      "This is repo-contract-kit implementation work; source repo edits are limited to packet commit and later backlog closeout.",
+      "Parent handles source task-packet commit, worker launch, kit integration, validation, kit commit/push, and source backlog closeout."
+    ],
+    "worker_rule": "Use exactly one worker for this backlog item. The worker owns repo-contract-kit implementation files only; the parent owns source task-packet commit, integration, validation, publication, and source backlog closeout."
+  },
+  "harness_metrics": {
+    "context_file_count": 12,
+    "deterministic_reports": [
+      "source make agent-task-status TASK_STATUS_INCLUDE_CLOSED=1 TASK_STATUS_JSON=1 passed with zero active tasks and no hazards.",
+      "source make agent-next selected AGW-030 and reported dirty false.",
+      "source and kit git ls-remote refs matched local HEADs.",
+      "kit make agent-task-status is unavailable in the kit source checkout and was recorded as an omission."
+    ],
+    "token_budget": {
+      "guidance": "Keep docs-as-tests docs and examples compact. Prefer one small explicit config example and focused tests over broad prose."
+    }
+  },
+  "handoff": {
+    "recommended_prompt": "workflows/prompts/task-packet.md, then workflows/prompts/fix-implementer.md, then workflows/prompts/verification-sentinel.md",
+    "owner": "one worker agent for repo-contract-kit implementation; parent for packet commit, integration, validation, push, and source backlog closeout",
+    "dependencies": [
+      "AGW-018 docs-impact localizer",
+      "AGW-019 docs-propose sidecar proposal flow",
+      "AGW-079 docs-freshness gate",
+      "repo-contract-kit profile installer",
+      "repo-contract-kit wrapper CLI and installed Make bridge"
+    ],
+    "next_packet_hint": "After AGW-030 closes, continue with the next open backlog item selected by make agent-next."
+  }
+}

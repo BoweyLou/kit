@@ -1,0 +1,24 @@
+{
+  "schema_version": 1,
+  "name": "workflow-source",
+  "version": "0.4.60",
+  "source_url": "https://github.com/BoweyLou/repo-contract-kit",
+  "source_prompt_root": "workflows/prompts",
+  "generated_adapter": "templates/profiles/*/files/.codex/prompts",
+  "snapshot_sha256": "computed",
+  "vendored_at": "2026-06-18",
+  "snapshot_paths": [
+    "templates/profiles/review-prompts/files/.codex/prompts",
+    "templates/profiles/test-first/files/.codex/prompts",
+    "templates/profiles/local-agentic/files/.agent-workflows",
+    "templates/common/persona-manifest.schema.json",
+    "templates/common/review-synthesis.schema.json",
+    "templates/common/review-risk.schema.json",
+    "templates/common/session-receipt.schema.json",
+    "templates/common/task-packet.schema.json",
+    "templates/common/research-brief.schema.json",
+    "templates/common/research-source-report.schema.json",
+    "templates/common/research-synthesis.schema.json"
+  ],
+  "notes": "Records the in-repo workflow prompt/schema source that repo-contract-kit ships into target-repo adapters. snapshot_sha256 is computed from snapshot_paths at install/update/status time."
+}

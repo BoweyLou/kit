@@ -1,0 +1,196 @@
+{
+  "schema_version": 1,
+  "task": {
+    "id": "AGW-044",
+    "title": "Add comment-only receipt proving no behavior changes occurred in learning-comments mode.",
+    "priority": "P1",
+    "status": "approved",
+    "source": {
+      "type": "backlog",
+      "reference": "research/agentic-workflow-review/backlog.csv:45"
+    }
+  },
+  "context": {
+    "repo_root": "/Volumes/Myrtle/Code/04_Code/Codex_CodeReview",
+    "mode": "learning-comments",
+    "problem_statement": "Learning-comments mode is intentionally behavior-neutral, but the prompt and receipt contract do not yet require structured proof that a run changed only comments or explanation artifacts.",
+    "background": [
+      "AGW-078 kept formal receipt/schema enforcement separate from non-developer explainability.",
+      "schemas/session-receipt.schema.json already records run.mode, scope.behavior_change, commands, tests, docs impact, and disposition.",
+      "scripts/verify_agent_receipt.py is the local strict receipt gate.",
+      "workflows/prompts/codebase-learning-comments.md is canonical; .codex/prompts/codebase-learning-comments.md is generated."
+    ],
+    "non_goals": [
+      "Do not implement stale-comment scanning from AGW-031 or ADR fallback behavior from AGW-045.",
+      "Do not add repo-contract-kit installer behavior in this packet.",
+      "Do not change runtime behavior outside prompt/schema/validator/docs/tests."
+    ]
+  },
+  "scope": {
+    "inspect_first": [
+      "workflows/prompts/codebase-learning-comments.md",
+      "schemas/session-receipt.schema.json",
+      "scripts/verify_agent_receipt.py",
+      "tests/",
+      "workflows/prompts/README.md",
+      "README.md",
+      "docs/using-the-prompt-kit.md",
+      "workflows/manifest.json"
+    ],
+    "allowed_files": [
+      "workflows/prompts/codebase-learning-comments.md",
+      ".codex/prompts/codebase-learning-comments.md",
+      "schemas/session-receipt.schema.json",
+      "scripts/verify_agent_receipt.py",
+      "tests/test_verify_agent_receipt.py",
+      "workflows/prompts/README.md",
+      "README.md",
+      "docs/using-the-prompt-kit.md",
+      "VERSION",
+      "CHANGELOG.md"
+    ],
+    "protected_files": [
+      "/Volumes/Myrtle/Code/04_Code/Hermes/doc-contract-kit",
+      "research/agentic-workflow-review/backlog.csv",
+      "research/agentic-workflow-review/agent-workflow-kit-backlog.csv",
+      "research/agentic-workflow-review/repo-contract-kit-backlog.csv"
+    ],
+    "expected_outputs": [
+      "Learning-comments prompt requires a named comment-only receipt section.",
+      "Receipt schema can represent comment-only verification evidence.",
+      "Strict receipt validation fails learning-comments receipts that omit comment-only proof or claim behavior changes.",
+      "Tests cover passing and failing learning-comments receipt cases.",
+      "Generated Codex adapter is refreshed."
+    ]
+  },
+  "acceptance_criteria": [
+    {
+      "description": "The canonical learning-comments prompt requires a structured comment-only receipt with diff scope, behavior-change assertion, evidence commands, and explicit uncertainty handling.",
+      "verification": "Read workflows/prompts/codebase-learning-comments.md."
+    },
+    {
+      "description": "The session receipt schema includes machine-readable comment-only verification evidence without breaking existing receipt fields.",
+      "verification": "Read schemas/session-receipt.schema.json and run focused receipt tests."
+    },
+    {
+      "description": "Strict receipt validation enforces learning-comments invariants: scope.behavior_change must be false, comment-only evidence must be present, non-comment paths or uncertainty must be explicit, and missing proof fails.",
+      "verification": "Run PYTHONDONTWRITEBYTECODE=1 python3 -m unittest tests.test_verify_agent_receipt."
+    },
+    {
+      "description": "The Codex adapter mirrors the canonical prompt.",
+      "verification": "Run PYTHONDONTWRITEBYTECODE=1 make prompt-adapters-check."
+    },
+    {
+      "description": "Documentation tells operators where the receipt evidence belongs.",
+      "verification": "Read changed docs and run docs checks."
+    }
+  ],
+  "validation": {
+    "commands": [
+      {
+        "command": "PYTHONDONTWRITEBYTECODE=1 python3 -m unittest tests.test_verify_agent_receipt",
+        "required": true,
+        "expected_result": "pass"
+      },
+      {
+        "command": "PYTHONDONTWRITEBYTECODE=1 make prompt-adapters-export",
+        "required": true,
+        "expected_result": "pass and refresh generated adapter"
+      },
+      {
+        "command": "PYTHONDONTWRITEBYTECODE=1 make prompt-adapters-check",
+        "required": true,
+        "expected_result": "pass"
+      },
+      {
+        "command": "PYTHONDONTWRITEBYTECODE=1 make agent-verify",
+        "required": true,
+        "expected_result": "pass"
+      },
+      {
+        "command": "git diff --check",
+        "required": true,
+        "expected_result": "pass"
+      }
+    ],
+    "evidence_to_capture": [
+      "test output",
+      "prompt adapter check output",
+      "agent verification output",
+      "diff summary",
+      "dirty-state explanation"
+    ]
+  },
+  "closeout_requirements": {
+    "final_receipt_path": ".agent-workflows/tasks/agw-044-learning-comments-receipt/receipt.json or sidecar equivalent",
+    "readiness_check": {
+      "command": "make agent-task-ready TASK=AGW-044 TASK_READY_JSON=1 or record why unavailable for this non-worktree parent-run packet",
+      "expected_result": "ready report passes or blocker is recorded"
+    },
+    "lifecycle_action": {
+      "action": "finish",
+      "command": "make agent-task-finalize TASK=AGW-044 TASK_RECEIPT=<path> TASK_FINALIZE_JSON=1 or lifecycle fallback",
+      "expected_result": "metadata is closed and final receipt is linked, or fallback receipt is durable"
+    },
+    "final_task_status": {
+      "command": "make agent-task-status TASK_STATUS_INCLUDE_CLOSED=1 TASK_STATUS_JSON=1",
+      "expected_result": "task is terminal or no local metadata was created and the reason is recorded"
+    },
+    "closeout_preview": {
+      "command": "make agent-task-closeout TASK_CLOSEOUT_JSON=1",
+      "expected_result": "eligible, retained, or blocked cleanup state is recorded",
+      "apply_requires_explicit_approval": true
+    },
+    "dirty_state_explanation": "Final handoff must say whether the checkout is clean, only expected files are dirty, cleanup is blocked, or unrelated dirt was preserved."
+  },
+  "docs_impact": {
+    "expected": "yes",
+    "paths": [
+      "workflows/prompts/codebase-learning-comments.md",
+      "workflows/prompts/README.md",
+      "README.md",
+      "docs/using-the-prompt-kit.md",
+      "CHANGELOG.md"
+    ],
+    "waiver_allowed": false,
+    "notes": "This changes a user-facing prompt workflow and receipt contract."
+  },
+  "risk": {
+    "level": "medium",
+    "known_risks": [
+      "Overly strict validation could reject legitimate no-edit explanation-note runs.",
+      "The schema and Python validator can drift if tests cover only one surface.",
+      "Prompt wording must avoid encouraging agents to claim comment-only proof without inspecting the diff."
+    ],
+    "stop_conditions": [
+      "The implementation needs installed repo-contract-kit behavior in the same packet.",
+      "Validation requires changing unrelated backlog rows or generated files outside the adapter output."
+    ]
+  },
+  "approval": {
+    "human_approval_required": false,
+    "state": "approved",
+    "approver": null,
+    "notes": "Active user goal is to implement remaining backlog items serially with one task agent per item."
+  },
+  "coordination": {
+    "active_task_count": 0,
+    "active_tasks": [],
+    "overlap_warnings": []
+  },
+  "harness_metrics": {
+    "context_file_count": 8,
+    "token_budget": {
+      "guidance": "Use the listed files first; avoid broad repo rereads unless a validation failure requires it."
+    }
+  },
+  "handoff": {
+    "recommended_prompt": "workflows/prompts/task-packet.md, then workflows/prompts/codebase-learning-comments.md",
+    "owner": "one worker agent",
+    "dependencies": [
+      "AGW-078 completed adjacent ELI5/explainability prompt work.",
+      "Generated adapters must come from make prompt-adapters-export."
+    ],
+    "next_packet_hint": "AGW-045 should handle latest-ADR discovery fallback and remain separate."
+  }
+}

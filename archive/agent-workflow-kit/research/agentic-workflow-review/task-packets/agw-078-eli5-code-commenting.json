@@ -1,0 +1,200 @@
+{
+  "schema_version": 1,
+  "task": {
+    "id": "AGW-078",
+    "title": "ELI5 code-commenting workflow for non-developer explainability",
+    "priority": "P1",
+    "status": "approved",
+    "source": {
+      "type": "backlog",
+      "reference": "research/agentic-workflow-review/backlog.csv:AGW-078"
+    }
+  },
+  "context": {
+    "repo_root": "/Volumes/Myrtle/Code/04_Code/Codex_CodeReview",
+    "mode": "learning-comments",
+    "problem_statement": "The existing learning-comments prompt helps learning developers, but AGW-078 targets non-developers who need to understand codebase intent, domain terms, and data flow without being taught programming syntax or receiving noisy inline comments.",
+    "background": [
+      "workflows/prompts/codebase-learning-comments.md already maps docs, ADRs, implementation paths, and existing comments before proposing behavior-neutral comments.",
+      "AGW-044 remains separate and should cover a formal comment-only receipt proving no behavior changed.",
+      "README.md, docs/using-the-prompt-kit.md, and workflows/prompts/README.md already route users to the learning-comments prompt.",
+      "The new workflow should sharpen that prompt for non-developer explainability, not create a separate product surface or backlog app."
+    ],
+    "non_goals": [
+      "Do not implement a static analysis engine or stale-comment scanner.",
+      "Do not implement the full AGW-044 receipt/schema work in this packet.",
+      "Do not add broad generated comments across a repository.",
+      "Do not teach general programming syntax, framework basics, or language tutorials.",
+      "Do not change runtime behavior, tests, dependencies, or source formatting except generated prompt adapters.",
+      "Do not modify repo-contract-kit in this source-side packet."
+    ]
+  },
+  "scope": {
+    "allowed_files": [
+      "workflows/prompts/codebase-learning-comments.md",
+      ".codex/prompts/codebase-learning-comments.md",
+      "workflows/prompts/README.md",
+      "README.md",
+      "docs/using-the-prompt-kit.md",
+      "PROJECT_BRIEF.md",
+      "research/agentic-workflow-review/backlog.csv",
+      "research/agentic-workflow-review/agent-workflow-kit-backlog.csv",
+      "research/agentic-workflow-review/summary.md",
+      "VERSION",
+      "CHANGELOG.md"
+    ],
+    "protected_files": [
+      "repo-contract-kit checkout and installed kit templates",
+      "schemas/session-receipt.schema.json unless the implementer explicitly splits or absorbs AGW-044",
+      "scripts/ unless validation shows a prompt adapter/export bug",
+      "runtime code outside prompt/docs/backlog files",
+      "generated files other than .codex/prompts/codebase-learning-comments.md",
+      "unrelated dirty work"
+    ],
+    "inspect_first": [
+      "workflows/prompts/codebase-learning-comments.md",
+      "workflows/prompts/README.md",
+      "README.md",
+      "docs/using-the-prompt-kit.md",
+      "PROJECT_BRIEF.md",
+      "schemas/session-receipt.schema.json",
+      "research/agentic-workflow-review/backlog.csv",
+      "research/agentic-workflow-review/agent-workflow-kit-backlog.csv"
+    ],
+    "expected_outputs": [
+      "Updated learning-comments prompt with a named non-developer or ELI5 mode.",
+      "Clear rules for when to add inline comments versus when to produce a separate explanation note.",
+      "A short explanation-note output section for non-developers.",
+      "Comment candidate rules that require sparse, evidence-backed, plain-language comments.",
+      "Explicit rejection rules for jargon, syntax tutoring, patronizing simplification, and comments that would mislead maintainers.",
+      "Updated prompt index/docs routing where needed.",
+      "Generated Codex prompt adapter in sync.",
+      "Backlog or summary updated only after implementation is complete."
+    ]
+  },
+  "acceptance_criteria": [
+    {
+      "description": "The prompt distinguishes learning developer support from non-developer explainability without assuming the reader will edit code.",
+      "verification": "Review workflows/prompts/codebase-learning-comments.md."
+    },
+    {
+      "description": "The workflow requires agents to choose between inline comments and a separate explanation note, and to prefer the note when inline comments would make maintained source noisy.",
+      "verification": "Review the prompt output section."
+    },
+    {
+      "description": "The workflow defines high-value non-developer explanation targets: domain terms, business or research rules, data flow, external boundaries, state transitions, operational constraints, and surprising guardrails.",
+      "verification": "Review the evidence and comment rules."
+    },
+    {
+      "description": "The workflow rejects low-value ELI5 output: syntax narration, framework tutorials, obvious comments, unverifiable simplifications, anthropomorphic explanations, and jargon swaps that lose accuracy.",
+      "verification": "Review the rejection rules."
+    },
+    {
+      "description": "The final diff remains prompt/docs/backlog only, plus generated adapter output.",
+      "verification": "Run git diff --name-only."
+    },
+    {
+      "description": "The generated Codex adapter matches the source prompt.",
+      "verification": "Run make prompt-adapters-check or make validate."
+    },
+    {
+      "description": "Documentation impact is covered in user-facing prompt docs or explicitly waived with a concrete reason.",
+      "verification": "Run make docs-check and python3 scripts/check_doc_impact.py."
+    }
+  ],
+  "validation": {
+    "commands": [
+      {
+        "command": "make prompt-adapters-export",
+        "required": true,
+        "expected_result": "pass and update .codex/prompts/codebase-learning-comments.md"
+      },
+      {
+        "command": "make prompt-adapters-check",
+        "required": true,
+        "expected_result": "pass after export"
+      },
+      {
+        "command": "make docs-check",
+        "required": true,
+        "expected_result": "pass"
+      },
+      {
+        "command": "python3 scripts/check_doc_impact.py",
+        "required": true,
+        "expected_result": "pass"
+      },
+      {
+        "command": "make agent-docs-lint",
+        "required": true,
+        "expected_result": "pass; existing warnings are acceptable if unchanged"
+      },
+      {
+        "command": "make validate",
+        "required": true,
+        "expected_result": "pass"
+      },
+      {
+        "command": "make version-check",
+        "required": true,
+        "expected_result": "pass after a patch bump, or with VERSION_CHECK_ALLOW_UNCHANGED=1 only if the final diff is clearly backlog-only"
+      },
+      {
+        "command": "git diff --check",
+        "required": true,
+        "expected_result": "pass"
+      }
+    ],
+    "evidence_to_capture": [
+      "Diff summary.",
+      "Prompt adapter export/check result.",
+      "Docs-impact result.",
+      "Validation command results.",
+      "Explanation of whether AGW-044 stayed separate or was intentionally absorbed."
+    ]
+  },
+  "docs_impact": {
+    "expected": "yes",
+    "paths": [
+      "workflows/prompts/codebase-learning-comments.md",
+      ".codex/prompts/codebase-learning-comments.md",
+      "workflows/prompts/README.md",
+      "README.md",
+      "docs/using-the-prompt-kit.md",
+      "CHANGELOG.md"
+    ],
+    "waiver_allowed": false,
+    "notes": "This changes a user-facing prompt workflow and how operators should run learning-comments mode."
+  },
+  "risk": {
+    "level": "medium",
+    "known_risks": [
+      "Inline comments for non-developers can pollute maintained source if the workflow does not strongly prefer sparse edits.",
+      "ELI5 language can become inaccurate if it over-simplifies domain, security, privacy, or architecture constraints.",
+      "This item can accidentally absorb AGW-044; keep formal receipt/schema enforcement separate unless explicitly approved.",
+      "Prompt changes can drift from the generated Codex adapter if export is skipped."
+    ],
+    "stop_conditions": [
+      "The implementer needs to change schemas or receipt validation to prove comment-only behavior.",
+      "The implementer needs to modify repo-contract-kit templates or installer behavior.",
+      "The prompt cannot define a clear distinction between inline source comments and a separate explanation note.",
+      "Validation reveals generated adapter drift or docs-impact failure."
+    ]
+  },
+  "approval": {
+    "human_approval_required": true,
+    "state": "approved",
+    "approver": "Yannick",
+    "notes": "Yannick asked to flesh out AGW-078; implementation still needs a separate go or accepted task execution step."
+  },
+  "handoff": {
+    "recommended_prompt": "workflows/prompts/task-packet.md, then workflows/prompts/codebase-learning-comments.md",
+    "owner": null,
+    "dependencies": [
+      "AGW-078 backlog row",
+      "Existing learning-comments prompt",
+      "AGW-044 remains adjacent receipt work"
+    ],
+    "next_packet_hint": "If this lands cleanly, the follow-up packet should implement AGW-044 as a formal comment-only receipt or verifier so learning-comments mode can prove behavior neutrality."
+  }
+}

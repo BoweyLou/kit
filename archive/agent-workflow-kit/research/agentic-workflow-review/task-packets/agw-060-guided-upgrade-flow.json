@@ -1,0 +1,304 @@
+{
+  "schema_version": 1,
+  "task": {
+    "id": "AGW-060",
+    "title": "Expand guided upgrade flow beyond profile-schema migration.",
+    "priority": "P2",
+    "status": "approved",
+    "source": {
+      "type": "backlog",
+      "reference": "research/agentic-workflow-review/backlog.csv:61"
+    }
+  },
+  "context": {
+    "repo_root": "/Volumes/Myrtle/Code/04_Code/repo-contract-kit",
+    "mode": "verification",
+    "problem_statement": "Future kit updates need a clearer operator path for reviewing conflicts and applying richer upgrades safely beyond profile-config metadata migration.",
+    "background": [
+      "AGW-060 is the final open backlog item after AGW-059 closeout.",
+      "repo-contract-kit already has update-plan, kit update --dry-run, kit update, kit doctor, conflict reports under .doc-contract-kit/updates, and metadata-only migrate-config.",
+      "Current Codex_CodeReview backlog status is 1 open, 100 done, 0 partial; AGW-060 is selected next.",
+      "AGW-059 is committed in repo-contract-kit as 4c829a3 and dogfooded in Codex_CodeReview as 109ab88."
+    ],
+    "non_goals": [
+      "Do not add automatic conflict resolution or force overwrite behavior.",
+      "Do not mutate target-owned files outside existing explicit update commands.",
+      "Do not add hosted update services, PR creation, branch protection changes, or external account writes.",
+      "Do not replace update-plan, update, doctor, or migrate-config; make the operator path clearer over those commands."
+    ]
+  },
+  "previous_task_state": {
+    "report_sources": [
+      "make backlog-status",
+      "make agent-next",
+      "make agent-task-status",
+      "make kit-status KIT=/Volumes/Myrtle/Code/04_Code/repo-contract-kit",
+      "repo-contract-kit commit 4c829a3",
+      "Codex_CodeReview commit 109ab88"
+    ],
+    "active_tasks": [],
+    "unresolved_blockers": [],
+    "dirty_or_stale_state": [],
+    "finalizer_receipt_paths": [
+      "Codex_CodeReview commit 109ab88 closes AGW-059",
+      "repo-contract-kit commit 4c829a3 implements AGW-059"
+    ],
+    "blocker_receipt_paths": [],
+    "allowed_to_start": true,
+    "notes": "AGW-060 may start after this packet commit; no active sibling tasks or dirty files were reported before packet creation."
+  },
+  "closeout_required_before_start": {
+    "decision": "safe-start",
+    "reason": "The prior task is committed in both repos, kit-status is current, and task-status reports no active tasks or coordination warnings.",
+    "required_next_step": "Commit this AGW-060 packet, then implement only the scoped repo-contract-kit guided-upgrade docs/CLI/tests work.",
+    "evidence_paths": [
+      "research/agentic-workflow-review/backlog.csv:61",
+      "research/agentic-workflow-review/repo-contract-kit-backlog.csv:30",
+      "research/agentic-workflow-review/task-packets/agw-060-guided-upgrade-flow.json",
+      "research/agentic-workflow-review/task-packets/agw-060-guided-upgrade-flow.md"
+    ]
+  },
+  "goal_alignment": {
+    "repo_goal": "repo-contract-kit provides safe, explicit target-repo setup, status, update, conflict review, and verification flows.",
+    "area_contracts": [
+      {
+        "path": "scripts/repo_contract_kit.py and scripts/update.py",
+        "purpose": "Public CLI and safe managed update behavior.",
+        "source": "AGW-060 backlog row; README.md; tests/test_repo_contract_kit_cli.py; tests/test_update.py",
+        "status": "aligned",
+        "notes": "Prefer docs/help/report improvements over new mutation semantics."
+      },
+      {
+        "path": "README.md, docs/rollout-guide.md, docs/runtime-adapters.md, docs/agent-workflow-stack.md",
+        "purpose": "Operator guidance for status, dry-run, conflict review, update, doctor, and verification.",
+        "source": "repo-contract-kit docs",
+        "status": "aligned",
+        "notes": "Guidance should make the safe order obvious."
+      },
+      {
+        "path": "tests/",
+        "purpose": "Regression coverage for CLI help, update reports, and operator output.",
+        "source": "repo-contract-kit tests",
+        "status": "aligned",
+        "notes": "Add tests if a CLI command or report output changes."
+      }
+    ],
+    "alignment_decision": "aligned",
+    "adaptation_needed": false,
+    "stop_conditions": [
+      "Stop if the change would automatically accept conflicts or overwrite customized managed files.",
+      "Stop if the change requires hosted accounts, network calls, PRs, or branch mutations.",
+      "Stop if the scope becomes a general package manager or application migration framework."
+    ]
+  },
+  "scope": {
+    "inspect_first": [
+      "/Volumes/Myrtle/Code/04_Code/repo-contract-kit/README.md",
+      "/Volumes/Myrtle/Code/04_Code/repo-contract-kit/docs/rollout-guide.md",
+      "/Volumes/Myrtle/Code/04_Code/repo-contract-kit/scripts/repo_contract_kit.py",
+      "/Volumes/Myrtle/Code/04_Code/repo-contract-kit/scripts/update.py",
+      "/Volumes/Myrtle/Code/04_Code/repo-contract-kit/tests/test_repo_contract_kit_cli.py",
+      "/Volumes/Myrtle/Code/04_Code/repo-contract-kit/tests/test_update.py"
+    ],
+    "allowed_files": [
+      "/Volumes/Myrtle/Code/04_Code/repo-contract-kit/README.md",
+      "/Volumes/Myrtle/Code/04_Code/repo-contract-kit/docs/rollout-guide.md",
+      "/Volumes/Myrtle/Code/04_Code/repo-contract-kit/docs/upgrade-flow.md",
+      "/Volumes/Myrtle/Code/04_Code/repo-contract-kit/templates/common/**",
+      "/Volumes/Myrtle/Code/04_Code/repo-contract-kit/scripts/repo_contract_kit.py",
+      "/Volumes/Myrtle/Code/04_Code/repo-contract-kit/scripts/update.py",
+      "/Volumes/Myrtle/Code/04_Code/repo-contract-kit/tests/test_repo_contract_kit_cli.py",
+      "/Volumes/Myrtle/Code/04_Code/repo-contract-kit/tests/test_update.py",
+      "/Volumes/Myrtle/Code/04_Code/repo-contract-kit/tests/test_install.py",
+      "/Volumes/Myrtle/Code/04_Code/repo-contract-kit/VERSION",
+      "/Volumes/Myrtle/Code/04_Code/repo-contract-kit/CHANGELOG.md",
+      "/Volumes/Myrtle/Code/04_Code/Codex_CodeReview/research/agentic-workflow-review/**",
+      "/Volumes/Myrtle/Code/04_Code/Codex_CodeReview/.doc-contract-kit/**",
+      "/Volumes/Myrtle/Code/04_Code/Codex_CodeReview/VERSION",
+      "/Volumes/Myrtle/Code/04_Code/Codex_CodeReview/CHANGELOG.md"
+    ],
+    "protected_files": [
+      "Destructive git commands, forced cleanups, and automatic conflict acceptance.",
+      "Target-owned files except through existing explicit update/proposal mechanisms.",
+      "Hosted PRs, branch protections, issue trackers, labels, queues, or external accounts.",
+      "Agent-workflow-kit prompt source in Codex_CodeReview."
+    ],
+    "expected_outputs": [
+      "A clearer guided upgrade path for status, dry-run, conflict review, update, doctor, and verification.",
+      "Docs or CLI help that explain conflict report review and safe next actions.",
+      "Tests for any new installed file, help text, report output, or CLI behavior.",
+      "Version/changelog updates in repo-contract-kit, followed by dogfood and final backlog closeout in Codex_CodeReview."
+    ]
+  },
+  "phase_files": {
+    "needed": false,
+    "reason": "This should be a bounded final backlog item over existing update machinery.",
+    "phases": [
+      {
+        "id": "AGW-060-P1",
+        "title": "Guided Upgrade Flow",
+        "objective": "Clarify and validate the guided upgrade path, then dogfood and close the final backlog item.",
+        "allowed_scope": [
+          "repo-contract-kit upgrade docs/templates/CLI help/tests/version files",
+          "Codex_CodeReview dogfood metadata and backlog closeout files"
+        ],
+        "completion_evidence": [
+          "repo-contract-kit docs/tests/version checks pass",
+          "Codex_CodeReview kit-status and backlog checks pass",
+          "no open backlog items remain"
+        ],
+        "handoff_notes": "Do not broaden into automatic conflict application or hosted update automation."
+      }
+    ]
+  },
+  "acceptance_criteria": [
+    {
+      "description": "Operators have a clear safe upgrade sequence from status through dry-run, conflict review, update, doctor, and verification.",
+      "verification": "Review docs/CLI help for an ordered flow that preserves customized files and target-owned boundaries."
+    },
+    {
+      "description": "Conflict reports and proposed replacements are explained as review artifacts, not auto-apply instructions.",
+      "verification": "Review docs/report guidance and tests if output changes."
+    },
+    {
+      "description": "Existing profile-schema migration remains one step inside the broader upgrade flow.",
+      "verification": "Confirm docs still mention migrate-config/metadata-only for profile config schema cases."
+    },
+    {
+      "description": "No destructive update behavior or external hosted mutation is added.",
+      "verification": "Review code diff and tests for no force overwrite, reset, clean, PR, branch, or external account behavior."
+    }
+  ],
+  "validation": {
+    "commands": [
+      {
+        "command": "PYTHONDONTWRITEBYTECODE=1 python3 -m unittest tests.test_repo_contract_kit_cli tests.test_update tests.test_install",
+        "required": true,
+        "expected_result": "focused CLI/update/install coverage passes"
+      },
+      {
+        "command": "PYTHONDONTWRITEBYTECODE=1 make test",
+        "required": true,
+        "expected_result": "full repo-contract-kit test suite passes"
+      },
+      {
+        "command": "make docs-check",
+        "required": true,
+        "expected_result": "repo-contract-kit docs checks pass"
+      },
+      {
+        "command": "make version-check",
+        "required": true,
+        "expected_result": "repo-contract-kit VERSION and CHANGELOG are valid"
+      },
+      {
+        "command": "git diff --check",
+        "required": true,
+        "expected_result": "no whitespace errors in repo-contract-kit"
+      },
+      {
+        "command": "make kit-update KIT=/Volumes/Myrtle/Code/04_Code/repo-contract-kit",
+        "required": true,
+        "expected_result": "Codex_CodeReview dogfood install updates safely from the local kit checkout"
+      },
+      {
+        "command": "make backlog-check && make backlog-split-check && make backlog-status && make agent-next",
+        "required": true,
+        "expected_result": "Codex_CodeReview backlog reports zero open items after closeout"
+      },
+      {
+        "command": "make kit-status KIT=/Volumes/Myrtle/Code/04_Code/repo-contract-kit",
+        "required": true,
+        "expected_result": "Codex_CodeReview reports the dogfooded kit version/source ref"
+      },
+      {
+        "command": "make docs-check && make version-check && git diff --check",
+        "required": true,
+        "expected_result": "Codex_CodeReview closeout checks pass"
+      }
+    ],
+    "evidence_to_capture": [
+      "Upgrade-flow docs/CLI diff",
+      "Focused and full repo-contract-kit validation output",
+      "Evidence that conflicts remain review-only unless explicit update applies safe managed changes",
+      "Dogfood kit-status output in Codex_CodeReview",
+      "Final backlog status showing zero open items"
+    ]
+  },
+  "closeout_requirements": {
+    "final_receipt_path": ".agent-workflows/tasks/AGW-060/receipt.json or sidecar equivalent",
+    "readiness_check": {
+      "command": "make agent-task-ready TASK=AGW-060 TASK_READY_JSON=1 or record why unavailable",
+      "expected_result": "readiness passes or a blocker is recorded before handoff"
+    },
+    "lifecycle_action": {
+      "action": "finish",
+      "command": "make agent-task-finalize TASK=AGW-060 TASK_RECEIPT=.agent-workflows/tasks/AGW-060/receipt.json TASK_FINALIZE_JSON=1 or durable fallback receipt",
+      "expected_result": "task metadata is terminal and final receipt is linked, or fallback receipt is documented"
+    },
+    "final_task_status": {
+      "command": "make agent-task-status TASK_STATUS_INCLUDE_CLOSED=1 TASK_STATUS_JSON=1",
+      "expected_result": "terminal task state, receipt path, and active overlaps are visible or unavailable state is explained"
+    },
+    "closeout_preview": {
+      "command": "make agent-task-closeout TASK_CLOSEOUT_JSON=1",
+      "expected_result": "closeout preview reports expected changes; applying closeout requires explicit approval",
+      "apply_requires_explicit_approval": true
+    },
+    "dirty_state_explanation": "Final handoff must classify any remaining dirty files in both repo-contract-kit and Codex_CodeReview."
+  },
+  "docs_impact": {
+    "expected": "yes",
+    "paths": [
+      "/Volumes/Myrtle/Code/04_Code/repo-contract-kit/docs/upgrade-flow.md",
+      "/Volumes/Myrtle/Code/04_Code/repo-contract-kit/README.md",
+      "/Volumes/Myrtle/Code/04_Code/repo-contract-kit/docs/rollout-guide.md",
+      "/Volumes/Myrtle/Code/04_Code/repo-contract-kit/CHANGELOG.md",
+      "/Volumes/Myrtle/Code/04_Code/Codex_CodeReview/research/agentic-workflow-review/summary.md",
+      "/Volumes/Myrtle/Code/04_Code/Codex_CodeReview/CHANGELOG.md"
+    ],
+    "waiver_allowed": false,
+    "notes": "This task changes operator upgrade guidance."
+  },
+  "risk": {
+    "level": "medium",
+    "known_risks": [
+      "Upgrade guidance could imply conflict reports should be auto-applied.",
+      "CLI changes could accidentally change update mutability semantics.",
+      "Docs could duplicate or conflict with update-plan and migrate-config guidance.",
+      "Final closeout must prove no open backlog rows remain rather than assuming completion."
+    ],
+    "stop_conditions": [
+      "Stop if implementation requires destructive git cleanup or force overwrite.",
+      "Stop if implementation requires hosted accounts or external mutation.",
+      "Stop if update semantics change without explicit tests and docs."
+    ]
+  },
+  "approval": {
+    "human_approval_required": false,
+    "state": "approved",
+    "approver": "user",
+    "notes": "Approved by the user's serial backlog execution request."
+  },
+  "coordination": {
+    "active_task_count": 0,
+    "active_tasks": [],
+    "overlap_warnings": []
+  },
+  "harness_metrics": {
+    "context_file_count": 6,
+    "token_budget": {
+      "required": false,
+      "notes": "No explicit token budget for the active goal."
+    }
+  },
+  "handoff": {
+    "recommended_prompt": "workflows/prompts/fix-implementer.md",
+    "owner": null,
+    "dependencies": [
+      "Commit this packet before editing repo-contract-kit.",
+      "Commit repo-contract-kit implementation before dogfood closeout in Codex_CodeReview."
+    ],
+    "next_packet_hint": null
+  }
+}

@@ -1,0 +1,158 @@
+{
+  "name": "review-prompts",
+  "description": "Codex review and learning prompt profile for multi-agent repository interrogation.",
+  "files": [
+    {
+      "source": "files/.codex/prompts/README.md",
+      "target": ".codex/prompts/README.md"
+    },
+    {
+      "source": "files/.codex/prompts/codebase-learning-comments.md",
+      "target": ".codex/prompts/codebase-learning-comments.md"
+    },
+    {
+      "source": "files/.codex/prompts/fix-implementer.md",
+      "target": ".codex/prompts/fix-implementer.md"
+    },
+    {
+      "source": "files/.codex/prompts/fix-planner.md",
+      "target": ".codex/prompts/fix-planner.md"
+    },
+    {
+      "source": "files/.codex/prompts/multi-agent-repo-review.md",
+      "target": ".codex/prompts/multi-agent-repo-review.md"
+    },
+    {
+      "source": "files/.codex/prompts/maintainer-queue.md",
+      "target": ".codex/prompts/maintainer-queue.md"
+    },
+    {
+      "source": "files/.codex/prompts/personas/ai-code-slop.md",
+      "target": ".codex/prompts/personas/ai-code-slop.md"
+    },
+    {
+      "source": "files/.codex/prompts/personas/api-data-contracts.md",
+      "target": ".codex/prompts/personas/api-data-contracts.md"
+    },
+    {
+      "source": "files/.codex/prompts/personas/dead-code.md",
+      "target": ".codex/prompts/personas/dead-code.md"
+    },
+    {
+      "source": "files/.codex/prompts/personas/dependencies-build.md",
+      "target": ".codex/prompts/personas/dependencies-build.md"
+    },
+    {
+      "source": "files/.codex/prompts/personas/doc-code-delta.md",
+      "target": ".codex/prompts/personas/doc-code-delta.md"
+    },
+    {
+      "source": "files/.codex/prompts/personas/duplication.md",
+      "target": ".codex/prompts/personas/duplication.md"
+    },
+    {
+      "source": "files/.codex/prompts/personas/frontend-ux.md",
+      "target": ".codex/prompts/personas/frontend-ux.md"
+    },
+    {
+      "source": "files/.codex/prompts/personas/reuse-architecture.md",
+      "target": ".codex/prompts/personas/reuse-architecture.md"
+    },
+    {
+      "source": "files/.codex/prompts/personas/runtime-observability.md",
+      "target": ".codex/prompts/personas/runtime-observability.md"
+    },
+    {
+      "source": "files/.codex/prompts/personas/security-privacy.md",
+      "target": ".codex/prompts/personas/security-privacy.md"
+    },
+    {
+      "source": "files/.codex/prompts/personas/test-behavior-risk.md",
+      "target": ".codex/prompts/personas/test-behavior-risk.md"
+    },
+    {
+      "source": "files/.codex/prompts/personas/manifest.json",
+      "target": ".codex/prompts/personas/manifest.json"
+    },
+    {
+      "source": "files/.codex/prompts/policies/browser-research-agent.md",
+      "target": ".codex/prompts/policies/browser-research-agent.md"
+    },
+    {
+      "source": "files/.codex/prompts/policies/local-private-review.md",
+      "target": ".codex/prompts/policies/local-private-review.md"
+    },
+    {
+      "source": "files/.codex/prompts/policies/read-only-reviewer-sandbox.md",
+      "target": ".codex/prompts/policies/read-only-reviewer-sandbox.md"
+    },
+    {
+      "source": "files/.codex/prompts/policies/review-risk-classifier.md",
+      "target": ".codex/prompts/policies/review-risk-classifier.md"
+    },
+    {
+      "source": "files/.codex/prompts/research/README.md",
+      "target": ".codex/prompts/research/README.md"
+    },
+    {
+      "source": "files/.codex/prompts/research/research-brief.md",
+      "target": ".codex/prompts/research/research-brief.md"
+    },
+    {
+      "source": "files/.codex/prompts/research/research-synthesis.md",
+      "target": ".codex/prompts/research/research-synthesis.md"
+    },
+    {
+      "source": "files/.codex/prompts/research/research-to-backlog.md",
+      "target": ".codex/prompts/research/research-to-backlog.md"
+    },
+    {
+      "source": "files/.codex/prompts/research/source-arxiv.md",
+      "target": ".codex/prompts/research/source-arxiv.md"
+    },
+    {
+      "source": "files/.codex/prompts/research/source-github.md",
+      "target": ".codex/prompts/research/source-github.md"
+    },
+    {
+      "source": "files/.codex/prompts/research/source-hacker-news.md",
+      "target": ".codex/prompts/research/source-hacker-news.md"
+    },
+    {
+      "source": "files/.codex/prompts/research/source-official-docs.md",
+      "target": ".codex/prompts/research/source-official-docs.md"
+    },
+    {
+      "source": "files/.codex/prompts/review-synthesis.md",
+      "target": ".codex/prompts/review-synthesis.md"
+    },
+    {
+      "source": "files/.codex/prompts/task-packet.md",
+      "target": ".codex/prompts/task-packet.md"
+    },
+    {
+      "source": "files/.codex/prompts/task-worktree-cleanup.md",
+      "target": ".codex/prompts/task-worktree-cleanup.md"
+    },
+    {
+      "source": "files/.codex/prompts/templates/agent-brief.md",
+      "target": ".codex/prompts/templates/agent-brief.md"
+    },
+    {
+      "source": "files/.codex/prompts/templates/review-finding.md",
+      "target": ".codex/prompts/templates/review-finding.md"
+    },
+    {
+      "source": "files/.codex/prompts/templates/review-map.md",
+      "target": ".codex/prompts/templates/review-map.md"
+    },
+    {
+      "source": "files/.codex/prompts/templates/task-packet.md",
+      "target": ".codex/prompts/templates/task-packet.md"
+    },
+    {
+      "source": "files/.codex/prompts/verification-sentinel.md",
+      "target": ".codex/prompts/verification-sentinel.md"
+    }
+  ]
+}

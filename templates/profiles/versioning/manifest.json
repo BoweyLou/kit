@@ -1,0 +1,18 @@
+{
+  "name": "versioning",
+  "description": "Local SemVer files and commands for target repositories.",
+  "files": [
+    {
+      "source": "files/VERSION",
+      "target": "VERSION"
+    },
+    {
+      "source": "files/CHANGELOG.md",
+      "target": "CHANGELOG.md"
+    },
+    {
+      "source": "files/docs/versioning.md",
+      "target": "docs/versioning.md"
+    }
+  ]
+}

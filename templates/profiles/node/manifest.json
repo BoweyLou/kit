@@ -1,0 +1,14 @@
+{
+  "name": "node",
+  "description": "Opt-in Node.js repository hygiene profile with local command hints and operator guidance.",
+  "files": [
+    {
+      "source": "files/.agent-workflows/stack-profiles/node.json",
+      "target": ".agent-workflows/stack-profiles/node.json"
+    },
+    {
+      "source": "files/docs/ops/node-stack-profile.md",
+      "target": "docs/ops/node-stack-profile.md"
+    }
+  ]
+}

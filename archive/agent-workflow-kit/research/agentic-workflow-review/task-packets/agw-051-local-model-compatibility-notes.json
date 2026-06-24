@@ -1,0 +1,379 @@
+{
+  "schema_version": 1,
+  "task": {
+    "id": "AGW-051",
+    "title": "Add local-model compatibility notes for review-only tasks.",
+    "priority": "P2",
+    "status": "approved",
+    "source": {
+      "type": "backlog",
+      "reference": "research/agentic-workflow-review/backlog.csv:52"
+    }
+  },
+  "context": {
+    "repo_root": "/Volumes/Myrtle/Code/04_Code/Codex_CodeReview",
+    "mode": "verification",
+    "problem_statement": "The stack has local/private review policy, read-only reviewer policy, and runtime compatibility guidance, but it does not yet say how to decide whether a local model is appropriate for review-only tasks. Operators need privacy-oriented guidance without over-claiming local model capability or confusing community runtimes with supported source adapters.",
+    "background": [
+      "AGW-049 added local/private review policy under workflows/prompts/policies/local-private-review.md and generated Codex copies under .codex/prompts/policies/.",
+      "AGW-040 added read-only reviewer sandbox policy, which should remain the default for review-only local-model tasks.",
+      "AGW-043 added docs/runtime-compatibility.md with current, planned, manual-only, and unsupported/unknown runtime surfaces.",
+      "AGW-048 added optional receipt effort metrics for token/cost and human burden; AGW-051 should reuse those receipt ideas rather than adding telemetry.",
+      "The backlog source examples for AGW-051 are Open Codex, Triplecheck, and Goose; any current runtime-specific claims must be checked against primary runtime docs or explicitly labeled as community/manual-only evidence.",
+      "Search at packet creation found current official/local-model documentation for Continue with Ollama, Aider with Ollama, and Goose/Ollama provider setup, plus the OpenAI Codex local-environments page. Treat Open Codex forks as community runtimes, not OpenAI Codex support.",
+      "make agent-task-status TASK_STATUS_JSON=1 at packet creation reported active_task_count 0, no hazards, no stale tasks, and no unknown-scope tasks.",
+      "make agent-token-budget at packet creation reported 105 files and 86870 estimated tokens, result passed.",
+      "make kit-status at packet creation reported installed repo-contract-kit 0.4.41, target repo version 0.2.23, runtime adapters none, and 5 modified managed files relative to installed kit metadata; this is known source self-dogfood drift, not git dirt."
+    ],
+    "non_goals": [
+      "Do not install, configure, or benchmark local models, Ollama, Goose, Continue, Aider, Open Codex, or any other runtime.",
+      "Do not add generated runtime adapters or repo-contract-kit target install/update behavior.",
+      "Do not claim that local models are generally better, safer, private, or sufficient for all review tasks.",
+      "Do not recommend a specific model name, size, provider, or hardware tier as a universal default.",
+      "Do not add hosted telemetry, cloud calls, model download automation, or runtime config files.",
+      "Do not change review personas, finding schemas, or receipt schemas unless a small docs-only reference is strictly required.",
+      "Do not turn review-only local-model guidance into write-capable implementation-agent guidance."
+    ]
+  },
+  "previous_task_state": {
+    "report_sources": [
+      "git status --short --branch",
+      "git rev-parse HEAD",
+      "git ls-remote origin refs/heads/main",
+      "make agent-task-status TASK_STATUS_JSON=1",
+      "make agent-next",
+      "make backlog-status",
+      "make agent-token-budget",
+      "make kit-status",
+      "make agent-task-packet-from-backlog BACKLOG_ID=AGW-051",
+      "workflows/prompts/policies/local-private-review.md",
+      "workflows/prompts/policies/read-only-reviewer-sandbox.md",
+      "docs/runtime-compatibility.md",
+      "docs/runtime-adapters.md",
+      "workflows/prompts/multi-agent-repo-review.md"
+    ],
+    "active_tasks": [],
+    "unresolved_blockers": [],
+    "dirty_or_stale_state": [
+      "make kit-status reports 5 modified kit-managed files relative to installed repo-contract-kit metadata; git status is clean and this source prompt/docs task does not refresh installed kit files."
+    ],
+    "finalizer_receipt_paths": [
+      "source main commit db9a064d58843aaca94411aa56ed51d830751867 completed AGW-048 and origin/main matched it",
+      "make agent-task-status TASK_STATUS_JSON=1 reported active_task_count 0 after AGW-048"
+    ],
+    "blocker_receipt_paths": [],
+    "allowed_to_start": true,
+    "notes": "AGW-051 packet creation began from a clean source checkout on main at db9a064d58843aaca94411aa56ed51d830751867. make agent-next selected AGW-051 with dirty false, backlog-status reported 7 open and 92 done, and task-status reported zero active tasks, hazards, stale tasks, unknown-scope tasks, and untracked agent worktrees."
+  },
+  "closeout_required_before_start": {
+    "decision": "safe-start",
+    "reason": "AGW-048 is implemented, validated, pushed, and source-closed; local main matches origin/main; git status is clean; and task-status reports no active or stale task state.",
+    "required_next_step": "Proceed with one AGW-051 source guidance worker; refresh git status and task-status before edits, verify current runtime/local-model claims against primary docs, and stop if implementation needs runtime installs, generated adapters, repo-contract-kit behavior, or benchmark claims.",
+    "evidence_paths": [
+      "research/agentic-workflow-review/task-packets/agw-051-local-model-compatibility-notes.md",
+      "source main commit db9a064d58843aaca94411aa56ed51d830751867",
+      "make agent-task-status TASK_STATUS_JSON=1 reported active_task_count 0",
+      "make agent-next selected AGW-051 with dirty false"
+    ]
+  },
+  "goal_alignment": {
+    "repo_goal": "Keep agent-workflow-kit as the source of prompt, policy, runtime-compatibility, and harness-quality guidance for local agentic review and implementation.",
+    "area_contracts": [
+      {
+        "path": "/Volumes/Myrtle/Code/04_Code/Codex_CodeReview/workflows/prompts/policies/local-private-review.md",
+        "purpose": "Canonical policy for private/local review data-boundary and provider notes.",
+        "source": "AGW-049",
+        "status": "aligned"
+      },
+      {
+        "path": "/Volumes/Myrtle/Code/04_Code/Codex_CodeReview/workflows/prompts/policies/read-only-reviewer-sandbox.md",
+        "purpose": "Review-only mutation boundary that local-model reviews must preserve.",
+        "source": "AGW-040",
+        "status": "aligned"
+      },
+      {
+        "path": "/Volumes/Myrtle/Code/04_Code/Codex_CodeReview/docs/runtime-compatibility.md",
+        "purpose": "Current/planned/manual-only runtime support matrix and privacy/locality guidance.",
+        "source": "AGW-043",
+        "status": "aligned"
+      },
+      {
+        "path": "/Volumes/Myrtle/Code/04_Code/Codex_CodeReview/workflows/prompts/multi-agent-repo-review.md",
+        "purpose": "Canonical review entrypoint that applies policy prompts to review-only work.",
+        "source": "AGW-009; AGW-040; AGW-049",
+        "status": "aligned"
+      },
+      {
+        "path": "/Volumes/Myrtle/Code/04_Code/Codex_CodeReview/README.md",
+        "purpose": "Human-facing workflow entrypoint where local-model guidance should be discoverable by operators.",
+        "source": "repo documentation contract",
+        "status": "aligned"
+      }
+    ],
+    "alignment_decision": "aligned",
+    "adaptation_needed": false,
+    "stop_conditions": [
+      "Stop if the worker cannot verify a runtime-specific local-model claim from primary docs or clearly mark it as community/manual-only.",
+      "Stop if guidance would require installing a model, changing runtime config, adding adapters, or mutating repo-contract-kit.",
+      "Stop if docs imply local models are automatically private when endpoints may be remote, logged, or provider-hosted.",
+      "Stop if docs imply local models are adequate for security, compliance, migration, or public API review without human/cloud-capable escalation.",
+      "Stop if generated Codex adapters drift from canonical prompt sources."
+    ]
+  },
+  "scope": {
+    "allowed_files": [
+      "/Volumes/Myrtle/Code/04_Code/Codex_CodeReview/workflows/prompts/policies/local-private-review.md",
+      "/Volumes/Myrtle/Code/04_Code/Codex_CodeReview/workflows/prompts/policies/read-only-reviewer-sandbox.md",
+      "/Volumes/Myrtle/Code/04_Code/Codex_CodeReview/workflows/prompts/multi-agent-repo-review.md",
+      "/Volumes/Myrtle/Code/04_Code/Codex_CodeReview/workflows/prompts/README.md",
+      "/Volumes/Myrtle/Code/04_Code/Codex_CodeReview/.codex/prompts/policies/local-private-review.md",
+      "/Volumes/Myrtle/Code/04_Code/Codex_CodeReview/.codex/prompts/policies/read-only-reviewer-sandbox.md",
+      "/Volumes/Myrtle/Code/04_Code/Codex_CodeReview/.codex/prompts/multi-agent-repo-review.md",
+      "/Volumes/Myrtle/Code/04_Code/Codex_CodeReview/.codex/prompts/README.md",
+      "/Volumes/Myrtle/Code/04_Code/Codex_CodeReview/docs/runtime-compatibility.md",
+      "/Volumes/Myrtle/Code/04_Code/Codex_CodeReview/docs/runtime-adapters.md",
+      "/Volumes/Myrtle/Code/04_Code/Codex_CodeReview/docs/using-the-prompt-kit.md",
+      "/Volumes/Myrtle/Code/04_Code/Codex_CodeReview/docs/harness-engineering.md",
+      "/Volumes/Myrtle/Code/04_Code/Codex_CodeReview/README.md",
+      "/Volumes/Myrtle/Code/04_Code/Codex_CodeReview/tests/test_export_workflow_adapters.py",
+      "/Volumes/Myrtle/Code/04_Code/Codex_CodeReview/tests/test_prompt_regression_fixtures.py",
+      "/Volumes/Myrtle/Code/04_Code/Codex_CodeReview/VERSION",
+      "/Volumes/Myrtle/Code/04_Code/Codex_CodeReview/CHANGELOG.md",
+      "/Volumes/Myrtle/Code/04_Code/Codex_CodeReview/research/agentic-workflow-review/backlog.csv",
+      "/Volumes/Myrtle/Code/04_Code/Codex_CodeReview/research/agentic-workflow-review/agent-workflow-kit-backlog.csv",
+      "/Volumes/Myrtle/Code/04_Code/Codex_CodeReview/research/agentic-workflow-review/summary.md",
+      "/Volumes/Myrtle/Code/04_Code/Codex_CodeReview/research/agentic-workflow-review/feature_matrix.csv"
+    ],
+    "protected_files": [
+      "/Volumes/Myrtle/Code/04_Code/Hermes/doc-contract-kit/",
+      "/Volumes/Myrtle/Code/04_Code/Codex_CodeReview/workflows/manifest.json unless prompt adapter export proves a manifest typo",
+      "/Volumes/Myrtle/Code/04_Code/Codex_CodeReview/schemas/session-receipt.schema.json",
+      "/Volumes/Myrtle/Code/04_Code/Codex_CodeReview/schemas/review-synthesis.schema.json",
+      "/Volumes/Myrtle/Code/04_Code/Codex_CodeReview/scripts/agent_review_run.py",
+      "/Volumes/Myrtle/Code/04_Code/Codex_CodeReview/scripts/export_workflow_adapters.py",
+      "/Volumes/Myrtle/Code/04_Code/Codex_CodeReview/.agent-workflows/ runtime state except reading deterministic reports",
+      "runtime configuration files such as .continue/, .goosehints, .gooseignore, .aider.conf.yml, .env, Ollama config, or model caches",
+      "model downloads, benchmark output, hosted telemetry, provider credentials, account state, or CI upload configuration",
+      "unrelated backlog rows and unrelated dirty work"
+    ],
+    "inspect_first": [
+      "/Volumes/Myrtle/Code/04_Code/Codex_CodeReview/AGENTS.md",
+      "/Volumes/Myrtle/Code/04_Code/Codex_CodeReview/REVIEW.md",
+      "/Volumes/Myrtle/Code/04_Code/Codex_CodeReview/.agent-workflows/README.md",
+      "make agent-task-status TASK_STATUS_JSON=1",
+      "make kit-status",
+      "/Volumes/Myrtle/Code/04_Code/Codex_CodeReview/workflows/prompts/policies/local-private-review.md",
+      "/Volumes/Myrtle/Code/04_Code/Codex_CodeReview/workflows/prompts/policies/read-only-reviewer-sandbox.md",
+      "/Volumes/Myrtle/Code/04_Code/Codex_CodeReview/workflows/prompts/multi-agent-repo-review.md",
+      "/Volumes/Myrtle/Code/04_Code/Codex_CodeReview/docs/runtime-compatibility.md",
+      "/Volumes/Myrtle/Code/04_Code/Codex_CodeReview/docs/runtime-adapters.md",
+      "/Volumes/Myrtle/Code/04_Code/Codex_CodeReview/docs/using-the-prompt-kit.md",
+      "/Volumes/Myrtle/Code/04_Code/Codex_CodeReview/README.md",
+      "Current primary docs for local-model runtime support if making tool-specific claims, including Continue/Ollama docs, Aider/Ollama docs, Goose provider/Ollama docs, and OpenAI Codex docs for Codex-specific boundaries"
+    ],
+    "expected_outputs": [
+      "Local/private review policy includes a local-model suitability section for review-only work: useful for low-risk triage, summarization, duplicate finding checks, documentation/readme scans, and privacy-sensitive first passes; weak for security-critical, migration, compliance, public API, complex architecture, or high-blast-radius review unless validated and human-escalated.",
+      "Policy guidance distinguishes local-only, self-hosted, remote OpenAI-compatible endpoints, and hosted provider use; it tells agents to record the boundary in receipts instead of assuming local privacy.",
+      "Docs explain capability expectations for local models: context limits, tool-calling reliability, structured-output reliability, repo scale, latency, hardware variability, stale model knowledge, and higher false-positive/false-negative risk.",
+      "Runtime compatibility docs add local-model notes for review-only tasks without claiming generated adapter support. Current primary-doc-supported surfaces should be cited with access dates; community forks such as Open Codex must be separated from OpenAI Codex support.",
+      "Review prompt entrypoints tell reviewers to apply local-model compatibility notes only for review-only tasks, preserve read-only sandbox rules, and escalate when evidence quality or model capability is insufficient.",
+      "Docs link the local-model notes from README or using-the-prompt-kit so operators can find them before choosing a model/provider.",
+      "Generated Codex prompt adapters mirror canonical prompt policy changes.",
+      "Version/changelog and source backlog rows close AGW-051 only after validation."
+    ]
+  },
+  "acceptance_criteria": [
+    {
+      "description": "Local/private review policy documents when local models are appropriate for review-only tasks and when to escalate to a stronger/human-reviewed path.",
+      "verification": "Inspect workflows/prompts/policies/local-private-review.md and generated .codex copy after adapter export."
+    },
+    {
+      "description": "Runtime compatibility docs include local-model notes that distinguish primary-doc-supported local runtimes from manual-only/community/unsupported surfaces without adding generated adapter claims.",
+      "verification": "Inspect docs/runtime-compatibility.md and docs/runtime-adapters.md if changed; confirm source URLs and access dates for current runtime claims."
+    },
+    {
+      "description": "Guidance tells agents to record actual data boundaries, provider/model expectations, capability caveats, and escalation decisions in receipts or handoff notes.",
+      "verification": "Inspect local/private policy, review entrypoint, README, and docs/using-the-prompt-kit.md if changed."
+    },
+    {
+      "description": "The implementation does not install models, edit runtime config, add repo-contract-kit behavior, add telemetry, or claim local-model productivity/security guarantees.",
+      "verification": "git diff --name-only compared with allowed/protected scope."
+    },
+    {
+      "description": "Generated Codex adapters are refreshed if canonical prompts or policies changed.",
+      "verification": "PYTHONDONTWRITEBYTECODE=1 make prompt-adapters-check."
+    },
+    {
+      "description": "Version/changelog and source backlog rows close AGW-051 only after validation passes.",
+      "verification": "make version-check, make backlog-check, and make backlog-split-check."
+    }
+  ],
+  "validation": {
+    "commands": [
+      {
+        "command": "PYTHONDONTWRITEBYTECODE=1 make prompt-adapters-export",
+        "required": true,
+        "expected_result": "pass and refresh generated Codex policy files if prompt sources changed"
+      },
+      {
+        "command": "PYTHONDONTWRITEBYTECODE=1 make prompt-adapters-check",
+        "required": true,
+        "expected_result": "pass"
+      },
+      {
+        "command": "PYTHONDONTWRITEBYTECODE=1 python3 -m unittest tests.test_export_workflow_adapters",
+        "required": true,
+        "expected_result": "pass; add focused tests only if the implementation changes export behavior or prompt policy invariants"
+      },
+      {
+        "command": "PYTHONDONTWRITEBYTECODE=1 python3 scripts/run_prompt_regression_fixtures.py",
+        "required": true,
+        "expected_result": "pass"
+      },
+      {
+        "command": "PYTHONDONTWRITEBYTECODE=1 make agent-verify",
+        "required": true,
+        "expected_result": "pass; pre-existing unchanged instruction-hygiene warnings may be reported but must be identified"
+      },
+      {
+        "command": "PYTHONDONTWRITEBYTECODE=1 make validate",
+        "required": true,
+        "expected_result": "pass"
+      },
+      {
+        "command": "make docs-check",
+        "required": true,
+        "expected_result": "pass"
+      },
+      {
+        "command": "make docs-freshness",
+        "required": true,
+        "expected_result": "pass"
+      },
+      {
+        "command": "python3 scripts/check_doc_impact.py",
+        "required": true,
+        "expected_result": "pass"
+      },
+      {
+        "command": "make version-check",
+        "required": true,
+        "expected_result": "pass after a patch version/changelog update because this changes prompt/docs guidance"
+      },
+      {
+        "command": "make backlog-check",
+        "required": true,
+        "expected_result": "pass after AGW-051 closeout"
+      },
+      {
+        "command": "make backlog-split-check",
+        "required": true,
+        "expected_result": "pass after AGW-051 closeout"
+      },
+      {
+        "command": "git diff --check",
+        "required": true,
+        "expected_result": "pass"
+      }
+    ],
+    "evidence_to_capture": [
+      "source URLs and access dates used for runtime/local-model claims",
+      "local/private policy diff summary",
+      "runtime compatibility diff summary",
+      "prompt adapter export/check output",
+      "prompt regression or focused test output",
+      "docs-impact and docs-freshness output",
+      "version/changelog decision",
+      "git diff --name-only showing source prompt/docs/backlog/version scope only",
+      "final git status and make agent-task-status output"
+    ]
+  },
+  "closeout_requirements": {
+    "final_receipt_path": ".agent-workflows/tasks/agw-051-local-model-compatibility-notes/receipt.json or durable sidecar equivalent",
+    "readiness_check": {
+      "command": "make agent-task-ready TASK=AGW-051 TASK_READY_JSON=1 or record why unavailable for this parent-run packet",
+      "expected_result": "pass or explicit unavailable/omitted rationale with compensating validation evidence"
+    },
+    "lifecycle_action": {
+      "action": "finish",
+      "command": "make agent-task-finalize TASK=AGW-051 TASK_RECEIPT=<path> TASK_FINALIZE_JSON=1 or record why unavailable for this parent-run packet",
+      "expected_result": "task finished or unavailable/omitted rationale recorded"
+    },
+    "final_task_status": {
+      "command": "make agent-task-status TASK_STATUS_INCLUDE_CLOSED=1 TASK_STATUS_JSON=1",
+      "expected_result": "no active AGW-051 task remains, or any remaining task metadata is explicitly explained"
+    },
+    "closeout_preview": {
+      "command": "make agent-task-closeout TASK=AGW-051 TASK_CLOSEOUT_JSON=1 or record why unavailable for this parent-run packet",
+      "expected_result": "preview reports no unsafe cleanup, or unavailable/omitted rationale recorded",
+      "apply_requires_explicit_approval": true
+    },
+    "dirty_state_explanation": "Final handoff must say whether the source checkout is clean, only expected files remain dirty, cleanup is blocked, or unrelated dirt was preserved."
+  },
+  "docs_impact": {
+    "expected": "yes",
+    "notes": "This is a prompt/docs guidance change. Update README/docs and changelog so operators can find the local-model review-only caveats.",
+    "paths": [
+      "/Volumes/Myrtle/Code/04_Code/Codex_CodeReview/workflows/prompts/policies/local-private-review.md",
+      "/Volumes/Myrtle/Code/04_Code/Codex_CodeReview/docs/runtime-compatibility.md",
+      "/Volumes/Myrtle/Code/04_Code/Codex_CodeReview/docs/runtime-adapters.md",
+      "/Volumes/Myrtle/Code/04_Code/Codex_CodeReview/docs/using-the-prompt-kit.md",
+      "/Volumes/Myrtle/Code/04_Code/Codex_CodeReview/README.md",
+      "/Volumes/Myrtle/Code/04_Code/Codex_CodeReview/CHANGELOG.md"
+    ],
+    "waiver_allowed": false
+  },
+  "risk": {
+    "level": "medium",
+    "known_risks": [
+      "Runtime/model capability claims can drift quickly; use primary sources and access dates or keep language capability-based.",
+      "Local model guidance can be misread as a privacy guarantee even when a local-looking endpoint is remote or logs prompts.",
+      "Capability caveats can become vague; keep escalation rules concrete enough for agents to act on.",
+      "Generated prompt adapters can drift if canonical policy files are edited without export/check."
+    ],
+    "stop_conditions": [
+      "A required source is unavailable and the claim would be current/runtime-specific.",
+      "The change would need runtime installs, model downloads, provider credentials, or target-repo config files.",
+      "The change would promote local models for high-risk review without human or stronger-model escalation.",
+      "Validation or prompt adapter sync fails."
+    ]
+  },
+  "approval": {
+    "state": "approved",
+    "approver": "Yannick Bowe",
+    "human_approval_required": false,
+    "notes": "Approved as part of the workflow-stack backlog execution request; keep implementation bounded to source guidance and docs."
+  },
+  "coordination": {
+    "active_task_count": 0,
+    "active_tasks": [],
+    "overlap_warnings": [
+      "Use exactly one AGW-051 worker.",
+      "Refresh git status and task-status before worker edits.",
+      "Do not edit repo-contract-kit or runtime configuration files.",
+      "Treat installed kit managed-file drift as known self-dogfood state unless it becomes actual git dirt or affects validation."
+    ]
+  },
+  "harness_metrics": {
+    "context_file_count": 11,
+    "token_budget": {
+      "packet_creation_files": 105,
+      "packet_creation_estimated_tokens": 86870,
+      "result": "passed"
+    },
+    "deterministic_reports": [
+      "make agent-task-status TASK_STATUS_JSON=1",
+      "make agent-next",
+      "make backlog-status",
+      "make agent-token-budget",
+      "make kit-status",
+      "make agent-task-packet-from-backlog BACKLOG_ID=AGW-051"
+    ]
+  },
+  "handoff": {
+    "owner": "implementation worker",
+    "dependencies": [],
+    "recommended_prompt": "workflows/prompts/task-packet.md",
+    "next_packet_hint": "AGW-055 remains the next agent-workflow-kit backlog item after AGW-051 unless repo-contract-kit P2 items are prioritized."
+  }
+}

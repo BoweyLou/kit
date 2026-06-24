@@ -1,0 +1,300 @@
+{
+  "schema_version": 1,
+  "task": {
+    "id": "AGW-025",
+    "title": "Add docs Q&A/readme explainer mode for repo docs folder.",
+    "priority": "P2",
+    "status": "approved",
+    "source": {
+      "type": "backlog",
+      "reference": "research/agentic-workflow-review/backlog.csv:26"
+    }
+  },
+  "context": {
+    "repo_root": "/Volumes/Myrtle/Code/04_Code/Hermes/doc-contract-kit",
+    "mode": "verification",
+    "problem_statement": "Developers need a local way to ask what the repo docs and policy files say before waiving docs work, requesting a docs patch, or escalating review. The kit has docs-impact and docs-propose signals, but no deterministic local explainer/Q&A bridge for README and docs policy context.",
+    "background": [
+      "AGW-018 added docs-impact localization.",
+      "AGW-019 added docs-propose sidecar artifacts for missing docs coverage.",
+      "AGW-022 and AGW-023 added docs-contract PR comments and a spec-only slash-command grammar.",
+      "AGW-024 added a read-only changelog-update helper for release-note proposal/check mode.",
+      "AGW-025 should borrow the useful shape of Qodo /ask or codebase chat without requiring hosted PR bots or uncited model answers."
+    ],
+    "non_goals": [
+      "Do not implement hosted PR comment execution or GitHub API mutation.",
+      "Do not generate uncited free-form answers as authoritative repo policy.",
+      "Do not write docs, waivers, task packets, VERSION, or CHANGELOG.md by default.",
+      "Do not replace docs-impact, docs-propose, or explicit task-packet approval before write-capable docs changes.",
+      "Do not add a dependency on a hosted model or network call."
+    ]
+  },
+  "previous_task_state": {
+    "report_sources": [
+      "make agent-task-status",
+      "make agent-next",
+      "git ls-remote origin refs/heads/main for source and kit remotes"
+    ],
+    "active_tasks": [],
+    "unresolved_blockers": [],
+    "dirty_or_stale_state": [],
+    "finalizer_receipt_paths": [
+      "source main commit d86fd6dd55690391a35fbbf790190598b2b8a21a closed AGW-024",
+      "kit main commit aca8d0f2be2463755f3252d6ade79df542ed0692 completed repo-contract-kit 0.4.50"
+    ],
+    "blocker_receipt_paths": [],
+    "allowed_to_start": true,
+    "notes": "AGW-025 packet creation began only after AGW-024 was pushed in both repos, both remotes matched local HEADs, both worktrees were clean, source task-status reported zero active tasks, and agent-next selected AGW-025."
+  },
+  "closeout_required_before_start": {
+    "decision": "safe-start",
+    "reason": "The previous AGW-024 task has source and kit closeout commits, matching remote refs, clean worktrees, and no active task metadata.",
+    "required_next_step": "Proceed with exactly one AGW-025 worker in repo-contract-kit; refresh task-status if source or kit state becomes dirty before worker launch.",
+    "evidence_paths": [
+      "research/agentic-workflow-review/task-packets/agw-025-docs-explainer.md",
+      "source main commit d86fd6dd55690391a35fbbf790190598b2b8a21a",
+      "kit main commit aca8d0f2be2463755f3252d6ade79df542ed0692"
+    ]
+  },
+  "goal_alignment": {
+    "repo_goal": "Keep repo-contract-kit as the install-layer guardrail provider that helps local agents and humans understand docs policy and generate reviewable evidence without mutating target repos by default.",
+    "area_contracts": [
+      {
+        "path": "/Volumes/Myrtle/Code/04_Code/Hermes/doc-contract-kit/scripts/repo_contract_kit.py",
+        "purpose": "Stable wrapper CLI for local read-only helper commands.",
+        "source": "repo-contract-kit CLI",
+        "status": "aligned"
+      },
+      {
+        "path": "/Volumes/Myrtle/Code/04_Code/Hermes/doc-contract-kit/scripts/check_doc_impact.py",
+        "purpose": "Classifies changed paths into docs-impact categories that the explainer should help humans understand.",
+        "source": "docs-impact implementation",
+        "status": "aligned"
+      },
+      {
+        "path": "/Volumes/Myrtle/Code/04_Code/Hermes/doc-contract-kit/scripts/repo_contract_kit.py docs-propose",
+        "purpose": "Existing no-target-write docs proposal path that the explainer should route to when docs changes are needed.",
+        "source": "docs-propose implementation",
+        "status": "aligned"
+      },
+      {
+        "path": "/Volumes/Myrtle/Code/04_Code/Hermes/doc-contract-kit/templates/common/kit-makefile.mk",
+        "purpose": "Installed Make target surface for local docs explainer workflows.",
+        "source": "installed Make bridge",
+        "status": "aligned"
+      },
+      {
+        "path": "/Volumes/Myrtle/Code/04_Code/Hermes/doc-contract-kit/templates/common/slash-command-grammar.md",
+        "purpose": "Spec-only PR command policy for docs Q&A, waivers, add-docs, and read-only review boundaries.",
+        "source": "PR interface contract",
+        "status": "aligned"
+      }
+    ],
+    "alignment_decision": "aligned",
+    "adaptation_needed": false,
+    "stop_conditions": [
+      "Stop if the helper would write target docs, waivers, task packets, VERSION, or CHANGELOG.md by default.",
+      "Stop if output invents policy answers without cited source paths.",
+      "Stop if the implementation requires hosted model, browser, account, or network access.",
+      "Stop if it weakens docs-impact, docs-propose, or waiver approval boundaries."
+    ]
+  },
+  "scope": {
+    "allowed_files": [
+      "/Volumes/Myrtle/Code/04_Code/Hermes/doc-contract-kit/scripts/docs_explain.py",
+      "/Volumes/Myrtle/Code/04_Code/Hermes/doc-contract-kit/scripts/repo_contract_kit.py",
+      "/Volumes/Myrtle/Code/04_Code/Hermes/doc-contract-kit/scripts/install.py",
+      "/Volumes/Myrtle/Code/04_Code/Hermes/doc-contract-kit/templates/common/kit-makefile.mk",
+      "/Volumes/Myrtle/Code/04_Code/Hermes/doc-contract-kit/templates/common/ops-agent-workflow.md",
+      "/Volumes/Myrtle/Code/04_Code/Hermes/doc-contract-kit/templates/common/working-rhythm.md",
+      "/Volumes/Myrtle/Code/04_Code/Hermes/doc-contract-kit/templates/common/slash-command-grammar.md",
+      "/Volumes/Myrtle/Code/04_Code/Hermes/doc-contract-kit/README.md",
+      "/Volumes/Myrtle/Code/04_Code/Hermes/doc-contract-kit/docs/rollout-guide.md",
+      "/Volumes/Myrtle/Code/04_Code/Hermes/doc-contract-kit/docs/harness-engineering.md",
+      "/Volumes/Myrtle/Code/04_Code/Hermes/doc-contract-kit/CHANGELOG.md",
+      "/Volumes/Myrtle/Code/04_Code/Hermes/doc-contract-kit/VERSION",
+      "/Volumes/Myrtle/Code/04_Code/Hermes/doc-contract-kit/tests/test_docs_explain.py",
+      "/Volumes/Myrtle/Code/04_Code/Hermes/doc-contract-kit/tests/test_repo_contract_kit_cli.py",
+      "/Volumes/Myrtle/Code/04_Code/Hermes/doc-contract-kit/tests/test_install.py",
+      "/Volumes/Myrtle/Code/04_Code/Codex_CodeReview/research/agentic-workflow-review/backlog.csv",
+      "/Volumes/Myrtle/Code/04_Code/Codex_CodeReview/research/agentic-workflow-review/repo-contract-kit-backlog.csv",
+      "/Volumes/Myrtle/Code/04_Code/Codex_CodeReview/research/agentic-workflow-review/summary.md",
+      "/Volumes/Myrtle/Code/04_Code/Codex_CodeReview/research/agentic-workflow-review/feature_matrix.csv"
+    ],
+    "protected_files": [
+      "Do not edit source prompt or schema truth in agent-workflow-kit for this kit-owned task.",
+      "Do not weaken docs-impact or docs-propose semantics.",
+      "Do not imply /waive-docs can be self-approved by an agent.",
+      "Do not add hosted PR bot behavior or network/model dependencies.",
+      "Unrelated backlog rows."
+    ],
+    "inspect_first": [
+      "/Volumes/Myrtle/Code/04_Code/Hermes/doc-contract-kit/scripts/repo_contract_kit.py",
+      "/Volumes/Myrtle/Code/04_Code/Hermes/doc-contract-kit/scripts/check_doc_impact.py",
+      "/Volumes/Myrtle/Code/04_Code/Hermes/doc-contract-kit/templates/common/kit-makefile.mk",
+      "/Volumes/Myrtle/Code/04_Code/Hermes/doc-contract-kit/templates/common/slash-command-grammar.md",
+      "/Volumes/Myrtle/Code/04_Code/Hermes/doc-contract-kit/tests/test_repo_contract_kit_cli.py",
+      "/Volumes/Myrtle/Code/04_Code/Hermes/doc-contract-kit/tests/test_install.py"
+    ],
+    "expected_outputs": [
+      "A deterministic read-only docs explainer/Q&A helper with text and JSON output.",
+      "Question and optional focus/path inputs that select relevant README/docs/policy sources.",
+      "Grounding evidence with source paths, snippets or headings, and explicit no-match behavior.",
+      "A ready-to-use local prompt or explainer brief for a human/local agent.",
+      "Wrapper CLI and installed Make target exposure.",
+      "Docs that route users from explanation to docs-propose, waiver review, or scoped task-packet work.",
+      "VERSION and CHANGELOG.md record the repo-contract-kit behavior change."
+    ]
+  },
+  "acceptance_criteria": [
+    {
+      "description": "A local helper produces deterministic docs-explainer text/JSON output without writing target files or calling external services.",
+      "verification": "Focused helper tests assert no target writes, deterministic output, and no sidecar writes by default."
+    },
+    {
+      "description": "The helper accepts a question and optional focus/path filters, selects relevant README/docs/policy files, and reports source paths or citations.",
+      "verification": "Focused helper tests cover question matching, no-match output, and focus/path filtering."
+    },
+    {
+      "description": "Output includes a local prompt or explainer brief that can be handed to a local agent or human to answer docs-policy questions without inventing uncited policy.",
+      "verification": "JSON/text tests inspect prompt/brief fields and citation requirements."
+    },
+    {
+      "description": "Wrapper CLI and installed Make target expose the helper while preserving non-mutating defaults.",
+      "verification": "repo_contract_kit CLI and install tests."
+    },
+    {
+      "description": "Docs explain how the helper relates to docs-impact, docs-propose, waiver understanding, and add-docs/task-packet escalation.",
+      "verification": "docs-check, docs-freshness, and changed docs review."
+    },
+    {
+      "description": "The behavior change is versioned and documented in repo-contract-kit.",
+      "verification": "VERSION, CHANGELOG.md, and make version-check."
+    },
+    {
+      "description": "Source backlog rows and summary close AGW-025 only after kit validation passes.",
+      "verification": "source backlog checks after closeout."
+    }
+  ],
+  "validation": {
+    "commands": [
+      {
+        "command": "PYTHONDONTWRITEBYTECODE=1 python3 -m unittest tests.test_docs_explain tests.test_repo_contract_kit_cli tests.test_install",
+        "required": true,
+        "expected_result": "pass"
+      },
+      {
+        "command": "PYTHONDONTWRITEBYTECODE=1 make test",
+        "required": true,
+        "expected_result": "pass"
+      },
+      {
+        "command": "make docs-check",
+        "required": true,
+        "expected_result": "pass"
+      },
+      {
+        "command": "make docs-freshness",
+        "required": true,
+        "expected_result": "pass"
+      },
+      {
+        "command": "make version-check",
+        "required": true,
+        "expected_result": "pass"
+      },
+      {
+        "command": "git diff --check",
+        "required": true,
+        "expected_result": "pass"
+      },
+      {
+        "command": "make backlog-check",
+        "required": true,
+        "expected_result": "pass in source repo after closeout"
+      },
+      {
+        "command": "make backlog-split-check",
+        "required": true,
+        "expected_result": "pass in source repo after closeout"
+      },
+      {
+        "command": "PYTHONDONTWRITEBYTECODE=1 make agent-verify",
+        "required": true,
+        "expected_result": "pass in source repo after closeout"
+      }
+    ],
+    "evidence_to_capture": [
+      "Focused docs explainer tests",
+      "No-write proof for proposal/explainer mode",
+      "Full repo-contract-kit tests",
+      "Docs freshness and version checks",
+      "Source backlog closeout checks"
+    ]
+  },
+  "closeout_requirements": {
+    "final_receipt_path": "/Volumes/Myrtle/Code/04_Code/Hermes/doc-contract-kit/.agent-workflows/tasks/agw-025/receipt.json",
+    "readiness_check": {
+      "command": "make agent-task-ready TASK=AGW-025 TASK_READY_JSON=1",
+      "expected_result": "pass before lifecycle finish, or blocked with explicit receipt if validation cannot complete"
+    },
+    "lifecycle_action": {
+      "action": "finish",
+      "command": "make agent-task-finalize TASK=AGW-025 TASK_RECEIPT=.agent-workflows/tasks/agw-025/receipt.json TASK_FINALIZE_JSON=1",
+      "expected_result": "done metadata or explicit blocked finalizer receipt"
+    },
+    "final_task_status": {
+      "command": "make agent-task-status TASK_STATUS_INCLUDE_CLOSED=1 TASK_STATUS_JSON=1",
+      "expected_result": "no active AGW-025 task metadata after parent closeout, or terminal metadata with linked receipt before cleanup"
+    },
+    "closeout_preview": {
+      "command": "make agent-task-closeout TASK_CLOSEOUT_JSON=1",
+      "expected_result": "preview reports no unsafe dirty terminal worktree removal",
+      "apply_requires_explicit_approval": true
+    },
+    "dirty_state_explanation": "Worker must explain any remaining dirty files in the kit checkout; parent should only integrate expected AGW-025 files and leave both repos clean after commits."
+  },
+  "docs_impact": {
+    "expected": "yes",
+    "paths": [
+      "/Volumes/Myrtle/Code/04_Code/Hermes/doc-contract-kit/README.md",
+      "/Volumes/Myrtle/Code/04_Code/Hermes/doc-contract-kit/docs/rollout-guide.md",
+      "/Volumes/Myrtle/Code/04_Code/Hermes/doc-contract-kit/templates/common/ops-agent-workflow.md",
+      "/Volumes/Myrtle/Code/04_Code/Hermes/doc-contract-kit/templates/common/working-rhythm.md",
+      "/Volumes/Myrtle/Code/04_Code/Hermes/doc-contract-kit/templates/common/slash-command-grammar.md"
+    ],
+    "waiver_allowed": false,
+    "reason": "The task adds a local operator-facing command and installed workflow guidance."
+  },
+  "risk": {
+    "level": "medium",
+    "known_risks": [
+      "An explainer helper can look like an AI answer even when it only has partial docs context.",
+      "A waiver-help flow could accidentally imply that agents can approve waivers.",
+      "Broad docs scanning can become noisy or token-heavy if output is unbounded.",
+      "Hosted PR command language could imply behavior that is still only local/spec-only."
+    ],
+    "mitigations": [
+      "Make output source-cited, bounded, and explicit about no-match or uncertainty cases.",
+      "Keep default behavior non-mutating and local-only.",
+      "Route write outcomes to docs-propose or task-packet approval instead of direct edits.",
+      "Document hosted command execution as future adapter work unless implemented."
+    ]
+  },
+  "approval": {
+    "human_approval_required": true,
+    "state": "approved",
+    "approver": "user",
+    "notes": "User requested implementing remaining workflow-stack backlog items serially with one task agent per backlog item."
+  },
+  "coordination": {
+    "active_task_count": 0,
+    "active_tasks": [],
+    "overlap_warnings": [
+      "This task edits the companion kit checkout plus source backlog records; keep commits separate by repo."
+    ],
+    "worker_rule": "Use exactly one task worker for this backlog item. The worker owns kit implementation files only; the parent owns source task-packet and backlog closeout."
+  },
+  "recommended_prompt": "workflows/prompts/task-packet.md",
+  "next_packet_hint": "After AGW-025, make agent-next should select the next open P2 item from the source backlog."
+}

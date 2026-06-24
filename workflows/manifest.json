@@ -1,0 +1,138 @@
+{
+  "schema_version": 1,
+  "name": "repo-contract-kit-workflows",
+  "source_root": "workflows/prompts",
+  "generated_adapters": [
+    {
+      "id": "review-prompts-template",
+      "name": "Target repo review prompt template",
+      "target_root": "templates/profiles/review-prompts/files/.codex/prompts",
+      "strategy": "mirror",
+      "description": "Codex review prompt projection generated from the in-repo workflow prompt source, excluding TDD prompts and maintainer-only prompts."
+    },
+    {
+      "id": "test-first-template",
+      "name": "Target repo TDD prompt template",
+      "target_root": "templates/profiles/test-first/files/.codex/prompts/tdd",
+      "strategy": "mirror",
+      "description": "Codex TDD prompt projection generated from workflows/prompts/tdd."
+    },
+    {
+      "id": "copilot",
+      "name": "GitHub Copilot instructions adapter",
+      "target_path": ".github/copilot-instructions.md",
+      "strategy": "copilot-instructions",
+      "description": "GitHub Copilot repository instructions generated from the neutral workflow prompt source."
+    }
+  ],
+  "planned_adapters": [
+    {
+      "id": "claude",
+      "targets": ["CLAUDE.md", ".claude/commands/"],
+      "description": "Claude Code project instructions and command files generated from the same workflow source."
+    },
+    {
+      "id": "cursor",
+      "targets": [".cursor/rules/*.mdc"],
+      "description": "Cursor rules generated from the shared workflow and policy source."
+    },
+    {
+      "id": "continue",
+      "targets": [".continue/rules/*.md"],
+      "description": "Continue rules generated from the shared workflow and policy source."
+    },
+    {
+      "id": "windsurf",
+      "targets": [".windsurf/rules/"],
+      "description": "Windsurf rules generated from the shared workflow and policy source."
+    },
+    {
+      "id": "plain",
+      "targets": [".agent-workflows/"],
+      "description": "Tool-neutral Markdown and schema bundle for humans or tools without a native adapter."
+    }
+  ],
+  "install_layer": {
+    "repo": "repo-contract-kit",
+    "selection_model": "Install and update target repositories through the repo-contract-kit CLI. Runtime startup should choose an active agent for session context, not rewrite installed policy files."
+  },
+  "codex_skill_pack": {
+    "id": "repo-contract-kit-workflow-codex-skills",
+    "name": "Repo Contract Kit Workflow Codex Skills",
+    "description": "Codex skill folders generated from selected repo-contract-kit workflow prompts.",
+    "default_output": "dist/codex-skill-pack",
+    "skills": [
+      {
+        "id": "review",
+        "name": "agent-workflow-review",
+        "display_name": "Agent Workflow Review",
+        "description": "Use when reviewing a repository, pull request, diff, or local codebase with repo-contract-kit review-risk routing, reviewer personas, synthesis, and evidence-backed findings.",
+        "entrypoint": "multi-agent-repo-review.md",
+        "include": [
+          "multi-agent-repo-review.md",
+          "review-synthesis.md",
+          "personas/manifest.json",
+          "personas/*.md",
+          "policies/*.md",
+          "templates/review-finding.md",
+          "templates/review-map.md"
+        ]
+      },
+      {
+        "id": "task-packet",
+        "name": "agent-workflow-task-packet",
+        "display_name": "Agent Workflow Task Packet",
+        "description": "Use when turning a backlog item, issue, accepted review finding, or broad human request into a scoped executable task packet with validation and closeout evidence.",
+        "entrypoint": "task-packet.md",
+        "include": [
+          "task-packet.md",
+          "maintainer-queue.md",
+          "templates/task-packet.md"
+        ]
+      },
+      {
+        "id": "implementation",
+        "name": "agent-workflow-implementation",
+        "display_name": "Agent Workflow Implementation",
+        "description": "Use when planning, implementing, or verifying scoped remediation work after a finding, task packet, or TDD prompt has defined the executable change.",
+        "entrypoint": "fix-planner.md",
+        "include": [
+          "fix-planner.md",
+          "fix-implementer.md",
+          "task-worktree-cleanup.md",
+          "verification-sentinel.md"
+        ]
+      },
+      {
+        "id": "tdd",
+        "name": "agent-workflow-tdd",
+        "display_name": "Agent Workflow TDD",
+        "description": "Use when designing executable specs, regression tests, characterization tests, contract tests, property tests, TCR loops, or refactors under tests.",
+        "entrypoint": "tdd/README.md",
+        "include": [
+          "tdd/*.md"
+        ]
+      },
+      {
+        "id": "research",
+        "name": "agent-workflow-research",
+        "display_name": "Agent Workflow Research",
+        "description": "Use when running bounded source-specific research that produces backlog, review, architecture, design, ADR, risk, or task-packet candidates from auditable evidence.",
+        "entrypoint": "research/README.md",
+        "include": [
+          "research/*.md"
+        ]
+      },
+      {
+        "id": "learning-comments",
+        "name": "agent-workflow-learning-comments",
+        "display_name": "Agent Workflow Learning Comments",
+        "description": "Use when adding behavior-neutral learning comments or separate non-developer explanations for important codebase concepts without changing runtime behavior.",
+        "entrypoint": "codebase-learning-comments.md",
+        "include": [
+          "codebase-learning-comments.md"
+        ]
+      }
+    ]
+  }
+}

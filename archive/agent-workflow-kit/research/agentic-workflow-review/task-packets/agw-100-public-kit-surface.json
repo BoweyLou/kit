@@ -1,0 +1,102 @@
+{
+  "schema_version": 1,
+  "task": {
+    "id": "AGW-100",
+    "priority": "P0",
+    "source": {
+      "reference": "research/agentic-workflow-review/backlog.csv:101",
+      "type": "backlog"
+    },
+    "status": "draft",
+    "title": "Consolidate the workflow stack into one public repo-contract-kit product surface."
+  },
+  "context": {
+    "repo_root": "/Volumes/Myrtle/Code/04_Code/repo-contract-kit",
+    "source_repo_root": "/Volumes/Myrtle/Code/04_Code/Codex_CodeReview",
+    "mode": "implementation",
+    "problem_statement": "Target-repo operators should not need to understand a two-repo workflow stack. The normal surface should be the public repo-contract-kit installer and kit commands, while legacy agent-workflow-kit / Codex_CodeReview source context remains readable as migration/archive evidence.",
+    "background": [
+      "make backlog-status selects AGW-100 as the next open item.",
+      "The source checkout is dirty with dogfood repo-contract-kit 0.5.0 migration files and an unrelated draft AGW-101 story packet.",
+      "Dummy migration testing from 0.4.41 to current 0.5.0 succeeded for clean and customized targets, but surfaced observability and instruction-budget follow-up issues."
+    ],
+    "non_goals": [
+      "Do not move target-repo AGENTS.md out of the root.",
+      "Do not make target operators use the legacy workflow-source checkout.",
+      "Do not hide update conflicts or overwrite customized target files.",
+      "Do not mix AGW-101 implementation into AGW-100."
+    ]
+  },
+  "previous_task_state": {
+    "report_sources": [
+      "make backlog-status",
+      "make agent-next",
+      "make agent-task-status",
+      "git status --short"
+    ],
+    "active_tasks": [],
+    "dirty_or_stale_state": [
+      "Dogfood 0.5.0 kit migration in the source repo.",
+      "Draft AGW-101 backlog row and packet files."
+    ],
+    "closeout_required_before_start": true
+  },
+  "scope": {
+    "inspect_first": [
+      "/Volumes/Myrtle/Code/04_Code/repo-contract-kit/README.md",
+      "/Volumes/Myrtle/Code/04_Code/repo-contract-kit/install.sh",
+      "/Volumes/Myrtle/Code/04_Code/repo-contract-kit/scripts/repo_contract_kit.py",
+      "/Volumes/Myrtle/Code/04_Code/repo-contract-kit/scripts/update.py",
+      "/Volumes/Myrtle/Code/04_Code/repo-contract-kit/templates/common/AGENTS.md",
+      "/Volumes/Myrtle/Code/04_Code/repo-contract-kit/templates/common/working-rhythm.md",
+      "/Volumes/Myrtle/Code/04_Code/repo-contract-kit/tests/test_repo_contract_kit_cli.py",
+      "/Volumes/Myrtle/Code/04_Code/repo-contract-kit/tests/test_update.py"
+    ],
+    "allowed_files": [
+      "/Volumes/Myrtle/Code/04_Code/repo-contract-kit/README.md",
+      "/Volumes/Myrtle/Code/04_Code/repo-contract-kit/install.sh",
+      "/Volumes/Myrtle/Code/04_Code/repo-contract-kit/scripts/",
+      "/Volumes/Myrtle/Code/04_Code/repo-contract-kit/templates/common/",
+      "/Volumes/Myrtle/Code/04_Code/repo-contract-kit/tests/",
+      "/Volumes/Myrtle/Code/04_Code/repo-contract-kit/VERSION",
+      "/Volumes/Myrtle/Code/04_Code/repo-contract-kit/CHANGELOG.md",
+      "/Volumes/Myrtle/Code/04_Code/Codex_CodeReview/research/agentic-workflow-review/"
+    ],
+    "protected_files": [
+      "Target-repo root AGENTS.md placement.",
+      "Customized target update conflict preservation.",
+      "AGW-101 implementation scope."
+    ],
+    "expected_outputs": [
+      "Public docs and installer guidance make repo-contract-kit / kit the only normal target-repo entrypoint.",
+      "Migration from an older target install to current kit is covered by test or documented receipt.",
+      "kit update --json --apply reports structured action/conflict/write evidence.",
+      "Root AGENTS.md remains a short route map and passes instruction budget.",
+      "AGW-100 source backlog closeout happens only after repo-contract-kit validation and source dogfood checks pass."
+    ]
+  },
+  "acceptance_criteria": [
+    "Public docs and installer guidance make repo-contract-kit / kit the only normal target-repo entrypoint.",
+    "kit self status/update, kit target add/status/update/doctor, and kit update behavior are documented without requiring a workflow-source checkout.",
+    "Dogfood install in Codex_CodeReview reports repo-contract-kit 0.5.0, current prompt snapshot, and sidecar availability.",
+    "Migration from an older target install to the current kit is covered by a clean-target and customized-target test or documented receipt.",
+    "kit update --json --apply reports enough structured action/conflict/write evidence for automation to diagnose migrations.",
+    "Root AGENTS.md remains a short route map and passes the installed instruction budget.",
+    "AGW-100 backlog rows and summary are marked done only after repo-contract-kit validation and source dogfood checks pass."
+  ],
+  "validation": {
+    "commands": [
+      "PYTHONDONTWRITEBYTECODE=1 python3 -m unittest tests.test_repo_contract_kit_cli tests.test_update tests.test_install",
+      "PYTHONDONTWRITEBYTECODE=1 make test",
+      "make docs-check",
+      "make version-check",
+      "git diff --check",
+      "make kit-status KIT=/Volumes/Myrtle/Code/04_Code/repo-contract-kit",
+      "make stack-status KIT=/Volumes/Myrtle/Code/04_Code/repo-contract-kit",
+      "make backlog-status",
+      "make backlog-check",
+      "make agent-next",
+      "make agent-verify"
+    ]
+  }
+}

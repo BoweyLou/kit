@@ -1,0 +1,14 @@
+{
+  "name": "python",
+  "description": "Opt-in Python repository hygiene profile with local command hints and operator guidance.",
+  "files": [
+    {
+      "source": "files/.agent-workflows/stack-profiles/python.json",
+      "target": ".agent-workflows/stack-profiles/python.json"
+    },
+    {
+      "source": "files/docs/ops/python-stack-profile.md",
+      "target": "docs/ops/python-stack-profile.md"
+    }
+  ]
+}

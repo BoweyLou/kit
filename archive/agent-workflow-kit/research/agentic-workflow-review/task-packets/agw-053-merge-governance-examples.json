@@ -1,0 +1,87 @@
+{
+  "schema_version": 1,
+  "task": {
+    "id": "AGW-053",
+    "title": "Add merge-governance examples for GitHub branch protection and merge queues that consume repo-contract-kit readiness signals.",
+    "priority": "P2",
+    "status": "approved",
+    "source": {
+      "type": "backlog",
+      "reference": "research/agentic-workflow-review/backlog.csv:54"
+    }
+  },
+  "context": {
+    "repo_root": "/Volumes/Myrtle/Code/04_Code/repo-contract-kit",
+    "mode": "implementation",
+    "problem_statement": "Docs contract should be a merge prerequisite where desired, but hosted merge governance must stay an optional adapter over the local repo-contract-kit readiness contract.",
+    "background": [
+      "AGW-052 is complete with branch-readiness / make agent-branch-readiness.",
+      "AGW-053 is docs/examples work for owner-operated GitHub protected branch, status check, and merge queue governance.",
+      "repo-contract-kit must not mutate GitHub state or require credentials."
+    ],
+    "non_goals": [
+      "No GitHub API calls.",
+      "No PR comments, labels, approvals, branch-protection edits, or merge queue mutation.",
+      "No change to branch-readiness behavior unless a docs example exposes a scoped bug."
+    ]
+  },
+  "previous_task_state": {
+    "report_sources": [
+      "make backlog-status",
+      "make agent-next",
+      "make agent-task-status",
+      "repo-contract-kit validation for AGW-052"
+    ],
+    "active_tasks": [],
+    "unresolved_blockers": [],
+    "allowed_to_start": true,
+    "notes": "AGW-053 is the next selected open item after AGW-052 was closed as shipped and revalidated. repo-contract-kit is clean at 76e2129 / 0.6.1 after the target-migration JSON update fix."
+  },
+  "scope": {
+    "inspect_first": [
+      "/Volumes/Myrtle/Code/04_Code/repo-contract-kit/README.md",
+      "/Volumes/Myrtle/Code/04_Code/repo-contract-kit/docs/rollout-guide.md",
+      "/Volumes/Myrtle/Code/04_Code/repo-contract-kit/docs/harness-engineering.md",
+      "/Volumes/Myrtle/Code/04_Code/repo-contract-kit/templates/common/ops-agent-workflow.md",
+      "/Volumes/Myrtle/Code/04_Code/repo-contract-kit/templates/common/working-rhythm.md"
+    ],
+    "allowed_files": [
+      "/Volumes/Myrtle/Code/04_Code/repo-contract-kit/README.md",
+      "/Volumes/Myrtle/Code/04_Code/repo-contract-kit/docs/",
+      "/Volumes/Myrtle/Code/04_Code/repo-contract-kit/templates/common/",
+      "/Volumes/Myrtle/Code/04_Code/repo-contract-kit/tests/",
+      "/Volumes/Myrtle/Code/04_Code/repo-contract-kit/VERSION",
+      "/Volumes/Myrtle/Code/04_Code/repo-contract-kit/CHANGELOG.md"
+    ],
+    "protected_files": [
+      "GitHub workflows or hosted governance automation unless explicitly docs-only",
+      "credentials, tokens, branch protection settings, PR mutation, merge queue mutation"
+    ]
+  },
+  "acceptance_criteria": [
+    "Docs include owner-operated branch-readiness gate examples.",
+    "Docs map local readiness evidence to GitHub protected branch/status check concepts without claiming repo-contract-kit publishes hosted checks.",
+    "Docs include a merge queue handoff example that preserves owner/platform authority.",
+    "Examples distinguish required and advisory checks via checks-json.",
+    "Docs state no GitHub mutation, credentials, PR comments, or merge queue operations are performed by repo-contract-kit."
+  ],
+  "validation": {
+    "commands": [
+      "make docs-check",
+      "make version-check",
+      "PYTHONDONTWRITEBYTECODE=1 make test if tests or templates change",
+      "git diff --check"
+    ]
+  },
+  "docs_impact": {
+    "expected": "yes",
+    "paths": [
+      "/Volumes/Myrtle/Code/04_Code/repo-contract-kit/README.md",
+      "/Volumes/Myrtle/Code/04_Code/repo-contract-kit/docs/rollout-guide.md",
+      "/Volumes/Myrtle/Code/04_Code/repo-contract-kit/templates/common/ops-agent-workflow.md",
+      "/Volumes/Myrtle/Code/04_Code/repo-contract-kit/templates/common/working-rhythm.md",
+      "/Volumes/Myrtle/Code/04_Code/repo-contract-kit/CHANGELOG.md"
+    ],
+    "waiver_allowed": false
+  }
+}

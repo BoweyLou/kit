@@ -1,0 +1,367 @@
+{
+  "schema_version": 1,
+  "task": {
+    "id": "AGW-052",
+    "title": "Create a branch-or-PR readiness JSON command that aggregates local evidence, CI/check inputs, docs-contract status, waiver state, and review disposition.",
+    "priority": "P2",
+    "status": "approved",
+    "source": {
+      "type": "backlog",
+      "reference": "research/agentic-workflow-review/backlog.csv:53"
+    }
+  },
+  "context": {
+    "repo_root": "/Volumes/Myrtle/Code/04_Code/repo-contract-kit",
+    "mode": "verification",
+    "problem_statement": "repo-contract-kit has task-worktree readiness, finalizer, docs-impact, changelog, receipt, and context-bundle surfaces, but no single branch-or-PR readiness command that aggregates local evidence and optional hosted-CI/check inputs before humans consider PR update, merge queue, auto-merge, or branch-protection governance. Agents can still over-trust partial green checks or loop across separate commands.",
+    "background": [
+      "AGW-070 added agent-task-ready as a local handoff gate for one prepared task worktree.",
+      "AGW-087 added agent-task-finalize to close one task through readiness, lifecycle, task-status, and closeout evidence.",
+      "AGW-092 added context bundles with readiness hints but not a final branch/PR decision.",
+      "AGW-024 added changelog-update proposal/check support without writing VERSION or CHANGELOG.md.",
+      "AGW-099 added local attribution and state-ledger evidence for dirty blockers and task provenance.",
+      "GitHub protected branch and status-check docs make hosted status checks and merge queues separate governance layers; this task should aggregate optional evidence but not mutate GitHub state.",
+      "repo-contract-kit preflight before packet refresh: git status clean on main ahead of origin through 10e7542; VERSION 0.6.0; AGW-101 focused tests, make test, docs-check, version-check, and git diff --check passed.",
+      "agent-workflow-kit source preflight before packet refresh: main ahead of origin through 3aa7deb; backlog-status 6 open, 95 done; next AGW-052; task-status active_task_count 0."
+    ],
+    "non_goals": [
+      "Do not merge, approve, label, comment on, enqueue, dequeue, or otherwise mutate GitHub pull requests or branches.",
+      "Do not require GitHub credentials or network calls for the default command.",
+      "Do not replace agent-task-ready for one prepared task worktree; branch/PR readiness should aggregate or reference that evidence when available.",
+      "Do not implement AGW-053 merge-governance examples in this task.",
+      "Do not add hosted CI polling loops, background monitors, or auto-merge behavior.",
+      "Do not make branch readiness depend on a specific CI provider; use optional input files or explicit flags for hosted check evidence.",
+      "Do not weaken docs-impact, receipt, task-status, dirty-state, or version/changelog gates."
+    ]
+  },
+  "previous_task_state": {
+    "report_sources": [
+      "agent-workflow-kit git status --short --branch",
+      "agent-workflow-kit make backlog-status",
+      "agent-workflow-kit make agent-next",
+      "agent-workflow-kit make agent-task-status TASK_STATUS_INCLUDE_CLOSED=1 TASK_STATUS_JSON=1",
+      "repo-contract-kit git status --short --branch",
+      "repo-contract-kit cat VERSION",
+      "repo-contract-kit make test",
+      "repo-contract-kit make docs-check",
+      "repo-contract-kit make docs-freshness",
+      "repo-contract-kit make version-check",
+      "repo-contract-kit git diff --check",
+      "repo-contract-kit scripts/agent_task_ready.py",
+      "repo-contract-kit scripts/agent_task_finalize.py",
+      "repo-contract-kit scripts/repo_contract_kit.py",
+      "repo-contract-kit templates/common/kit-makefile.mk",
+      "GitHub protected branches/status checks/merge queue docs searched on 2026-06-16"
+    ],
+    "active_tasks": [],
+    "unresolved_blockers": [],
+    "dirty_or_stale_state": [],
+    "finalizer_receipt_paths": [
+      "AGW-101 source closeout commit 3aa7deb completed and selected AGW-052 as next open backlog item.",
+      "repo-contract-kit implementation commit 10e7542 is clean and validation passed."
+    ],
+    "blocker_receipt_paths": [],
+    "allowed_to_start": true,
+    "notes": "AGW-052 starts after AGW-101 was implemented, validated, dogfooded, and source-closed. The implementation target is the clean repo-contract-kit source checkout, while this refreshed task packet and later source backlog closeout belong to agent-workflow-kit."
+  },
+  "closeout_required_before_start": {
+    "decision": "safe-start",
+    "reason": "No active task metadata or checkout dirt is present in the source checkout, and repo-contract-kit validation passed from a clean source checkout at 0.6.0.",
+    "required_next_step": "Proceed with one AGW-052 implementation worker in repo-contract-kit. Stop if the design needs GitHub mutation, hosted polling, auto-merge, or branch-protection edits instead of a local no-write readiness surface.",
+    "evidence_paths": [
+      "research/agentic-workflow-review/task-packets/agw-052-branch-pr-readiness.md",
+      "repo-contract-kit commit 10e7542 validation output captured in parent thread",
+      "agent-workflow-kit make agent-next selected AGW-052 with dirty false"
+    ]
+  },
+  "goal_alignment": {
+    "repo_goal": "Keep repo-contract-kit as the install-layer guardrail provider for target repositories, exposing deterministic local commands that preserve owner authority before hosted PR or merge governance.",
+    "area_contracts": [
+      {
+        "path": "/Volumes/Myrtle/Code/04_Code/repo-contract-kit/scripts/repo_contract_kit.py",
+        "purpose": "Stable AI-first CLI where a branch-or-PR readiness command should be exposed in JSON/text form.",
+        "source": "repo-contract-kit README and existing CLI command parser",
+        "status": "aligned"
+      },
+      {
+        "path": "/Volumes/Myrtle/Code/04_Code/repo-contract-kit/scripts/agent_task_ready.py",
+        "purpose": "Existing per-task worktree readiness gate; new branch/PR readiness should aggregate or reference it without replacing it.",
+        "source": "AGW-070; AGW-095",
+        "status": "aligned"
+      },
+      {
+        "path": "/Volumes/Myrtle/Code/04_Code/repo-contract-kit/scripts/check_doc_impact.py",
+        "purpose": "Docs-contract status and waiver evidence source.",
+        "source": "docs contract",
+        "status": "aligned"
+      },
+      {
+        "path": "/Volumes/Myrtle/Code/04_Code/repo-contract-kit/scripts/changelog_update.py",
+        "purpose": "Version/changelog proposal/check evidence source for release-impacting changes.",
+        "source": "AGW-024",
+        "status": "aligned"
+      },
+      {
+        "path": "/Volumes/Myrtle/Code/04_Code/repo-contract-kit/templates/common/kit-makefile.mk",
+        "purpose": "Installed target-repo Make surface for exposing the readiness command.",
+        "source": "installed profile contract",
+        "status": "aligned"
+      }
+    ],
+    "alignment_decision": "aligned",
+    "adaptation_needed": false,
+    "stop_conditions": [
+      "Stop if readiness would mutate GitHub, branches, PRs, labels, comments, merge queues, sidecar state, or target files by default.",
+      "Stop if the readiness result can be marked ready while docs-impact, receipt, dirty-state, or declared required checks are missing or failing.",
+      "Stop if optional hosted-CI input cannot distinguish unknown, pending, failed, skipped, and successful checks.",
+      "Stop if AGW-053 merge-governance examples become necessary to complete AGW-052."
+    ]
+  },
+  "scope": {
+    "allowed_files": [
+      "/Volumes/Myrtle/Code/04_Code/repo-contract-kit/scripts/repo_contract_kit.py",
+      "/Volumes/Myrtle/Code/04_Code/repo-contract-kit/scripts/branch_readiness.py",
+      "/Volumes/Myrtle/Code/04_Code/repo-contract-kit/scripts/pr_readiness.py",
+      "/Volumes/Myrtle/Code/04_Code/repo-contract-kit/scripts/agent_branch_readiness.py",
+      "/Volumes/Myrtle/Code/04_Code/repo-contract-kit/scripts/agent_task_ready.py only if a small shared helper is needed",
+      "/Volumes/Myrtle/Code/04_Code/repo-contract-kit/templates/common/kit-makefile.mk",
+      "/Volumes/Myrtle/Code/04_Code/repo-contract-kit/templates/common/working-rhythm.md",
+      "/Volumes/Myrtle/Code/04_Code/repo-contract-kit/templates/common/ops-agent-workflow.md",
+      "/Volumes/Myrtle/Code/04_Code/repo-contract-kit/templates/common/harness-engineering.md",
+      "/Volumes/Myrtle/Code/04_Code/repo-contract-kit/docs/harness-engineering.md",
+      "/Volumes/Myrtle/Code/04_Code/repo-contract-kit/docs/rollout-guide.md",
+      "/Volumes/Myrtle/Code/04_Code/repo-contract-kit/README.md",
+      "/Volumes/Myrtle/Code/04_Code/repo-contract-kit/tests/test_repo_contract_kit_cli.py",
+      "/Volumes/Myrtle/Code/04_Code/repo-contract-kit/tests/test_branch_readiness.py",
+      "/Volumes/Myrtle/Code/04_Code/repo-contract-kit/tests/test_install.py",
+      "/Volumes/Myrtle/Code/04_Code/repo-contract-kit/VERSION",
+      "/Volumes/Myrtle/Code/04_Code/repo-contract-kit/CHANGELOG.md",
+      "/Volumes/Myrtle/Code/04_Code/Codex_CodeReview/research/agentic-workflow-review/backlog.csv",
+      "/Volumes/Myrtle/Code/04_Code/Codex_CodeReview/research/agentic-workflow-review/repo-contract-kit-backlog.csv",
+      "/Volumes/Myrtle/Code/04_Code/Codex_CodeReview/research/agentic-workflow-review/summary.md",
+      "/Volumes/Myrtle/Code/04_Code/Codex_CodeReview/research/agentic-workflow-review/feature_matrix.csv"
+    ],
+    "protected_files": [
+      "GitHub workflows or hosted branch-protection configuration except documentation examples deferred to AGW-053.",
+      "User target repositories outside the kit checkout.",
+      "Credentials, tokens, API keys, local provider config, or CI secrets.",
+      "Existing agent-task-ready per-task semantics except narrow shared helper extraction.",
+      "Task lifecycle, closeout, automation-handoff, update-plan, and install behavior unrelated to readiness.",
+      "Unrelated backlog rows."
+    ],
+    "inspect_first": [
+      "/Volumes/Myrtle/Code/04_Code/repo-contract-kit/scripts/repo_contract_kit.py",
+      "/Volumes/Myrtle/Code/04_Code/repo-contract-kit/scripts/agent_task_ready.py",
+      "/Volumes/Myrtle/Code/04_Code/repo-contract-kit/scripts/agent_task_finalize.py",
+      "/Volumes/Myrtle/Code/04_Code/repo-contract-kit/scripts/check_doc_impact.py",
+      "/Volumes/Myrtle/Code/04_Code/repo-contract-kit/scripts/changelog_update.py",
+      "/Volumes/Myrtle/Code/04_Code/repo-contract-kit/scripts/agent_task_status.py",
+      "/Volumes/Myrtle/Code/04_Code/repo-contract-kit/scripts/agent_state_ledger.py",
+      "/Volumes/Myrtle/Code/04_Code/repo-contract-kit/templates/common/kit-makefile.mk",
+      "/Volumes/Myrtle/Code/04_Code/repo-contract-kit/templates/common/working-rhythm.md",
+      "/Volumes/Myrtle/Code/04_Code/repo-contract-kit/templates/common/ops-agent-workflow.md",
+      "/Volumes/Myrtle/Code/04_Code/repo-contract-kit/tests/test_agent_task_ready.py",
+      "/Volumes/Myrtle/Code/04_Code/repo-contract-kit/tests/test_repo_contract_kit_cli.py",
+      "GitHub protected branches docs",
+      "GitHub status checks docs",
+      "GitHub commit statuses REST docs",
+      "GitHub merge queue docs"
+    ],
+    "expected_outputs": [
+      "A no-write CLI command, with JSON and text output, for branch-or-PR readiness. Suggested names are repo_contract_kit.py branch-readiness plus installed make agent-branch-readiness, but the worker may choose a clearer local pattern if documented.",
+      "Top-level JSON includes schema_version, command, repo_root, target_ref/base_ref/head_ref or branch metadata, ready boolean, result enum, blockers, warnings, evidence sections, target_repo_writes=false, sidecar_writes=false, and next_safe_commands.",
+      "Local evidence sections aggregate git cleanliness, base freshness, docs-impact/waiver state, optional receipt validation/review disposition, optional task readiness/finalizer references, changelog/version check state, and optional CI/check inputs.",
+      "Optional CI/check input accepts a local JSON file or explicit CLI values; unknown/missing/pending/failing required checks block readiness unless marked advisory.",
+      "Readiness remains local and deterministic by default; network/GitHub API polling is not required and not performed by default.",
+      "Installed Make target and README/templates document when this command fits relative to agent-task-ready and AGW-053 merge-governance examples.",
+      "Focused tests cover ready, dirty-blocked, docs-missing, invalid receipt/review disposition, failing/pending CI input, unknown optional CI, and no-write behavior.",
+      "Version/changelog and source backlog rows close AGW-052 only after validation passes."
+    ]
+  },
+  "acceptance_criteria": [
+    {
+      "description": "repo-contract-kit exposes a branch-or-PR readiness command through the AI-first CLI and installed Makefile surface.",
+      "verification": "Focused CLI/install tests assert command help, JSON output, and installed Make target wiring."
+    },
+    {
+      "description": "Readiness JSON aggregates local evidence into ready/not-ready, blockers, warnings, and next safe commands without target or sidecar writes by default.",
+      "verification": "Tests assert target_repo_writes=false, sidecar_writes=false, no generated files, and deterministic JSON fields."
+    },
+    {
+      "description": "Docs-impact and waiver state affect readiness: missing required docs without waiver blocks, covered docs pass, explicit no-docs-needed is recorded.",
+      "verification": "Focused tests with changed files and no-docs-needed inputs."
+    },
+    {
+      "description": "Optional CI/check input can mark required checks success, pending, failed, skipped, or unknown; pending/failing/missing required checks block readiness.",
+      "verification": "Focused tests using local JSON check input or equivalent CLI flags."
+    },
+    {
+      "description": "Receipt/review disposition input is validated when provided and can block when evidence is invalid or failing.",
+      "verification": "Focused tests using valid and invalid receipt/review evidence."
+    },
+    {
+      "description": "The command does not merge, approve, comment, call GitHub, enqueue merge queues, or edit branch-protection settings.",
+      "verification": "Diff inspection and no-write/no-network tests or documented no-network design."
+    },
+    {
+      "description": "Docs explain the command's relationship to agent-task-ready, finalizer, branch protection, status checks, and AGW-053 merge-governance examples.",
+      "verification": "docs-check, docs-freshness, and README/template inspection."
+    },
+    {
+      "description": "Version/changelog and source backlog rows close AGW-052 after validation.",
+      "verification": "make version-check in kit; backlog-check/backlog-split-check in source."
+    }
+  ],
+  "validation": {
+    "commands": [
+      {
+        "command": "PYTHONDONTWRITEBYTECODE=1 python3 -m unittest tests.test_repo_contract_kit_cli tests.test_install tests.test_agent_task_ready",
+        "required": true,
+        "expected_result": "pass; add a focused test module if the implementation creates one"
+      },
+      {
+        "command": "PYTHONDONTWRITEBYTECODE=1 make test",
+        "required": true,
+        "expected_result": "pass"
+      },
+      {
+        "command": "make docs-check",
+        "required": true,
+        "expected_result": "pass"
+      },
+      {
+        "command": "make docs-freshness",
+        "required": true,
+        "expected_result": "pass"
+      },
+      {
+        "command": "make version-check",
+        "required": true,
+        "expected_result": "pass after patch version/changelog update"
+      },
+      {
+        "command": "git diff --check",
+        "required": true,
+        "expected_result": "pass"
+      },
+      {
+        "command": "make backlog-check",
+        "required": true,
+        "expected_result": "pass in agent-workflow-kit after source closeout"
+      },
+      {
+        "command": "make backlog-split-check",
+        "required": true,
+        "expected_result": "pass in agent-workflow-kit after source closeout"
+      },
+      {
+        "command": "PYTHONDONTWRITEBYTECODE=1 make agent-verify",
+        "required": true,
+        "expected_result": "pass in agent-workflow-kit after source closeout"
+      }
+    ],
+    "evidence_to_capture": [
+      "repo-contract-kit focused and full test output",
+      "sample readiness JSON for a ready branch and a blocked branch",
+      "no-write proof for default command",
+      "docs-impact, docs-freshness, and version-check output",
+      "source backlog validation output",
+      "git diff --name-only for both repos",
+      "remote ref match after pushes",
+      "final clean status for both checkouts"
+    ]
+  },
+  "closeout_requirements": {
+    "final_receipt_path": ".agent-workflows/tasks/agw-052-branch-pr-readiness/receipt.json or durable sidecar equivalent",
+    "readiness_check": {
+      "command": "Use the newly added branch/PR readiness command on the AGW-052 branch if available, otherwise run existing make test/docs/version gates and record why per-task agent-task-ready is not applicable to the source checkout.",
+      "expected_result": "readiness passes or explicit unavailable/omitted rationale with compensating validation evidence"
+    },
+    "lifecycle_action": {
+      "action": "finish",
+      "command": "No installed task metadata is expected in the kit source checkout; record final validation and close worker after commit/push.",
+      "expected_result": "implementation committed and pushed, or blocker recorded"
+    },
+    "final_task_status": {
+      "command": "agent-workflow-kit make agent-task-status TASK_STATUS_INCLUDE_CLOSED=1 TASK_STATUS_JSON=1",
+      "expected_result": "no active AGW-052 source task remains, or any remaining task metadata is explicitly explained"
+    },
+    "closeout_preview": {
+      "command": "Use repo-contract-kit closeout preview only if task metadata/worktrees were prepared; otherwise record not applicable for direct source work.",
+      "expected_result": "preview reports no unsafe cleanup, or unavailable/omitted rationale recorded",
+      "apply_requires_explicit_approval": true
+    },
+    "dirty_state_explanation": "Final handoff must say whether both checkouts are clean, only expected files remain dirty, cleanup is blocked, or unrelated dirt was preserved."
+  },
+  "docs_impact": {
+    "expected": "yes",
+    "paths": [
+      "/Volumes/Myrtle/Code/04_Code/repo-contract-kit/README.md",
+      "/Volumes/Myrtle/Code/04_Code/repo-contract-kit/templates/common/working-rhythm.md",
+      "/Volumes/Myrtle/Code/04_Code/repo-contract-kit/templates/common/ops-agent-workflow.md",
+      "/Volumes/Myrtle/Code/04_Code/repo-contract-kit/templates/common/harness-engineering.md",
+      "/Volumes/Myrtle/Code/04_Code/repo-contract-kit/docs/harness-engineering.md",
+      "/Volumes/Myrtle/Code/04_Code/repo-contract-kit/docs/rollout-guide.md",
+      "/Volumes/Myrtle/Code/04_Code/repo-contract-kit/CHANGELOG.md",
+      "source backlog summary files"
+    ],
+    "waiver_allowed": false,
+    "notes": "This adds a user-facing CLI/Make readiness surface and should update kit docs/templates plus changelog/version."
+  },
+  "risk": {
+    "level": "medium",
+    "known_risks": [
+      "Readiness can be mistaken for merge permission if docs do not separate local evidence from hosted governance.",
+      "Optional CI/check inputs can create false readiness if unknown or stale data is treated as passing.",
+      "Duplicating agent-task-ready logic can drift from the per-task gate.",
+      "A command that shells out to many checks can become slow or non-deterministic if not scoped."
+    ],
+    "stop_conditions": [
+      "Implementation needs GitHub credentials, network polling, PR mutation, merge queue operations, or branch protection edits.",
+      "Readiness output lacks explicit blockers/warnings and no-write metadata.",
+      "Required docs-impact or receipt evidence can be missing while ready remains true.",
+      "Full kit tests or source backlog checks fail."
+    ]
+  },
+  "approval": {
+    "human_approval_required": false,
+    "state": "approved",
+    "approver": "Yannick Bowe",
+    "notes": "Approved as part of serial workflow-stack backlog execution; AGW-052 is the next selected open item after AGW-101."
+  },
+  "coordination": {
+    "active_task_count": 0,
+    "active_tasks": [],
+    "overlap_warnings": [
+      "Use exactly one AGW-052 implementation worker.",
+      "The worker owns repo-contract-kit implementation, tests, docs, version, and changelog.",
+      "The parent owns the source task-packet commit and final source backlog closeout review.",
+      "Do not start AGW-053 merge-governance examples until AGW-052 readiness command is complete."
+    ]
+  },
+  "harness_metrics": {
+    "context_file_count": 17,
+    "deterministic_reports": [
+      "repo-contract-kit make test",
+      "repo-contract-kit make docs-check",
+      "repo-contract-kit make docs-freshness",
+      "repo-contract-kit make version-check",
+      "repo-contract-kit git diff --check",
+      "agent-workflow-kit make backlog-status",
+      "agent-workflow-kit make agent-next",
+      "agent-workflow-kit make agent-task-status TASK_STATUS_INCLUDE_CLOSED=1 TASK_STATUS_JSON=1"
+    ]
+  },
+  "handoff": {
+    "recommended_prompt": "workflows/prompts/task-packet.md",
+    "owner": "one repo-contract-kit implementation worker; parent for source packet/backlog integration",
+    "dependencies": [
+      "AGW-024",
+      "AGW-070",
+      "AGW-087",
+      "AGW-092",
+      "AGW-099"
+    ],
+    "next_packet_hint": "AGW-053 should add hosted merge-governance examples after AGW-052 ships the local readiness contract."
+  }
+}

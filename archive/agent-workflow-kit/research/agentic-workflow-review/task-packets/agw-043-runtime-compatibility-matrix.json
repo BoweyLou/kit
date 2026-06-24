@@ -1,0 +1,383 @@
+{
+  "schema_version": 1,
+  "task": {
+    "id": "AGW-043",
+    "title": "Add compatibility matrix for Codex, Claude Code, Cursor, Continue, Copilot, Goose, Aider, Cline/Roo.",
+    "priority": "P2",
+    "status": "approved",
+    "source": {
+      "type": "backlog",
+      "reference": "research/agentic-workflow-review/backlog.csv:44"
+    }
+  },
+  "context": {
+    "repo_root": "/Volumes/Myrtle/Code/04_Code/Codex_CodeReview",
+    "mode": "verification",
+    "problem_statement": "agent-workflow-kit records current Codex and GitHub Copilot projections plus planned runtime adapters, but operators do not have one current matrix that explains which artifact each major coding-agent runtime consumes, what this kit supports now, what remains planned, and when manual prompt use is safer than generating another adapter.",
+    "background": [
+      "AGW-041 made workflows/manifest.json the canonical prompt and adapter source.",
+      "AGW-042 added Codex skill-pack export from the same prompt source.",
+      "AGW-081 added the generated GitHub Copilot repository instructions adapter.",
+      "docs/runtime-adapters.md currently lists generated adapters for codex and copilot, Codex skill-pack exports, and planned adapters for claude, cursor, continue, windsurf, and plain.",
+      "repo-contract-kit owns target-repo install/update behavior and selected runtime adapter writes; this source repo owns compatibility docs and prompt/adapter source definitions.",
+      "make agent-task-status TASK_STATUS_INCLUDE_CLOSED=1 TASK_STATUS_JSON=1 at packet creation reported active_task_count 0, no hazards, no stale tasks, and no unknown-scope tasks.",
+      "make agent-token-budget at packet creation reported 102 files and 83344 estimated tokens, result passed.",
+      "make kit-status at packet creation reported installed repo-contract-kit 0.4.41, target repo version 0.2.20, runtime adapters none, and managed-file drift relative to the installed kit; this is source self-dogfood drift, not a blocker for a docs-only source task."
+    ],
+    "non_goals": [
+      "Do not add, generate, or install new runtime adapters.",
+      "Do not change repo-contract-kit installer behavior, target-repo managed files, update logic, or runtime adapter selection.",
+      "Do not change canonical prompt wording, schemas, runner scripts, task lifecycle commands, or generated .codex/.github adapter files unless a documentation link update has a proven generated-sync requirement.",
+      "Do not claim official support for a runtime without a current primary-source reference.",
+      "Do not add release tags, PRs, hosted automation, or account/tool configuration."
+    ]
+  },
+  "previous_task_state": {
+    "report_sources": [
+      "git status --short",
+      "git rev-parse HEAD",
+      "git rev-parse origin/main",
+      "make agent-task-status TASK_STATUS_INCLUDE_CLOSED=1 TASK_STATUS_JSON=1",
+      "make agent-next",
+      "make backlog-status",
+      "make agent-token-budget",
+      "make kit-status",
+      "docs/runtime-adapters.md",
+      "workflows/manifest.json",
+      "docs/agent-workflow-stack.md"
+    ],
+    "active_tasks": [],
+    "unresolved_blockers": [],
+    "dirty_or_stale_state": [
+      "make kit-status reports 4 modified kit-managed files relative to installed repo-contract-kit metadata; git status is clean and this docs-only task does not refresh installed kit files."
+    ],
+    "finalizer_receipt_paths": [
+      "source main commit 5a87434198b0f0a061c3a70b56478ddbf2bcebb0 closed AGW-035 and origin/main matched it",
+      "make agent-task-status TASK_STATUS_INCLUDE_CLOSED=1 TASK_STATUS_JSON=1 reported active_task_count 0"
+    ],
+    "blocker_receipt_paths": [],
+    "allowed_to_start": true,
+    "notes": "AGW-043 packet creation began from a clean source checkout on main at 5a87434198b0f0a061c3a70b56478ddbf2bcebb0. make agent-next selected AGW-043 with dirty false, backlog-status reported 10 open and 89 done, and task-status reported zero active tasks, hazards, stale tasks, unknown-scope tasks, and untracked agent worktrees."
+  },
+  "closeout_required_before_start": {
+    "decision": "safe-start",
+    "reason": "AGW-035 is source-closed, local main matches origin/main, git status is clean, and task-status reports no active or stale task state. The installed kit metadata drift is known self-dogfood state and not a source checkout dirty state.",
+    "required_next_step": "Proceed with one AGW-043 docs worker; refresh git status, task-status, and official runtime documentation before edits, and stop if the checkout becomes dirty, remote diverges, or primary sources contradict the packet.",
+    "evidence_paths": [
+      "research/agentic-workflow-review/task-packets/agw-043-runtime-compatibility-matrix.md",
+      "source main commit 5a87434198b0f0a061c3a70b56478ddbf2bcebb0",
+      "make agent-task-status TASK_STATUS_INCLUDE_CLOSED=1 TASK_STATUS_JSON=1 reported active_task_count 0",
+      "make agent-next selected AGW-043 with dirty false"
+    ]
+  },
+  "goal_alignment": {
+    "repo_goal": "Keep agent-workflow-kit as the source of prompt, schema, fixture, packaging, and runtime-compatibility guidance for the workflow stack while repo-contract-kit owns target installation.",
+    "area_contracts": [
+      {
+        "path": "/Volumes/Myrtle/Code/04_Code/Codex_CodeReview/docs/runtime-adapters.md",
+        "purpose": "Explains canonical prompt source, generated adapter outputs, Codex skill-pack exports, and source/install-layer ownership boundaries.",
+        "source": "AGW-041; AGW-042; AGW-081",
+        "status": "aligned"
+      },
+      {
+        "path": "/Volumes/Myrtle/Code/04_Code/Codex_CodeReview/docs/runtime-compatibility.md",
+        "purpose": "New operator-facing matrix for runtime instruction artifacts, support state, limitations, and validation sources.",
+        "source": "AGW-043",
+        "status": "aligned"
+      },
+      {
+        "path": "/Volumes/Myrtle/Code/04_Code/Codex_CodeReview/workflows/manifest.json",
+        "purpose": "Canonical generated and planned adapter registry; should be inspected, not changed, for this docs-only task.",
+        "source": "AGW-041; AGW-081",
+        "status": "aligned"
+      },
+      {
+        "path": "/Volumes/Myrtle/Code/04_Code/Codex_CodeReview/README.md",
+        "purpose": "Start-here navigation for runtime packaging and adapter documentation.",
+        "source": "project docs",
+        "status": "aligned"
+      },
+      {
+        "path": "/Volumes/Myrtle/Code/04_Code/Codex_CodeReview/research/agentic-workflow-review/",
+        "purpose": "Source backlog, split backlog, summary, and feature matrix closeout records.",
+        "source": "backlog contract",
+        "status": "aligned"
+      }
+    ],
+    "alignment_decision": "aligned",
+    "adaptation_needed": false,
+    "stop_conditions": [
+      "Stop if implementation requires changing runtime adapter generation instead of documenting compatibility.",
+      "Stop if official docs for a named runtime cannot be found and the matrix cannot clearly mark the entry as uncertain or manual-only.",
+      "Stop if the matrix would blur agent-workflow-kit source ownership with repo-contract-kit target install/update ownership.",
+      "Stop if new docs imply private context, secrets, or repo-specific instructions should be copied into hosted or third-party runtimes without review.",
+      "Stop if validation requires refreshing installed kit-managed files or unrelated prompt adapters."
+    ]
+  },
+  "scope": {
+    "allowed_files": [
+      "/Volumes/Myrtle/Code/04_Code/Codex_CodeReview/docs/runtime-compatibility.md",
+      "/Volumes/Myrtle/Code/04_Code/Codex_CodeReview/docs/runtime-adapters.md",
+      "/Volumes/Myrtle/Code/04_Code/Codex_CodeReview/docs/agent-workflow-stack.md",
+      "/Volumes/Myrtle/Code/04_Code/Codex_CodeReview/docs/using-the-prompt-kit.md",
+      "/Volumes/Myrtle/Code/04_Code/Codex_CodeReview/README.md",
+      "/Volumes/Myrtle/Code/04_Code/Codex_CodeReview/VERSION",
+      "/Volumes/Myrtle/Code/04_Code/Codex_CodeReview/CHANGELOG.md",
+      "/Volumes/Myrtle/Code/04_Code/Codex_CodeReview/research/agentic-workflow-review/backlog.csv",
+      "/Volumes/Myrtle/Code/04_Code/Codex_CodeReview/research/agentic-workflow-review/agent-workflow-kit-backlog.csv",
+      "/Volumes/Myrtle/Code/04_Code/Codex_CodeReview/research/agentic-workflow-review/summary.md",
+      "/Volumes/Myrtle/Code/04_Code/Codex_CodeReview/research/agentic-workflow-review/feature_matrix.csv"
+    ],
+    "protected_files": [
+      "/Volumes/Myrtle/Code/04_Code/Hermes/doc-contract-kit/",
+      "/Volumes/Myrtle/Code/04_Code/Codex_CodeReview/workflows/prompts/",
+      "/Volumes/Myrtle/Code/04_Code/Codex_CodeReview/.codex/prompts/",
+      "/Volumes/Myrtle/Code/04_Code/Codex_CodeReview/.github/copilot-instructions.md",
+      "/Volumes/Myrtle/Code/04_Code/Codex_CodeReview/workflows/manifest.json unless a documentation-only typo is proven and reviewed",
+      "/Volumes/Myrtle/Code/04_Code/Codex_CodeReview/scripts/",
+      "/Volumes/Myrtle/Code/04_Code/Codex_CodeReview/tests/",
+      "/Volumes/Myrtle/Code/04_Code/Codex_CodeReview/.agent-workflows/ runtime state except reading deterministic reports",
+      "unrelated backlog rows and unrelated dirty work"
+    ],
+    "inspect_first": [
+      "/Volumes/Myrtle/Code/04_Code/Codex_CodeReview/AGENTS.md",
+      "/Volumes/Myrtle/Code/04_Code/Codex_CodeReview/REVIEW.md",
+      "/Volumes/Myrtle/Code/04_Code/Codex_CodeReview/.agent-workflows/README.md",
+      "make agent-task-status TASK_STATUS_INCLUDE_CLOSED=1 TASK_STATUS_JSON=1",
+      "make kit-status",
+      "make stack-status KIT=/Volumes/Myrtle/Code/04_Code/Hermes/doc-contract-kit",
+      "/Volumes/Myrtle/Code/04_Code/Codex_CodeReview/docs/runtime-adapters.md",
+      "/Volumes/Myrtle/Code/04_Code/Codex_CodeReview/docs/agent-workflow-stack.md",
+      "/Volumes/Myrtle/Code/04_Code/Codex_CodeReview/workflows/manifest.json",
+      "/Volumes/Myrtle/Code/04_Code/Codex_CodeReview/README.md",
+      "OpenAI Codex AGENTS.md and skills docs",
+      "Anthropic Claude Code memory/project instruction docs",
+      "Cursor rules docs",
+      "Continue rules docs",
+      "GitHub Copilot custom instructions docs",
+      "Goose hints, recipes, and persistent-instructions docs",
+      "Aider coding conventions docs",
+      "Cline rules docs",
+      "Roo Code custom instructions docs"
+    ],
+    "expected_outputs": [
+      "docs/runtime-compatibility.md exists and is linked from runtime-adapters documentation and README start-here navigation.",
+      "The matrix covers Codex, Claude Code, Cursor, Continue, GitHub Copilot, Goose, Aider, Cline, and Roo Code.",
+      "Each runtime row names native artifact paths or instruction surfaces, current agent-workflow-kit artifact status, whether this repo generates it today, whether repo-contract-kit can install it today, expected source of truth, validation source URL, access date, limitations, and privacy/locality notes.",
+      "The document clearly distinguishes current generated adapters from planned adapters and from manual prompt consumption.",
+      "The document states that repo-contract-kit owns target-repo writes and installer/update behavior.",
+      "The document includes guidance for when not to generate an adapter, especially for unstable runtime surfaces, private context, or runtimes whose native format would duplicate AGENTS.md or prompt-kit docs without adding value.",
+      "Version/changelog are updated only if version-check requires or the docs policy treats the new user-facing runtime doc as release-visible.",
+      "Source backlog rows, feature matrix, and summary close AGW-043 only after validation passes."
+    ]
+  },
+  "acceptance_criteria": [
+    {
+      "description": "docs/runtime-compatibility.md provides a compatibility matrix for Codex, Claude Code, Cursor, Continue, GitHub Copilot, Goose, Aider, Cline, and Roo Code.",
+      "verification": "Inspect the document and confirm every named runtime has a row or clearly labeled subsection."
+    },
+    {
+      "description": "The matrix distinguishes generated today, planned, manual-only, and unsupported/unknown states without implying adapter support that does not exist.",
+      "verification": "Compare the document against workflows/manifest.json and docs/runtime-adapters.md."
+    },
+    {
+      "description": "Runtime claims are grounded in current primary sources with URLs and an access date, and uncertainty is explicit where a source is unstable or not authoritative.",
+      "verification": "Open the cited runtime docs during implementation and confirm the rows match the referenced surfaces."
+    },
+    {
+      "description": "The document explains source/install/target ownership so operators know whether a change belongs in agent-workflow-kit, repo-contract-kit, or an installed target repo.",
+      "verification": "Inspect docs/runtime-compatibility.md and docs/runtime-adapters.md links."
+    },
+    {
+      "description": "The document includes privacy/locality guidance for private context, hosted agents, ignored local files, and manual prompt transfer.",
+      "verification": "Inspect the matrix notes and 'do not generate an adapter when' guidance."
+    },
+    {
+      "description": "README and nearby runtime docs make the new matrix discoverable without duplicating the full table.",
+      "verification": "Inspect README.md and docs/runtime-adapters.md."
+    },
+    {
+      "description": "The change does not modify runtime adapter generation, canonical prompts, schema behavior, repo-contract-kit files, or generated adapter outputs.",
+      "verification": "Run git diff --name-only and compare against allowed/protected scope."
+    },
+    {
+      "description": "Source backlog rows, split backlog, summary, and feature matrix close AGW-043 only after validation passes.",
+      "verification": "make backlog-check and make backlog-split-check."
+    }
+  ],
+  "validation": {
+    "commands": [
+      {
+        "command": "make docs-check",
+        "required": true,
+        "expected_result": "pass"
+      },
+      {
+        "command": "make docs-freshness",
+        "required": true,
+        "expected_result": "pass"
+      },
+      {
+        "command": "make docs-lint",
+        "required": true,
+        "expected_result": "pass"
+      },
+      {
+        "command": "make docs-build",
+        "required": true,
+        "expected_result": "pass"
+      },
+      {
+        "command": "make docs-generate",
+        "required": true,
+        "expected_result": "pass"
+      },
+      {
+        "command": "python3 scripts/check_doc_impact.py",
+        "required": true,
+        "expected_result": "pass"
+      },
+      {
+        "command": "PYTHONDONTWRITEBYTECODE=1 make agent-verify",
+        "required": true,
+        "expected_result": "pass; pre-existing unchanged instruction-hygiene warnings may be reported but must be identified"
+      },
+      {
+        "command": "PYTHONDONTWRITEBYTECODE=1 make validate",
+        "required": true,
+        "expected_result": "pass"
+      },
+      {
+        "command": "make version-check",
+        "required": true,
+        "expected_result": "pass, either after a patch version/changelog update or with a documented VERSION_CHECK_ALLOW_UNCHANGED=1 docs-only rationale if the local policy accepts no release impact"
+      },
+      {
+        "command": "make backlog-check",
+        "required": true,
+        "expected_result": "pass after source backlog closeout"
+      },
+      {
+        "command": "make backlog-split-check",
+        "required": true,
+        "expected_result": "pass after source backlog closeout"
+      },
+      {
+        "command": "git diff --check",
+        "required": true,
+        "expected_result": "pass"
+      }
+    ],
+    "evidence_to_capture": [
+      "List of runtime documentation URLs checked and their access date.",
+      "git diff --name-only showing docs/backlog/version scope only.",
+      "Validation command outputs, including any pre-existing warnings called out by file and line.",
+      "Version/changelog decision and rationale.",
+      "Final git status and task-status output."
+    ]
+  },
+  "closeout_requirements": {
+    "final_receipt_path": ".agent-workflows/tasks/agw-043-runtime-compatibility-matrix/receipt.json or durable sidecar equivalent",
+    "readiness_check": {
+      "command": "make agent-task-ready TASK=AGW-043 TASK_READY_JSON=1 or record why unavailable for this parent-run packet",
+      "expected_result": "pass or explicit unavailable/omitted rationale with compensating validation evidence"
+    },
+    "lifecycle_action": {
+      "action": "finish",
+      "command": "make agent-task-finalize TASK=AGW-043 TASK_RECEIPT=<path> TASK_FINALIZE_JSON=1 or record why unavailable for this parent-run packet",
+      "expected_result": "task finished or unavailable/omitted rationale recorded"
+    },
+    "final_task_status": {
+      "command": "make agent-task-status TASK_STATUS_INCLUDE_CLOSED=1 TASK_STATUS_JSON=1",
+      "expected_result": "no active AGW-043 task remains, or any remaining task metadata is explicitly explained"
+    },
+    "closeout_preview": {
+      "command": "make agent-task-closeout TASK=AGW-043 TASK_CLOSEOUT_JSON=1 or record why unavailable for this parent-run packet",
+      "expected_result": "preview reports no unsafe cleanup, or unavailable/omitted rationale recorded",
+      "apply_requires_explicit_approval": true
+    },
+    "dirty_state_explanation": "Final handoff must say whether the source checkout is clean, only expected files remain dirty, cleanup is blocked, or unrelated dirt was preserved."
+  },
+  "docs_impact": {
+    "expected": "yes",
+    "paths": [
+      "docs/runtime-compatibility.md",
+      "docs/runtime-adapters.md",
+      "README.md",
+      "CHANGELOG.md if version changes"
+    ],
+    "waiver_allowed": false,
+    "notes": "This task is itself user-facing documentation. The worker must update discoverability docs and close backlog docs after validation."
+  },
+  "risk": {
+    "level": "medium",
+    "known_risks": [
+      "Runtime instruction surfaces drift quickly and outdated claims would mislead operators.",
+      "Compatibility docs can accidentally imply support for adapters that are only planned.",
+      "Manual prompt-transfer guidance can create privacy risk if it encourages copying private context into hosted runtimes.",
+      "Version-check behavior may require a docs-only patch bump and changelog entry."
+    ],
+    "stop_conditions": [
+      "Official docs are unavailable or contradictory for a named runtime and the row cannot be marked with accurate uncertainty.",
+      "Implementation needs code, schema, prompt, or generated adapter changes.",
+      "repo-contract-kit files or installed target runtime files would need to change.",
+      "Validation finds stale generated docs or unrelated dirty work outside this packet's scope."
+    ]
+  },
+  "approval": {
+    "human_approval_required": false,
+    "state": "approved",
+    "approver": "user",
+    "notes": "User asked to implement the workflow-stack plan and then add dirty-state/closeout/self-heal items as planned backlog work; AGW-043 is the next selected existing source backlog item after AGW-035 closeout."
+  },
+  "coordination": {
+    "active_task_count": 0,
+    "active_tasks": [],
+    "overlap_warnings": [
+      "Use exactly one AGW-043 worker.",
+      "Refresh task-status and git status before worker edits.",
+      "Do not edit repo-contract-kit for this source docs task.",
+      "Treat installed kit managed-file drift as known self-dogfood state unless it becomes actual git dirt or affects validation."
+    ]
+  },
+  "harness_metrics": {
+    "context_file_count": 9,
+    "token_budget": {
+      "packet_creation_files": 102,
+      "packet_creation_estimated_tokens": 83344,
+      "result": "passed"
+    },
+    "deterministic_reports": [
+      "make agent-task-status TASK_STATUS_INCLUDE_CLOSED=1 TASK_STATUS_JSON=1",
+      "make agent-next",
+      "make backlog-status",
+      "make agent-token-budget",
+      "make kit-status"
+    ],
+    "runtime_sources_to_refresh": [
+      "https://developers.openai.com/codex/guides/agents-md",
+      "https://developers.openai.com/codex/skills",
+      "https://code.claude.com/docs/en/memory",
+      "https://cursor.com/docs/rules",
+      "https://docs.continue.dev/customize/rules",
+      "https://docs.github.com/en/copilot/how-tos/copilot-on-github/customize-copilot/add-custom-instructions",
+      "https://code.visualstudio.com/docs/agent-customization/custom-instructions",
+      "https://goose-docs.ai/docs/guides/context-engineering/using-goosehints/",
+      "https://goose-docs.ai/docs/guides/context-engineering/using-persistent-instructions/",
+      "https://aider.chat/docs/usage/conventions.html",
+      "https://docs.cline.bot/customization/cline-rules",
+      "https://roocodeinc.github.io/Roo-Code/features/custom-instructions/"
+    ]
+  },
+  "handoff": {
+    "recommended_prompt": "Implement AGW-043 from research/agentic-workflow-review/task-packets/agw-043-runtime-compatibility-matrix.md. Keep the change docs-only, verify current official runtime docs before writing compatibility claims, cite URLs and access date, update discoverability docs and backlog closeout, run the required validation, commit and push source main, and report final clean state.",
+    "owner": "single AGW-043 implementation worker",
+    "dependencies": [
+      "AGW-041",
+      "AGW-042",
+      "AGW-081",
+      "AGW-035 source closeout at 5a87434198b0f0a061c3a70b56478ddbf2bcebb0"
+    ],
+    "next_packet_hint": "After AGW-043, make agent-next should select the next open source backlog item, currently expected to be AGW-045 unless priorities change."
+  }
+}

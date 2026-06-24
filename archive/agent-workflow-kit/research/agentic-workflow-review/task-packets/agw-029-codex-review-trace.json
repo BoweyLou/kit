@@ -1,0 +1,363 @@
+{
+  "schema_version": 1,
+  "task": {
+    "id": "AGW-029",
+    "title": "Add `codex-review trace` concept for opening or exporting run evidence.",
+    "priority": "P2",
+    "status": "approved",
+    "source": {
+      "type": "backlog",
+      "reference": "research/agentic-workflow-review/backlog.csv:30"
+    }
+  },
+  "context": {
+    "repo_root": "/Volumes/Myrtle/Code/04_Code/Codex_CodeReview",
+    "mode": "verification",
+    "problem_statement": "The workflow stack captures receipts, summaries, task packets, context packets, and task lifecycle reports, but it does not yet name a single trace concept for opening or exporting the evidence behind an agent run. Define the `codex-review trace` concept so future CLI work can expose run evidence for transcript review and debugging without scattering private transcript handling across prompts.",
+    "background": [
+      "AGW-007 defined the local session receipt schema.",
+      "AGW-008 added a concise receipt-summary renderer.",
+      "AGW-032 added changed-file context packets.",
+      "AGW-074 added harness metric fields across receipts and task packets.",
+      "AGW-084 added the maintainer queue prompt for active work and owner decisions.",
+      "AGW-089 made task closeout evidence part of source task packets.",
+      "AGW-092 and AGW-093 added compact context-bundle and deterministic-report routing concepts.",
+      "AGW-097 added the companion kit's local agent-state ledger for dirty-state, task, automation, readiness, and receipt evidence.",
+      "AGW-029 is explicitly docs first; the backlog records CLI implementation as later."
+    ],
+    "non_goals": [
+      "Do not implement a `codex-review trace` CLI command in this slice.",
+      "Do not edit repo-contract-kit or installed target-repo command behavior.",
+      "Do not change receipt, task-packet, or review schemas unless the docs-first concept cannot be made precise without a small source-side schema note.",
+      "Do not export, summarize, or store private Codex transcripts from this task.",
+      "Do not add network, hosted model, browser, GitHub API, or account dependencies.",
+      "Do not broaden the task into a full observability dashboard, PR bot, or trace database."
+    ]
+  },
+  "previous_task_state": {
+    "report_sources": [
+      "make agent-task-status TASK_STATUS_INCLUDE_CLOSED=1 TASK_STATUS_JSON=1",
+      "make agent-next",
+      "git ls-remote origin refs/heads/main for source and kit remotes",
+      "make agent-token-budget",
+      "make kit-status"
+    ],
+    "active_tasks": [],
+    "unresolved_blockers": [],
+    "dirty_or_stale_state": [],
+    "finalizer_receipt_paths": [
+      "source main commit 0d908ebca9ebb227c0c341363755abc39b6e545d closed AGW-025",
+      "kit main commit 1a23bb0bb5b3d2f04077ddeacf512b260d9e3221 completed repo-contract-kit 0.4.51"
+    ],
+    "blocker_receipt_paths": [],
+    "allowed_to_start": true,
+    "notes": "AGW-029 packet creation began only after AGW-025 was pushed in both repos, both remotes matched local HEADs, source and kit worktrees were clean, source task-status reported zero active tasks, and agent-next selected AGW-029."
+  },
+  "closeout_required_before_start": {
+    "decision": "safe-start",
+    "reason": "The previous AGW-025 task has source and kit closeout commits, matching remote refs, clean worktrees, and no active task metadata.",
+    "required_next_step": "Proceed with exactly one AGW-029 worker in agent-workflow-kit; refresh task-status if source or kit state becomes dirty before worker launch.",
+    "evidence_paths": [
+      "research/agentic-workflow-review/task-packets/agw-029-codex-review-trace.md",
+      "source main commit 0d908ebca9ebb227c0c341363755abc39b6e545d",
+      "kit main commit 1a23bb0bb5b3d2f04077ddeacf512b260d9e3221"
+    ]
+  },
+  "goal_alignment": {
+    "repo_goal": "Keep agent-workflow-kit as the source of portable prompt, schema, receipt, and harness concepts that make local agent work auditable before installed command behavior is added in repo-contract-kit.",
+    "area_contracts": [
+      {
+        "path": "/Volumes/Myrtle/Code/04_Code/Codex_CodeReview/docs/harness-engineering.md",
+        "purpose": "Names harness components, evidence surfaces, metric families, and future quality gates.",
+        "source": "Harness Engineering design note",
+        "status": "aligned"
+      },
+      {
+        "path": "/Volumes/Myrtle/Code/04_Code/Codex_CodeReview/docs/working-rhythm.md",
+        "purpose": "Documents the human/operator rhythm for orienting, scoping, executing, and handing off local agent work.",
+        "source": "Working Rhythm",
+        "status": "aligned"
+      },
+      {
+        "path": "/Volumes/Myrtle/Code/04_Code/Codex_CodeReview/docs/using-the-prompt-kit.md",
+        "purpose": "Explains how humans and agents use the source prompt kit and evidence artifacts.",
+        "source": "Usage Recipes",
+        "status": "aligned"
+      },
+      {
+        "path": "/Volumes/Myrtle/Code/04_Code/Codex_CodeReview/workflows/prompts/",
+        "purpose": "Canonical source for prompts and adapters that may need to reference trace evidence as a future handoff/debugging surface.",
+        "source": "AGENTS.md; workflows/prompts/README.md",
+        "status": "aligned"
+      },
+      {
+        "path": "/Volumes/Myrtle/Code/04_Code/Codex_CodeReview/schemas/session-receipt.schema.json",
+        "purpose": "Defines existing session evidence; schema changes are protected unless strictly required for the docs-first trace concept.",
+        "source": "AGW-007 and follow-on receipt work",
+        "status": "aligned"
+      }
+    ],
+    "alignment_decision": "aligned",
+    "adaptation_needed": false,
+    "stop_conditions": [
+      "Stop if the work requires implementing an installed CLI, target-repo Make target, or repo-contract-kit behavior.",
+      "Stop if trace docs would imply transcript export is automatic, remote, or safe to publish without explicit operator choice.",
+      "Stop if the concept duplicates receipt-summary, context-packet, or state-ledger responsibilities instead of defining how they compose.",
+      "Stop if private transcript content, credentials, account state, or cross-repo user data would be embedded in committed examples.",
+      "Stop if prompt adapter edits are made without corresponding canonical prompt source changes and adapter validation."
+    ]
+  },
+  "scope": {
+    "allowed_files": [
+      "/Volumes/Myrtle/Code/04_Code/Codex_CodeReview/docs/",
+      "/Volumes/Myrtle/Code/04_Code/Codex_CodeReview/workflows/prompts/",
+      "/Volumes/Myrtle/Code/04_Code/Codex_CodeReview/.codex/prompts/",
+      "/Volumes/Myrtle/Code/04_Code/Codex_CodeReview/schemas/",
+      "/Volumes/Myrtle/Code/04_Code/Codex_CodeReview/scripts/",
+      "/Volumes/Myrtle/Code/04_Code/Codex_CodeReview/tests/",
+      "/Volumes/Myrtle/Code/04_Code/Codex_CodeReview/README.md",
+      "/Volumes/Myrtle/Code/04_Code/Codex_CodeReview/VERSION",
+      "/Volumes/Myrtle/Code/04_Code/Codex_CodeReview/CHANGELOG.md",
+      "/Volumes/Myrtle/Code/04_Code/Codex_CodeReview/research/agentic-workflow-review/backlog.csv",
+      "/Volumes/Myrtle/Code/04_Code/Codex_CodeReview/research/agentic-workflow-review/agent-workflow-kit-backlog.csv",
+      "/Volumes/Myrtle/Code/04_Code/Codex_CodeReview/research/agentic-workflow-review/summary.md",
+      "/Volumes/Myrtle/Code/04_Code/Codex_CodeReview/research/agentic-workflow-review/feature_matrix.csv"
+    ],
+    "protected_files": [
+      "/Volumes/Myrtle/Code/04_Code/Hermes/doc-contract-kit/",
+      "Installed target-repo templates and managed files",
+      "Runtime task metadata or sidecar receipts in real target repos",
+      "Private transcript content, credentials, cookies, account state, and machine-local history outside explicit local evidence paths",
+      "Unrelated backlog rows and unrelated dirty work",
+      "Generated prompt adapters without canonical prompt source changes"
+    ],
+    "inspect_first": [
+      "make agent-task-status TASK_STATUS_INCLUDE_CLOSED=1 TASK_STATUS_JSON=1",
+      "make agent-next",
+      "make agent-token-budget",
+      "make kit-status",
+      "/Volumes/Myrtle/Code/04_Code/Codex_CodeReview/docs/harness-engineering.md",
+      "/Volumes/Myrtle/Code/04_Code/Codex_CodeReview/docs/working-rhythm.md",
+      "/Volumes/Myrtle/Code/04_Code/Codex_CodeReview/docs/using-the-prompt-kit.md",
+      "/Volumes/Myrtle/Code/04_Code/Codex_CodeReview/workflows/prompts/README.md",
+      "/Volumes/Myrtle/Code/04_Code/Codex_CodeReview/workflows/prompts/maintainer-queue.md",
+      "/Volumes/Myrtle/Code/04_Code/Codex_CodeReview/workflows/prompts/verification-sentinel.md",
+      "/Volumes/Myrtle/Code/04_Code/Codex_CodeReview/schemas/session-receipt.schema.json",
+      "/Volumes/Myrtle/Code/04_Code/Codex_CodeReview/scripts/render_session_receipt_summary.py",
+      "/Volumes/Myrtle/Code/04_Code/Codex_CodeReview/tests/test_render_session_receipt_summary.py"
+    ],
+    "expected_outputs": [
+      "A docs-first trace concept that defines what evidence a future `codex-review trace` command should open or export.",
+      "Clear relationship between trace, session receipts, receipt summaries, task packets, context packets, task-status, state-ledger, and closeout receipts.",
+      "Trace modes or use cases such as inspect/open, export bundle, privacy-redacted handoff, and debugging missing evidence, without implementing CLI behavior.",
+      "Privacy and local-only boundaries for transcripts, command output, paths, receipts, and account data.",
+      "A small future CLI contract sketch that names inputs, outputs, refusal cases, and validation expectations for a later repo-contract-kit task.",
+      "Prompt or maintainer docs updated only if the trace concept needs to be visible in handoff/debugging guidance.",
+      "VERSION and CHANGELOG updated if source behavior/docs surface changes are version-impacting.",
+      "Source backlog rows and summary close AGW-029 only after validation passes."
+    ]
+  },
+  "acceptance_criteria": [
+    {
+      "description": "The source docs define a `codex-review trace` concept for opening/exporting run evidence and make clear that this task does not implement the CLI.",
+      "verification": "Read the changed docs and confirm they include the name `codex-review trace`, evidence inputs, output shapes, and a CLI-later boundary."
+    },
+    {
+      "description": "The concept composes existing evidence surfaces instead of replacing them: receipts, receipt summaries, task packets, context packets, task-status, state-ledger, and closeout/finalizer receipts.",
+      "verification": "Changed docs or prompt guidance reference the relevant existing artifacts and explain what the future trace surface would gather from each."
+    },
+    {
+      "description": "Privacy and local-only rules are explicit: no automatic transcript export, no account mutation, no remote upload, and redaction/omission language for sensitive paths or private content.",
+      "verification": "Docs review confirms privacy boundaries and refusal cases are present."
+    },
+    {
+      "description": "A future CLI contract sketch names inputs, outputs, refusal cases, and validation evidence for a later implementation task without committing current CLI flags as shipped behavior.",
+      "verification": "Docs review confirms the contract is labeled as future/planned and does not add installed Make targets or scripts."
+    },
+    {
+      "description": "Prompt indexes or maintainer/verification guidance mention trace evidence only where it helps debugging or handoff, and adapters are regenerated if canonical prompts change.",
+      "verification": "Run prompt adapter checks when prompt files change; otherwise record that no prompt adapter update was needed."
+    },
+    {
+      "description": "The behavior/docs surface change is versioned when required by the repo versioning contract.",
+      "verification": "Run make version-check and confirm VERSION/CHANGELOG state is accepted."
+    },
+    {
+      "description": "Source backlog rows, split backlog, feature matrix or summary close AGW-029 only after validation passes.",
+      "verification": "Run backlog checks after closeout."
+    }
+  ],
+  "validation": {
+    "commands": [
+      {
+        "command": "PYTHONDONTWRITEBYTECODE=1 make prompt-adapters-check",
+        "required": true,
+        "expected_result": "pass if workflows/prompts or workflows/manifest.json changed; otherwise note no prompt adapter change"
+      },
+      {
+        "command": "PYTHONDONTWRITEBYTECODE=1 python3 -m unittest tests.test_render_session_receipt_summary tests.test_export_workflow_adapters tests.test_research_workflow_artifacts",
+        "required": true,
+        "expected_result": "pass or justify narrower focused tests if implementation remains docs-only"
+      },
+      {
+        "command": "PYTHONDONTWRITEBYTECODE=1 make agent-verify",
+        "required": true,
+        "expected_result": "pass"
+      },
+      {
+        "command": "make validate",
+        "required": true,
+        "expected_result": "pass"
+      },
+      {
+        "command": "make docs-lint",
+        "required": true,
+        "expected_result": "pass"
+      },
+      {
+        "command": "make docs-build",
+        "required": true,
+        "expected_result": "pass"
+      },
+      {
+        "command": "make docs-generate",
+        "required": true,
+        "expected_result": "pass"
+      },
+      {
+        "command": "python3 scripts/check_doc_impact.py",
+        "required": true,
+        "expected_result": "pass"
+      },
+      {
+        "command": "make docs-freshness",
+        "required": true,
+        "expected_result": "pass"
+      },
+      {
+        "command": "make version-check",
+        "required": true,
+        "expected_result": "pass"
+      },
+      {
+        "command": "make backlog-check",
+        "required": true,
+        "expected_result": "pass after source closeout"
+      },
+      {
+        "command": "make backlog-split-check",
+        "required": true,
+        "expected_result": "pass after source closeout"
+      },
+      {
+        "command": "git diff --check",
+        "required": true,
+        "expected_result": "pass"
+      }
+    ],
+    "evidence_to_capture": [
+      "changed docs showing trace concept and CLI-later boundary",
+      "prompt adapter check output or explicit no-prompt-change note",
+      "focused test output or docs-only test rationale",
+      "full source validation output",
+      "docs-impact and docs-freshness output",
+      "backlog and split-backlog validation after closeout",
+      "diff summary and dirty-state explanation"
+    ]
+  },
+  "closeout_requirements": {
+    "final_receipt_path": ".agent-workflows/tasks/agw-029-codex-review-trace/receipt.json or sidecar equivalent",
+    "readiness_check": {
+      "command": "make agent-task-ready TASK=AGW-029 TASK_READY_JSON=1 or record why unavailable for this parent-run packet",
+      "expected_result": "ready report passes or blocker is recorded"
+    },
+    "lifecycle_action": {
+      "action": "finish",
+      "command": "make agent-task-finalize TASK=AGW-029 TASK_RECEIPT=<path> TASK_FINALIZE_JSON=1 or lifecycle fallback",
+      "expected_result": "metadata is closed and final receipt is linked, or fallback receipt is durable"
+    },
+    "final_task_status": {
+      "command": "make agent-task-status TASK_STATUS_INCLUDE_CLOSED=1 TASK_STATUS_JSON=1",
+      "expected_result": "task is terminal or no local metadata was created and the reason is recorded"
+    },
+    "closeout_preview": {
+      "command": "make agent-task-closeout TASK_CLOSEOUT_JSON=1",
+      "expected_result": "eligible, retained, or blocked cleanup state is recorded",
+      "apply_requires_explicit_approval": true
+    },
+    "dirty_state_explanation": "Final handoff must state whether the checkout is clean, only expected files are dirty, cleanup is blocked, or unrelated dirt was preserved."
+  },
+  "docs_impact": {
+    "expected": "yes",
+    "paths": [
+      "/Volumes/Myrtle/Code/04_Code/Codex_CodeReview/docs/harness-engineering.md",
+      "/Volumes/Myrtle/Code/04_Code/Codex_CodeReview/docs/working-rhythm.md",
+      "/Volumes/Myrtle/Code/04_Code/Codex_CodeReview/docs/using-the-prompt-kit.md",
+      "/Volumes/Myrtle/Code/04_Code/Codex_CodeReview/workflows/prompts/README.md",
+      "/Volumes/Myrtle/Code/04_Code/Codex_CodeReview/README.md",
+      "/Volumes/Myrtle/Code/04_Code/Codex_CodeReview/CHANGELOG.md",
+      "source backlog summary and feature matrix files"
+    ],
+    "waiver_allowed": false,
+    "notes": "This is a docs-first source concept for a future evidence trace interface; docs updates are the primary delivery shape."
+  },
+  "risk": {
+    "level": "medium",
+    "known_risks": [
+      "The concept could over-promise a shipped CLI surface before implementation exists.",
+      "Trace examples could accidentally normalize exporting private transcript content.",
+      "The docs could duplicate receipt-summary, context-bundle, or state-ledger responsibilities instead of defining composition.",
+      "Prompt updates could increase token footprint if they embed long trace examples.",
+      "Schema changes are likely unnecessary for a docs-first concept and could create avoidable migration work."
+    ],
+    "stop_conditions": [
+      "The implementation requires a new script, Make target, installed kit command, or target-repo behavior.",
+      "Docs would imply trace export is remote, automatic, or safe for public sharing by default.",
+      "The worker cannot define the concept without private local transcript examples.",
+      "Validation requires changing unrelated backlog items or companion-kit files."
+    ]
+  },
+  "approval": {
+    "human_approval_required": false,
+    "state": "approved",
+    "approver": null,
+    "notes": "User approved implementing the workflow-stack plan and asked to add the dirty-state follow-ons as fully planned backlog items; parent is continuing the approved backlog one item at a time."
+  },
+  "coordination": {
+    "active_task_count": 0,
+    "active_tasks": [],
+    "overlap_warnings": [
+      "This is source-side docs/concept work and must not edit /Volumes/Myrtle/Code/04_Code/Hermes/doc-contract-kit/.",
+      "Do not turn the concept into a shipped CLI in AGW-029; create a follow-on backlog item if implementation details are ready.",
+      "Parent handles source task-packet commit, worker launch, integration, validation, commit, push, and backlog closeout."
+    ],
+    "worker_rule": "Use exactly one worker for this backlog item. The worker owns source implementation files only; the parent owns the source task-packet commit, integration, validation, and publication."
+  },
+  "harness_metrics": {
+    "context_file_count": 12,
+    "deterministic_reports": [
+      "make agent-task-status TASK_STATUS_INCLUDE_CLOSED=1 TASK_STATUS_JSON=1 passed with zero active tasks and no hazards.",
+      "make agent-next selected AGW-029 and reported dirty false.",
+      "make agent-token-budget passed with 97 files and 77458 estimated tokens.",
+      "make kit-status reported installed repo-contract-kit 0.4.41, target repo version 0.2.18, and four managed localizations."
+    ],
+    "token_budget": {
+      "estimated_tokens": 77458,
+      "files": 97,
+      "guidance": "Keep the trace concept compact and reference existing evidence surfaces by name instead of copying large receipt or transcript examples."
+    }
+  },
+  "handoff": {
+    "recommended_prompt": "workflows/prompts/task-packet.md, then workflows/prompts/fix-implementer.md, then workflows/prompts/verification-sentinel.md",
+    "owner": "one worker agent for source implementation; parent for packet commit, integration, validation, push, and backlog closeout",
+    "dependencies": [
+      "AGW-007 session receipt schema",
+      "AGW-008 receipt summary renderer",
+      "AGW-032 context packet",
+      "AGW-074 harness metric fields",
+      "AGW-089 closeout evidence contract",
+      "AGW-097 state ledger in repo-contract-kit"
+    ],
+    "next_packet_hint": "After AGW-029 closes, use AGW-031 or another open source-side docs/review item unless AGW-029 produces a separate accepted CLI implementation follow-on."
+  }
+}

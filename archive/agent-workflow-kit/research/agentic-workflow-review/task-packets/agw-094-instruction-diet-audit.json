@@ -1,0 +1,249 @@
+{
+  "schema_version": 1,
+  "task": {
+    "id": "AGW-094",
+    "title": "Add an instruction diet audit that proposes offloading detail out of agent-facing docs.",
+    "priority": "P1",
+    "status": "approved",
+    "source": {
+      "type": "backlog",
+      "reference": "research/agentic-workflow-review/backlog.csv:95"
+    }
+  },
+  "context": {
+    "repo_root": "/Volumes/Myrtle/Code/04_Code/Hermes/doc-contract-kit",
+    "mode": "implementation",
+    "problem_statement": "Target repos can accumulate large agent-facing route maps, runtime rules, and prompt adapters. Existing linting warns on size, stale commands, unsafe guidance, and provenance gaps, but there is no compact no-write audit that proposes which detail should move into scoped contracts, generated reports, scripts, docs, or task packets before pruning happens.",
+    "background": [
+      "AGW-002 and AGW-004 added agent-instruction linting and bloat checks.",
+      "AGW-038 added instruction budgets and hygiene guidance.",
+      "AGW-072 made token efficiency a workflow constraint.",
+      "AGW-092 added compact context bundles with explicit omissions.",
+      "The user reported dirty-start and task-start failures on 2026-06-15 and asked for kit changes that help agents self-diagnose and close cleanly."
+    ],
+    "non_goals": [
+      "Do not automatically rewrite or prune AGENTS.md, REVIEW.md, runtime adapters, or prompt files.",
+      "Do not delete user-authored rules or hide tracked diffs.",
+      "Do not change existing agent-docs-lint pass/fail behavior unless the new audit mode is explicitly requested.",
+      "Do not make the source repo own installed target-repo instruction files."
+    ]
+  },
+  "goal_alignment": {
+    "repo_goal": "Keep repo-contract-kit as the install-layer guardrail provider for target repos, with deterministic commands that reveal risk and propose safe next actions without mutating user work by default.",
+    "area_contracts": [
+      {
+        "path": "/Volumes/Myrtle/Code/04_Code/Hermes/doc-contract-kit/scripts/lint_agent_docs.py",
+        "purpose": "Local agent-instruction analyzer for safety, stale references, bloat, provenance, and instruction-hygiene diagnostics.",
+        "source": "docs/ops/agent-instruction-hygiene.md; installed agent-docs-lint",
+        "status": "aligned"
+      },
+      {
+        "path": "/Volumes/Myrtle/Code/04_Code/Hermes/doc-contract-kit/scripts/repo_contract_kit.py",
+        "purpose": "Stable kit CLI entrypoint for machine-readable target-repo status and agent workflow reports.",
+        "source": "docs/agent-workflow-stack.md; kit CLI tests",
+        "status": "aligned"
+      },
+      {
+        "path": "/Volumes/Myrtle/Code/04_Code/Hermes/doc-contract-kit/templates/",
+        "purpose": "Installed target-repo docs, Make targets, and instruction-budget defaults.",
+        "source": "installer tests; docs freshness checks",
+        "status": "aligned"
+      },
+      {
+        "path": "/Volumes/Myrtle/Code/04_Code/Hermes/doc-contract-kit/docs/",
+        "purpose": "Operator-facing docs for kit commands, instruction hygiene, and rollout behavior.",
+        "source": "docs-contract",
+        "status": "aligned"
+      }
+    ],
+    "alignment_decision": "aligned",
+    "adaptation_needed": false,
+    "stop_conditions": [
+      "Stop if the implementation would mutate target instruction files instead of producing a proposal.",
+      "Stop if audit recommendations cannot distinguish route-map, duplicated procedure, budget pressure, stale command, and offload-target evidence.",
+      "Stop if JSON output does not give agents enough receipt detail to explain why a file is safe, warning, or over budget."
+    ]
+  },
+  "scope": {
+    "allowed_files": [
+      "/Volumes/Myrtle/Code/04_Code/Hermes/doc-contract-kit/scripts/lint_agent_docs.py",
+      "/Volumes/Myrtle/Code/04_Code/Hermes/doc-contract-kit/scripts/repo_contract_kit.py",
+      "/Volumes/Myrtle/Code/04_Code/Hermes/doc-contract-kit/templates/",
+      "/Volumes/Myrtle/Code/04_Code/Hermes/doc-contract-kit/tests/",
+      "/Volumes/Myrtle/Code/04_Code/Hermes/doc-contract-kit/docs/",
+      "/Volumes/Myrtle/Code/04_Code/Hermes/doc-contract-kit/README.md",
+      "/Volumes/Myrtle/Code/04_Code/Hermes/doc-contract-kit/VERSION",
+      "/Volumes/Myrtle/Code/04_Code/Hermes/doc-contract-kit/CHANGELOG.md",
+      "/Volumes/Myrtle/Code/04_Code/Codex_CodeReview/research/agentic-workflow-review/backlog.csv",
+      "/Volumes/Myrtle/Code/04_Code/Codex_CodeReview/research/agentic-workflow-review/repo-contract-kit-backlog.csv",
+      "/Volumes/Myrtle/Code/04_Code/Codex_CodeReview/research/agentic-workflow-review/summary.md",
+      "/Volumes/Myrtle/Code/04_Code/Codex_CodeReview/research/agentic-workflow-review/feature_matrix.csv"
+    ],
+    "protected_files": [
+      "User target repos outside the kit checkout.",
+      "Existing target-owned VERSION or CHANGELOG.md behavior.",
+      "Source prompt adapters unless a separate source task is opened.",
+      "Unrelated backlog rows."
+    ],
+    "inspect_first": [
+      "/Volumes/Myrtle/Code/04_Code/Hermes/doc-contract-kit/scripts/lint_agent_docs.py",
+      "/Volumes/Myrtle/Code/04_Code/Hermes/doc-contract-kit/scripts/repo_contract_kit.py",
+      "/Volumes/Myrtle/Code/04_Code/Hermes/doc-contract-kit/templates/kit/Makefile.doc-contract-kit",
+      "/Volumes/Myrtle/Code/04_Code/Hermes/doc-contract-kit/templates/docs/ops/agent-instruction-hygiene.md",
+      "/Volumes/Myrtle/Code/04_Code/Hermes/doc-contract-kit/templates/agent-workflows/instruction-budgets.json",
+      "/Volumes/Myrtle/Code/04_Code/Hermes/doc-contract-kit/tests/test_install.py",
+      "/Volumes/Myrtle/Code/04_Code/Hermes/doc-contract-kit/tests/test_repo_contract_kit_cli.py",
+      "/Volumes/Myrtle/Code/04_Code/Hermes/doc-contract-kit/docs/harness-engineering.md"
+    ],
+    "expected_outputs": [
+      "A no-write CLI/report mode, exposed through an installed Make target, that audits agent-facing instruction files and emits JSON/text recommendations.",
+      "Recommendation categories for near-budget or over-budget sections, route-map violations, duplicated procedural detail, stale or localizable command detail, and likely offload targets.",
+      "Recommendation objects with file, line or section evidence, severity, reason, and suggested destination.",
+      "Docs, tests, version, changelog, and source backlog closeout."
+    ]
+  },
+  "acceptance_criteria": [
+    {
+      "description": "repo-contract-kit exposes an instruction-diet audit command or mode, plus an installed Make target.",
+      "verification": "CLI and installer tests."
+    },
+    {
+      "description": "The audit is no-write by default and produces JSON plus concise text output.",
+      "verification": "CLI tests check target repo state before and after."
+    },
+    {
+      "description": "The report identifies budget pressure, route-map violations, duplicated procedural detail, stale or localizable command references, and recommended offload destinations with enough evidence for an agent receipt.",
+      "verification": "Representative fixture assertions."
+    },
+    {
+      "description": "Existing agent-docs-lint behavior remains compatible.",
+      "verification": "Existing lint tests and install tests pass."
+    },
+    {
+      "description": "Docs explain when to run the audit and that it proposes pruning rather than applying it.",
+      "verification": "docs-check and docs freshness."
+    },
+    {
+      "description": "VERSION and CHANGELOG.md record the kit behavior change.",
+      "verification": "make version-check."
+    }
+  ],
+  "validation": {
+    "commands": [
+      {
+        "command": "PYTHONDONTWRITEBYTECODE=1 python3 -m unittest tests.test_install tests.test_repo_contract_kit_cli",
+        "required": true,
+        "expected_result": "pass"
+      },
+      {
+        "command": "PYTHONDONTWRITEBYTECODE=1 make test",
+        "required": true,
+        "expected_result": "pass"
+      },
+      {
+        "command": "make docs-check",
+        "required": true,
+        "expected_result": "pass"
+      },
+      {
+        "command": "make version-check",
+        "required": true,
+        "expected_result": "pass"
+      },
+      {
+        "command": "git diff --check",
+        "required": true,
+        "expected_result": "pass"
+      },
+      {
+        "command": "make backlog-check",
+        "required": true,
+        "expected_result": "pass"
+      },
+      {
+        "command": "PYTHONDONTWRITEBYTECODE=1 make agent-verify",
+        "required": true,
+        "expected_result": "pass"
+      }
+    ],
+    "evidence_to_capture": [
+      "focused and full kit test output",
+      "docs/version validation",
+      "source backlog validation",
+      "remote ref match after push",
+      "dirty-state explanation for both checkouts"
+    ]
+  },
+  "closeout_requirements": {
+    "final_receipt_path": ".agent-workflows/tasks/agw-094-instruction-diet-audit/receipt.json or sidecar equivalent",
+    "readiness_check": {
+      "command": "make agent-task-ready TASK=AGW-094 TASK_READY_JSON=1 or record why unavailable for this parent-run packet",
+      "expected_result": "ready report passes or blocker is recorded"
+    },
+    "lifecycle_action": {
+      "action": "finish",
+      "command": "make agent-task-finish TASK=AGW-094 TASK_RECEIPT=<path> TASK_LIFECYCLE_JSON=1 or lifecycle fallback",
+      "expected_result": "metadata is closed and final receipt is linked, or fallback receipt is durable"
+    },
+    "final_task_status": {
+      "command": "make agent-task-status TASK_STATUS_INCLUDE_CLOSED=1 TASK_STATUS_JSON=1",
+      "expected_result": "task is terminal or no local metadata was created and the reason is recorded"
+    },
+    "closeout_preview": {
+      "command": "make agent-task-closeout TASK_CLOSEOUT_JSON=1",
+      "expected_result": "eligible, retained, or blocked cleanup state is recorded",
+      "apply_requires_explicit_approval": true
+    },
+    "dirty_state_explanation": "Final handoff must say whether each checkout is clean, only expected files are dirty, cleanup is blocked, or unrelated dirt was preserved."
+  },
+  "docs_impact": {
+    "expected": "yes",
+    "paths": [
+      "/Volumes/Myrtle/Code/04_Code/Hermes/doc-contract-kit/README.md",
+      "/Volumes/Myrtle/Code/04_Code/Hermes/doc-contract-kit/docs/harness-engineering.md",
+      "/Volumes/Myrtle/Code/04_Code/Hermes/doc-contract-kit/templates/docs/ops/agent-instruction-hygiene.md",
+      "/Volumes/Myrtle/Code/04_Code/Hermes/doc-contract-kit/templates/kit/Makefile.doc-contract-kit",
+      "/Volumes/Myrtle/Code/04_Code/Hermes/doc-contract-kit/CHANGELOG.md",
+      "source backlog summary files"
+    ],
+    "waiver_allowed": false,
+    "notes": "This adds an installed operator-facing command and report contract."
+  },
+  "risk": {
+    "level": "medium",
+    "known_risks": [
+      "Over-aggressive recommendations could push useful route-map context out of startup instructions.",
+      "Weak heuristics could create noisy reports that agents ignore.",
+      "If the audit mutates files, it could hide the evidence operators need to review.",
+      "New command references can break docs freshness if the installed Make target is not wired everywhere required."
+    ],
+    "stop_conditions": [
+      "The implementation needs semantic rewriting of instruction files.",
+      "Tests cannot prove the command is no-write by default.",
+      "The audit duplicates existing lint output without adding offload proposals."
+    ]
+  },
+  "approval": {
+    "human_approval_required": false,
+    "state": "approved",
+    "approver": null,
+    "notes": "User asked to implement the planned workflow-stack backlog items serially; AGW-094 is the next open P1 item after AGW-093 publication."
+  },
+  "coordination": {
+    "active_task_count": 0,
+    "active_tasks": [],
+    "overlap_warnings": [
+      "AGW-094 edits the kit checkout and source closeout metadata only after validation."
+    ]
+  },
+  "harness_metrics": {
+    "context_file_count": 8,
+    "token_budget": {
+      "guidance": "Extend the existing instruction-lint analyzer and keep text output concise while preserving complete JSON evidence."
+    }
+  },
+  "handoff": {
+    "recommended_prompt": "workflows/prompts/task-packet.md",
+    "owner": "parent agent or one kit worker"
+  }
+}

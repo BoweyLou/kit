@@ -1,0 +1,1216 @@
+{
+  "generated_at": "2026-04-29",
+  "title": "Agentic development workflow research synthesis",
+  "scope": "Six source-specific research agents reviewed GitHub, X via Safari, Hacker News, Google Scholar via Safari, Google Search, and Reddit via Safari for agentic development workflow patterns comparable to agent-workflow-kit plus repo-contract-kit.",
+  "source_count": 6,
+  "repos_considered": [
+    {
+      "repo": "agent-workflow-kit",
+      "path": "local checkout path redacted",
+      "current_capabilities": [
+        "Multi-agent repo review prompt with focused reviewer personas.",
+        "Personas for documentation/code delta, AI code slop, reuse/architecture, dead code, duplication, tests, security, contracts, dependencies, runtime, and frontend UX.",
+        "Review synthesis, fix planning, implementation, and verification prompts.",
+        "Learning-comments prompt that checks docs, ADRs, existing comments, and code before behavior-neutral comment edits.",
+        "TDD/executable-spec prompt set covering test-first features, regression-first bug fixes, characterization, contract tests, invariants, refactoring, test quality, and TCR."
+      ]
+    },
+    {
+      "repo": "repo-contract-kit",
+      "path": "local checkout path redacted",
+      "current_capabilities": [
+        "Installable docs/code governance scaffold with doc-contract.json, PR template, docs workflow, Makefile targets, and pre-commit template.",
+        "Profiles and presets including minimal, learning, test-first, agentic, and strict-agentic.",
+        "Docs-impact checker with no-docs-needed waiver semantics.",
+        "Agentic Makefile targets for review, learning, test-first, and verification workflows.",
+        "Keryx-forced profile and mirrored docs/backlog/architecture operating pattern."
+      ]
+    }
+  ],
+  "source_summaries": [
+    {
+      "source": "github",
+      "scope_rule": "Only GitHub repositories and GitHub project pages.",
+      "high_signal_examples": [
+        {
+          "name": "github/spec-kit",
+          "url": "https://github.com/github/spec-kit",
+          "signal": "Spec-first bootstrap with constitution, specs, plans, tasks, agent commands, and TDD-aware ordering."
+        },
+        {
+          "name": "github/gh-aw",
+          "url": "https://github.com/github/gh-aw",
+          "signal": "Markdown-authored agent workflows compiled into GitHub Actions with guardrails and safe outputs."
+        },
+        {
+          "name": "spencermarx/open-code-review",
+          "url": "https://github.com/spencermarx/open-code-review",
+          "signal": "Multi-agent PR review pipeline with reviewer personas, discourse, review maps, and GitHub posting."
+        },
+        {
+          "name": "The-PR-Agent/pr-agent",
+          "url": "https://github.com/The-PR-Agent/pr-agent",
+          "signal": "Mature PR review bot model with slash commands, CLI, GitHub Action, and configurable prompts."
+        },
+        {
+          "name": "microsoft/agent-governance-toolkit",
+          "url": "https://github.com/microsoft/agent-governance-toolkit",
+          "signal": "Policy enforcement, strict CI evidence, sandboxing, and OWASP agentic risk checks."
+        },
+        {
+          "name": "PackmindHub/packmind",
+          "url": "https://github.com/PackmindHub/packmind",
+          "signal": "Canonical engineering playbooks distributed into agent-specific instruction files."
+        },
+        {
+          "name": "bmad-code-org/BMAD-METHOD",
+          "url": "https://github.com/bmad-code-org/BMAD-METHOD",
+          "signal": "Large agentic SDLC method with installer, modules, workflows, roles, and testing modules."
+        },
+        {
+          "name": "openai/codex",
+          "url": "https://github.com/openai/codex",
+          "signal": "Target runtime conventions: AGENTS.md, skills, CLI/app operation, tests, and sandbox-aware instructions."
+        },
+        {
+          "name": "coder/agentapi",
+          "url": "https://github.com/coder/agentapi",
+          "signal": "Adapter layer for driving multiple coding agents through a common HTTP API."
+        }
+      ],
+      "caveats": [
+        "GitHub stars/releases were source-agent snapshots on 2026-04-29 and can drift.",
+        "Broad agent runtimes were included for packaging and orchestration patterns, not because they solve docs governance directly."
+      ]
+    },
+    {
+      "source": "google_search",
+      "scope_rule": "Google Search and pages reached from Google results, mostly official docs and product pages.",
+      "high_signal_examples": [
+        {
+          "name": "OpenAI Codex docs",
+          "url": "https://platform.openai.com/docs/codex",
+          "signal": "Cloud/local Codex workflow with AGENTS.md guidance, PR creation, tests, and task evidence."
+        },
+        {
+          "name": "AGENTS.md",
+          "url": "https://agents.md/",
+          "signal": "Emerging repo instruction standard for build/test/style/security/PR guidance."
+        },
+        {
+          "name": "GitHub Copilot cloud agent",
+          "url": "https://docs.github.com/en/copilot/concepts/agents/cloud-agent/about-cloud-agent",
+          "signal": "GitHub-native issue/PR/cloud-agent workflow with custom instructions."
+        },
+        {
+          "name": "Claude Code memory and subagents",
+          "url": "https://code.claude.com/docs/en/memory",
+          "signal": "Layered memory, hooks, subagents, and diagnostics as a customization model."
+        },
+        {
+          "name": "Cursor Bugbot and rules",
+          "url": "https://cursor.com/docs/bugbot.md",
+          "signal": "Rules, PR review, learned repo rules, and autofix through a cloud agent."
+        },
+        {
+          "name": "Devin Review",
+          "url": "https://docs.devin.ai/work-with-devin/devin-review",
+          "signal": "Codebase-aware review, generated repo docs, REVIEW.md-style rules, CLI and GitHub integration."
+        },
+        {
+          "name": "Qodo Merge / PR-Agent docs",
+          "url": "https://qodo-merge-docs.qodo.ai/",
+          "signal": "Slash-command PR assistant with review, describe, improve, docs, changelog, and tests."
+        },
+        {
+          "name": "Continue PR Review Bot",
+          "url": "https://docs.continue.dev/guides/github-pr-review-bot",
+          "signal": "Custom rules in GitHub Actions with provider-configurable LLM and runner-local processing."
+        },
+        {
+          "name": "ReadMe GitHub AI Writer",
+          "url": "https://docs.readme.com/main/docs/github-ai-writer",
+          "signal": "PR-triggered API documentation update proposals."
+        },
+        {
+          "name": "Renovate",
+          "url": "https://docs.renovatebot.com/key-concepts/pull-requests/",
+          "signal": "Mature onboarding PR, dashboard, config migration, and low-noise automation patterns."
+        }
+      ],
+      "caveats": [
+        "Vendor docs were treated as product claims unless independently supported elsewhere.",
+        "Fast-moving agent docs should be refreshed before implementation decisions."
+      ]
+    },
+    {
+      "source": "hacker_news",
+      "scope_rule": "Hacker News pages, comments, and HN-visible launch/discussion context.",
+      "high_signal_examples": [
+        {
+          "name": "codex-subagents-mcp",
+          "url": "https://github.com/leonardsellem/codex-subagents-mcp",
+          "signal": "PR-reviewable agent personas and MCP delegation into isolated Codex CLI runs."
+        },
+        {
+          "name": "agents-lint",
+          "url": "https://giacomo.github.io/agents-lint/",
+          "signal": "AGENTS/CLAUDE/GEMINI/.cursorrules freshness checks for paths, scripts, bloat, and contradictions."
+        },
+        {
+          "name": "aidevshield",
+          "url": "https://github.com/aidevshield/aidevshield",
+          "signal": "Security scanner for agent configs, workflows, hidden Unicode, prompt injection, and dangerous permissions."
+        },
+        {
+          "name": "mrge.io",
+          "url": "https://www.mrge.io/home",
+          "signal": "Human-oriented code review UX with LSP context and logical file grouping."
+        },
+        {
+          "name": "Triplecheck",
+          "url": "https://news.ycombinator.com/item?id=47271100",
+          "signal": "Local reviewer-coder-test-judge loop with structured findings and repeated passes."
+        },
+        {
+          "name": "gtg Good To Go",
+          "url": "https://news.ycombinator.com/item?id=46656759",
+          "signal": "Machine-readable PR readiness from CI, review threads, and actionable comments."
+        },
+        {
+          "name": "Docs-as-code discussion",
+          "url": "https://news.ycombinator.com/item?id=41894631",
+          "signal": "Strong community signal that docs should be checked, reviewed, merged, and released with code."
+        },
+        {
+          "name": "AI code review bubble discussion",
+          "url": "https://news.ycombinator.com/item?id=46766961",
+          "signal": "Counterweight: AI review can be noisy and must optimize signal-to-noise before coverage."
+        }
+      ],
+      "caveats": [
+        "HN evidence is discussion and launch context, not adoption proof.",
+        "HN repeatedly warned against auto-merge and false claims of testing."
+      ]
+    },
+    {
+      "source": "reddit",
+      "scope_rule": "Reddit-only threads and comments; external links were not treated as evidence.",
+      "high_signal_examples": [
+        {
+          "name": "Sharing my Claude Code workflow setup",
+          "url": "https://www.reddit.com/r/ClaudeAI/comments/1qsx3p8/sharing_my_claude_code_workflow_setup/",
+          "signal": "Init, wrapup, catchup, dynamic skills, records, solo/team modes."
+        },
+        {
+          "name": "How I structure Claude Code projects",
+          "url": "https://www.reddit.com/r/ClaudeAI/comments/1r66oo0/how_i_structure_claude_code_projects_claudemd/",
+          "signal": "Thin router CLAUDE.md, scoped rules/docs, hooks, MCP, public/private memory split."
+        },
+        {
+          "name": "My AGENTS.md",
+          "url": "https://www.reddit.com/r/ChatGPTCoding/comments/1nwe5nz/my_agentsmd/",
+          "signal": "Codex-oriented global/repo instructions, impacted checks, README/HANDOFF as living state."
+        },
+        {
+          "name": "TDD Guard 1.0.0 Stable Release",
+          "url": "https://www.reddit.com/r/ClaudeAI/comments/1ned5yz/tdd_guard_100_stable_release/",
+          "signal": "Hook-enforced TDD instead of prompt-only reminders."
+        },
+        {
+          "name": "Agent Teams in Claude Code",
+          "url": "https://www.reddit.com/r/ClaudeAI/comments/1qzbagx/agent_teams_in_claude_code_my_experiment_with/",
+          "signal": "Separate test-writer, coder, and verifier roles for TDD."
+        },
+        {
+          "name": "Cursor lessons",
+          "url": "https://www.reddit.com/r/cursor/comments/1rf9klx/what_are_the_lesson_learned_using_cursor/",
+          "signal": "Task scoping, Cursor .mdc rules, file-path front loading, and context discipline."
+        },
+        {
+          "name": "Three AIs, one workspace",
+          "url": "https://www.reddit.com/r/ClaudeAI/comments/1rv438w/i_stopped_using_claude_code_alone_now_it/",
+          "signal": "Shared markdown context, session closer, cross-runtime CLI calls, severity burn-down, scheduled improvement."
+        }
+      ],
+      "caveats": [
+        "Anecdotal practitioner evidence can be useful but should not be treated as reliability proof.",
+        "Several patterns are Claude/Cursor-specific and need Codex-native adaptation."
+      ]
+    },
+    {
+      "source": "x",
+      "scope_rule": "X/Twitter through Safari, read-only. No posts, likes, bookmarks, follows, or account mutations.",
+      "high_signal_examples": [
+        {
+          "name": "Claude Code /ultrareview",
+          "url": "https://x.com/ClaudeDevs/status/2046999435239133246",
+          "signal": "Review fleets for high-risk diffs, returning findings to CLI/Desktop."
+        },
+        {
+          "name": "Stitch DESIGN.md",
+          "url": "https://x.com/stitchbygoogle/status/2046624729403142320",
+          "signal": "Portable design-intent files as agent-readable project context."
+        },
+        {
+          "name": "OpenAI Euphony",
+          "url": "https://x.com/OpenAIDevs/status/2046620363568890230",
+          "signal": "Codex session-log visualization and run observability."
+        },
+        {
+          "name": "OpenClaw private browser agent",
+          "url": "https://x.com/testingcatalog/status/2049224219360161984",
+          "signal": "Local/browser-native agent mode relevant to read-only research agents."
+        },
+        {
+          "name": "Test-first AI coding loop",
+          "url": "https://x.com/simonw/status/2045410739687747772",
+          "signal": "Practitioner convergence on tests as the main control surface for agentic code changes."
+        },
+        {
+          "name": "Agentic CI/CD control plane",
+          "url": "https://x.com/AIxiaolinzys/status/2048146516637024429",
+          "signal": "Guardrails, replayability, evals, rollback, and human approval as the CI model for agents."
+        }
+      ],
+      "caveats": [
+        "X is personalized and time-sensitive; results are trend signals, not stable documentation.",
+        "External links in X posts were not opened inside this source boundary."
+      ]
+    },
+    {
+      "source": "google_scholar",
+      "scope_rule": "Google Scholar title/search results through Safari; direct Scholar access hit automated-query blocking, no CAPTCHA/sign-in bypass attempted.",
+      "high_signal_examples": [
+        {
+          "name": "Large Language Models for Software Engineering: A Systematic Literature Review",
+          "url": "https://scholar.google.com/scholar?q=%22Large+Language+Models+for+Software+Engineering%3A+A+Systematic+Literature+Review%22",
+          "signal": "Evidence map for LLM4SE task categories and evaluation practices."
+        },
+        {
+          "name": "Large Language Model-Based Agents for Software Engineering: A Survey",
+          "url": "https://scholar.google.com/scholar?q=%22Large+Language+Model-Based+Agents+for+Software+Engineering%3A+A+Survey%22",
+          "signal": "Agent architecture taxonomy: planning, memory, perception, action, tools, collaboration."
+        },
+        {
+          "name": "SWE-bench",
+          "url": "https://scholar.google.com/scholar?q=%22SWE-bench%3A+Can+Language+Models+Resolve+Real-World+GitHub+Issues%3F%22",
+          "signal": "Issue-to-patch benchmark with repo context and execution-based validation."
+        },
+        {
+          "name": "SWE-agent",
+          "url": "https://scholar.google.com/scholar?q=%22SWE-agent%3A+Agent-Computer+Interfaces+Enable+Automated+Software+Engineering%22",
+          "signal": "Agent-computer interface design matters for software engineering outcomes."
+        },
+        {
+          "name": "Agentless",
+          "url": "https://scholar.google.com/scholar?q=%22Agentless%3A+Demystifying+LLM-based+Software+Engineering+Agents%22",
+          "signal": "Simpler localization-then-repair pipelines can compete with complex agents."
+        },
+        {
+          "name": "Evaluating and Improving ChatGPT for Unit Test Generation",
+          "url": "https://scholar.google.com/scholar?q=%22Evaluating+and+Improving+ChatGPT+for+Unit+Test+Generation%22",
+          "signal": "Generated tests are useful but need quality checks and improvement loops."
+        },
+        {
+          "name": "RepoAgent",
+          "url": "https://scholar.google.com/scholar?q=%22RepoAgent%3A+An+LLM-Powered+Open-Source+Framework+for+Repository-level+Code+Documentation+Generation%22",
+          "signal": "Repository-level documentation generation and update workflow."
+        },
+        {
+          "name": "CASCADE",
+          "url": "https://scholar.google.com/scholar?q=%22CASCADE%3A+Detecting+Inconsistencies+between+Code+and+Documentation+with+Automatic+Test+Generation%22",
+          "signal": "Docs claims can sometimes be turned into executable tests for consistency checks."
+        },
+        {
+          "name": "DocChecker",
+          "url": "https://scholar.google.com/scholar?q=%22DocChecker%3A+Bootstrapping+Code+Large+Language+Model+for+Detecting+Code-Comment+Inconsistency%22",
+          "signal": "Code-comment inconsistency detection as advisory documentation hygiene."
+        }
+      ],
+      "caveats": [
+        "Scholar metadata was limited by automated-query blocking; title URLs should be refreshed later.",
+        "Very recent 2026 papers/preprints should be treated as promising but immature."
+      ]
+    }
+  ],
+  "feature_matrix": [
+    {
+      "feature_area": "Bootstrap and policy scaffold",
+      "what_good_looks_like": "One command creates a repo-specific constitution, AGENTS.md, REVIEW.md, docs contract, validation commands, PR template, and evidence receipt format.",
+      "our_current_state": "repo-contract-kit now has a local-only agentic preset that installs AGENTS.md, REVIEW.md, docs contract files, local scripts, Make targets, session/persona/safe-output schemas, .agent-workflows, review prompts, and TDD prompts. GitHub Actions remain optional rather than required.",
+      "external_examples": "github/spec-kit; BMAD-METHOD; Renovate onboarding PR; AGENTS.md",
+      "ideas_to_borrow": "Use phased bootstrap: principles, specs, plan, tasks, checks. Add onboarding PR and config migration patterns.",
+      "gap_or_risk": "Current setup is powerful but split across two repos and still manual to apply consistently.",
+      "priority": "P0",
+      "primary_repo": "repo-contract-kit",
+      "backlog_items": "AGW-001; AGW-020; AGW-021",
+      "source_types": "github; google_search; reddit"
+    },
+    {
+      "feature_area": "Repo instruction layer",
+      "what_good_looks_like": "Short root instructions route to scoped files for docs, review, tests, design, security, and runtime with clear precedence and nested overrides.",
+      "our_current_state": "agent-workflow-kit has prompt files. repo-contract-kit templates AGENTS.md but does not yet emit a full instruction index across agent runtimes.",
+      "external_examples": "AGENTS.md; Claude Code CLAUDE.md; Cursor .cursor/rules; Windsurf .windsurf/rules; Devin REVIEW.md; Stitch DESIGN.md",
+      "ideas_to_borrow": "Generate AGENTS.md, REVIEW.md, DESIGN.md optional contract, .cursor/rules, .continue/rules, and compatibility notes from one canonical policy.",
+      "gap_or_risk": "Instruction drift and duplicated guidance across tools can make agents follow stale or conflicting rules.",
+      "priority": "P0",
+      "primary_repo": "repo-contract-kit",
+      "backlog_items": "AGW-002; AGW-011; AGW-012; AGW-035",
+      "source_types": "google_search; x; reddit; hacker_news"
+    },
+    {
+      "feature_area": "Instruction freshness and security",
+      "what_good_looks_like": "CI checks prove referenced paths and commands exist, rules are concise, no hidden Unicode/secrets exist, permissions are narrow, and tool-specific files do not conflict.",
+      "our_current_state": "repo-contract-kit now installs lint_agent_docs.py and a local Make target covering hidden Unicode and strict path-reference checks across common agent instruction surfaces. Command, contradiction, bloat, secrets, and SARIF remain backlog.",
+      "external_examples": "agents-lint; aidevshield; microsoft/agent-governance-toolkit; HN AGENTS.md discussion",
+      "ideas_to_borrow": "Add lints for path/script rot, bloat, contradictions, hidden Unicode, wildcard tool permissions, and prompt injection risks.",
+      "gap_or_risk": "Agent instructions become a supply-chain and correctness surface once automation starts trusting them.",
+      "priority": "P0",
+      "primary_repo": "repo-contract-kit",
+      "backlog_items": "AGW-003; AGW-004; AGW-005; AGW-006",
+      "source_types": "hacker_news; github; x"
+    },
+    {
+      "feature_area": "Evidence receipts and run observability",
+      "what_good_looks_like": "Every agent run emits machine-readable evidence: prompt/profile, diff, commands, tests, docs checks, retrieved context, findings, skipped checks, and final disposition.",
+      "our_current_state": "agent-workflow-kit now defines a local session-receipt schema and repo-contract-kit installs it into target repos. It captures agent tool, local-only status, changed files, commands, docs impact, TDD evidence, findings, and disposition.",
+      "external_examples": "OpenAI Euphony; SWE-bench/SWE-agent trajectory patterns; microsoft/agent-governance-toolkit evidence; Codex terminal/test evidence",
+      "ideas_to_borrow": "Create session-receipt.json and attach a concise receipt to review reports and PR comments.",
+      "gap_or_risk": "Without receipts, review quality is hard to audit, regress, or compare across agents.",
+      "priority": "P0",
+      "primary_repo": "agent-workflow-kit",
+      "backlog_items": "AGW-007; AGW-008; AGW-029",
+      "source_types": "x; google_scholar; github; google_search"
+    },
+    {
+      "feature_area": "Multi-agent review orchestration",
+      "what_good_looks_like": "Reviewer personas are versioned, validated, source-scoped, run in isolated workspaces when mutating, and synthesize into one severity-ranked report.",
+      "our_current_state": "agent-workflow-kit has strong persona prompts and synthesis, but no persona manifest schema, validator, or automated dispatch runner.",
+      "external_examples": "open-code-review; codex-subagents-mcp; Claude /ultrareview; SuperClaude; BMAD-METHOD",
+      "ideas_to_borrow": "Add persona manifest with allowed actions, source boundaries, expected JSON schema, and max finding budget.",
+      "gap_or_risk": "Prompts alone can duplicate work, create noisy findings, or blur read-only versus write responsibilities.",
+      "priority": "P0",
+      "primary_repo": "agent-workflow-kit",
+      "backlog_items": "AGW-009; AGW-010; AGW-013; AGW-014",
+      "source_types": "github; hacker_news; x; reddit"
+    },
+    {
+      "feature_area": "TDD and executable specs",
+      "what_good_looks_like": "Code-changing work starts from a failing test or characterization test where feasible, records red/green evidence, and treats generated tests as reviewable artifacts.",
+      "our_current_state": "agent-workflow-kit now has TDD prompt set. repo-contract-kit has test-first profile/preset, but enforcement is mostly prompt/profile-based.",
+      "external_examples": "TDD Guard; Agent Teams TDD; SWE-bench; ChatGPT unit test generation studies; Simon Willison X discussion",
+      "ideas_to_borrow": "Add receipts for failing test, passing test, generated-test provenance, and explicit exceptions when TDD is impractical.",
+      "gap_or_risk": "Prompt-level TDD can degrade into claims of testing without executable proof.",
+      "priority": "P0",
+      "primary_repo": "agent-workflow-kit",
+      "backlog_items": "AGW-015; AGW-016; AGW-017",
+      "source_types": "reddit; google_scholar; hacker_news; x"
+    },
+    {
+      "feature_area": "Docs/code contract enforcement",
+      "what_good_looks_like": "Source changes are localized to affected docs/contracts, deterministic checks gate missing docs, AI can explain or propose docs patches, and waivers are structured.",
+      "our_current_state": "repo-contract-kit has docs-impact checks and waiver semantics. agent-workflow-kit has doc-code-delta persona and learning-comments mode.",
+      "external_examples": "ReadMe GitHub AI Writer; RepoAgent; CASCADE; DocChecker; docs-as-code HN thread; Codacy AI summaries",
+      "ideas_to_borrow": "Add API-change detection, docs patch proposal mode, docs-as-tests experiment, and advisory comment/docstring drift checks.",
+      "gap_or_risk": "Docs generation is not enforcement; docs checks need confidence levels and false-positive handling.",
+      "priority": "P0",
+      "primary_repo": "repo-contract-kit",
+      "backlog_items": "AGW-018; AGW-019; AGW-030; AGW-031",
+      "source_types": "google_search; google_scholar; hacker_news"
+    },
+    {
+      "feature_area": "PR bot and slash-command surface",
+      "what_good_looks_like": "Local CLI, GitHub Action, and PR comment commands expose docs-impact, review-docs, explain-waiver, add-docs, update-changelog, and verify modes.",
+      "our_current_state": "repo-contract-kit has Makefile targets and CI templates; agent-workflow-kit has prompts but no PR bot interface.",
+      "external_examples": "PR-Agent/Qodo; CodeRabbit; Continue PR Review Bot; GitHub Copilot; Greptile; Devin Review",
+      "ideas_to_borrow": "Start with GitHub Action and local CLI, then add slash commands once structured outputs are stable.",
+      "gap_or_risk": "Going straight to autonomous comments can create noise before finding quality is controlled.",
+      "priority": "P1",
+      "primary_repo": "repo-contract-kit",
+      "backlog_items": "AGW-022; AGW-023; AGW-024; AGW-025",
+      "source_types": "google_search; github; hacker_news"
+    },
+    {
+      "feature_area": "Safe outputs and CI control plane",
+      "what_good_looks_like": "Agent jobs run read-only on untrusted PRs, emit safe JSON outputs, use allowlisted tools/network, and require human approval before write-back or merge.",
+      "our_current_state": "repo-contract-kit has profiles but not a compiled/locked agentic workflow with safe-output schemas.",
+      "external_examples": "GitHub Agentic Workflows; microsoft/agent-governance-toolkit; Mergify; SonarQube AI Code Assurance; agentic CI X discussions",
+      "ideas_to_borrow": "Define safe output schemas and strict CI mode before enabling write-back workflows.",
+      "gap_or_risk": "Agentic CI without trust boundaries can become a repo mutation and security risk.",
+      "priority": "P0",
+      "primary_repo": "repo-contract-kit",
+      "backlog_items": "AGW-026; AGW-027; AGW-028",
+      "source_types": "github; google_search; x"
+    },
+    {
+      "feature_area": "Codebase context retrieval",
+      "what_good_looks_like": "Reviewers retrieve definitions, usages, tests, docs, ADRs, runtime configs, and ownership context before making findings.",
+      "our_current_state": "Prompts instruct agents to read docs/code first, but no reusable context packer or review map command exists.",
+      "external_examples": "Sourcebot; mrge.io; AutoCodeRover; Agentless; CodeRabbit codegraph; Devin DeepWiki",
+      "ideas_to_borrow": "Add diff-to-context packer and review-map artifacts for large changes.",
+      "gap_or_risk": "Without localization and context packing, broad agents can produce generic or wrong findings.",
+      "priority": "P1",
+      "primary_repo": "agent-workflow-kit",
+      "backlog_items": "AGW-032; AGW-033; AGW-034",
+      "source_types": "hacker_news; google_scholar; google_search; github"
+    },
+    {
+      "feature_area": "Review signal and noise management",
+      "what_good_looks_like": "Reports cap findings, require severity/confidence/evidence, suppress nits by default, and track accepted/rejected/fixed outcomes.",
+      "our_current_state": "agent-workflow-kit prompts reject weak findings, but no metrics or outcome tracking exists.",
+      "external_examples": "AI code review bubble HN discussion; Code Review Automation TSE; CodeRabbit feedback memory; Cursor learned rules",
+      "ideas_to_borrow": "Add finding budgets, outcome tracking, rule-hit analytics, and accepted-finding-to-policy workflow.",
+      "gap_or_risk": "AI review can add burden if it optimizes coverage instead of reviewer attention.",
+      "priority": "P0",
+      "primary_repo": "agent-workflow-kit",
+      "backlog_items": "AGW-036; AGW-037; AGW-038",
+      "source_types": "hacker_news; google_scholar; google_search"
+    },
+    {
+      "feature_area": "Sandbox and worktree isolation",
+      "what_good_looks_like": "Write-capable agents run in separate worktrees/branches/sandboxes; read-only reviewers cannot mutate files; auto-merge is off by default.",
+      "our_current_state": "agent-workflow-kit now documents the worktree-per-task pattern, and repo-contract-kit installs make agent-task-prepare plus make agent-task-status to scaffold task branches, sibling worktrees, task packets, receipts, in-flight metadata, and a local coordination status check.",
+      "external_examples": "open-swe; Optio; Cline checkpoints; Devin isolated worktree; GitHub Copilot ephemeral Actions environment",
+      "ideas_to_borrow": "Keep improving lifecycle cleanup, locking, leases, merge handoff, active-task context packets, richer scope/actual-diff overlap detection, and the explicit human approval gate before push/merge.",
+      "gap_or_risk": "Parallel agents can conflict or accidentally include unrelated changes without isolation and a visible coordination surface.",
+      "priority": "P1",
+      "primary_repo": "repo-contract-kit",
+      "backlog_items": "AGW-039; AGW-040; AGW-061; AGW-066; AGW-067; AGW-068; AGW-069; AGW-070",
+      "source_types": "github; hacker_news; google_search; x"
+    },
+    {
+      "feature_area": "Portable skill and prompt packaging",
+      "what_good_looks_like": "One canonical prompt/skill definition exports to Codex skills, Claude commands/subagents, Cursor rules, Continue rules, Copilot instructions, and plain Markdown.",
+      "our_current_state": "agent-workflow-kit has `.codex/prompts`; repo-contract-kit has a skill and profiles, but exports are not generated from one manifest.",
+      "external_examples": "speckit-agent-skills; LambdaTest agent-skills; SuperClaude; Packmind; Claude ecosystem prompt packs",
+      "ideas_to_borrow": "Add profile manifest and generated runtime-specific projections with CI sync checks.",
+      "gap_or_risk": "Hand-maintained copies will drift across agent runtimes.",
+      "priority": "P1",
+      "primary_repo": "agent-workflow-kit",
+      "backlog_items": "AGW-041; AGW-042; AGW-043",
+      "source_types": "github; reddit; x; google_search"
+    },
+    {
+      "feature_area": "Learning and comment hygiene",
+      "what_good_looks_like": "Learning mode verifies docs, latest ADRs, existing comments, and actual code; adds only intent/invariant/context comments; stale comments are flagged or fixed.",
+      "our_current_state": "agent-workflow-kit already has a dedicated learning-comments prompt. repo-contract-kit has learning preset. No automated stale-comment checker exists.",
+      "external_examples": "DocChecker; Claude Code project memory patterns; Reddit CLAUDE.md/rules patterns; RepoAgent",
+      "ideas_to_borrow": "Add advisory stale-comment scanner and comment-only receipt proving no behavior changed.",
+      "gap_or_risk": "Comments can become trusted documentation and therefore need drift checks too.",
+      "priority": "P1",
+      "primary_repo": "agent-workflow-kit",
+      "backlog_items": "AGW-044; AGW-045",
+      "source_types": "google_scholar; reddit; github"
+    },
+    {
+      "feature_area": "Benchmarks and evals",
+      "what_good_looks_like": "Local fixture suite measures docs-impact detection, review false positives, test-first compliance, instruction freshness, and human review burden over time.",
+      "our_current_state": "Both repos have tests for implemented scripts, but no benchmark fixtures for agent workflow quality.",
+      "external_examples": "SWE-bench; SWE-agent; SWE-CI; Agentless; LLM4SE survey; Reddit paper-summary caution",
+      "ideas_to_borrow": "Create small synthetic and real-history tasks with expected outputs and receipt checks.",
+      "gap_or_risk": "Without evals, prompt changes can feel better while reducing actual signal.",
+      "priority": "P1",
+      "primary_repo": "agent-workflow-kit",
+      "backlog_items": "AGW-046; AGW-047; AGW-048",
+      "source_types": "google_scholar; hacker_news; reddit"
+    },
+    {
+      "feature_area": "Local-first and private modes",
+      "what_good_looks_like": "Users can run review and docs-governance checks locally with clear data boundaries, optional local models, and no account-state mutations.",
+      "our_current_state": "Local prompt usage is possible, but no explicit local/private profile or browser-research policy artifact exists.",
+      "external_examples": "OpenClaw private browser agent; Goose; Aider; Open Codex; Continue runner-local processing; Greptile self-hosting",
+      "ideas_to_borrow": "Add local-only mode, source-bound browser research policy, and provider/data-sent notes.",
+      "gap_or_risk": "Research and review agents can leak private code/context or mutate browser/account state if policies are implicit.",
+      "priority": "P1",
+      "primary_repo": "agent-workflow-kit",
+      "backlog_items": "AGW-049; AGW-050; AGW-051",
+      "source_types": "x; github; google_search; hacker_news"
+    },
+    {
+      "feature_area": "PR readiness and merge governance",
+      "what_good_looks_like": "A deterministic status command combines CI, docs checks, review thread state, waivers, and human approval into ready/not-ready JSON.",
+      "our_current_state": "repo-contract-kit can fail docs checks, but there is no single PR readiness surface for agents or humans.",
+      "external_examples": "gtg Good To Go; Mergify; Renovate dashboards; GitHub checks; SonarQube quality gates",
+      "ideas_to_borrow": "Build a PR readiness command before any auto-merge work; keep readiness separate from merge permission.",
+      "gap_or_risk": "Agents may loop polling CI or mistake partial green checks for merge readiness.",
+      "priority": "P2",
+      "primary_repo": "repo-contract-kit",
+      "backlog_items": "AGW-052; AGW-053",
+      "source_types": "hacker_news; google_search"
+    },
+    {
+      "feature_area": "Task packets and backlog operations",
+      "what_good_looks_like": "Backlog items are agent-ready packets with scope, acceptance criteria, verification, docs impact, risk, and owner/approval state.",
+      "our_current_state": "agent-workflow-kit now has a task-packet prompt, Markdown template, and JSON schema; repo-contract-kit has docs/backlog mirror patterns; phase-file generation remains.",
+      "external_examples": "Factory Droids; open-swe; Sweep; Reddit plan/phase workflows; GitHub Spec Kit tasks",
+      "ideas_to_borrow": "Add task packet template and phase-file generator, then use it for issue/PR handoffs.",
+      "gap_or_risk": "Loose backlog bullets are hard for agents to execute safely.",
+      "priority": "P1",
+      "primary_repo": "agent-workflow-kit",
+      "backlog_items": "AGW-054; AGW-055",
+      "source_types": "google_search; github; hacker_news; reddit"
+    }
+  ],
+  "backlog": [
+    {
+      "id": "AGW-001",
+      "priority": "P0",
+      "repo": "repo-contract-kit",
+      "theme": "bootstrap",
+      "item": "Add one-command agentic bootstrap that emits AGENTS.md, REVIEW.md, docs contract, PR template, validation commands, and evidence receipt docs.",
+      "why": "Unifies the two repos into an easy-to-run install path.",
+      "source_examples": "github/spec-kit; AGENTS.md; Renovate",
+      "delivery_shape": "Installer profile plus generated files and tests.",
+      "status": "done",
+      "completion_note": "repo-contract-kit now has an agentic preset that composes minimal, local-agentic, review-prompts, and test-first; it installs local workflows, REVIEW.md, schemas, scripts, and Make targets without hosted CI."
+    },
+    {
+      "id": "AGW-002",
+      "priority": "P0",
+      "repo": "repo-contract-kit",
+      "theme": "instruction hygiene",
+      "item": "Create an agent-instruction linter for AGENTS.md, CLAUDE.md, REVIEW.md, Cursor/Windsurf/Continue rules.",
+      "why": "Prevents path, command, contradiction, and bloat drift.",
+      "source_examples": "agents-lint; Claude Code docs; Cursor rules",
+      "delivery_shape": "scripts/lint_agent_docs.py plus CI target.",
+      "status": "partial",
+      "completion_note": "Local agent instruction linter is installed and tested for hidden Unicode and strict path references across AGENTS.md, REVIEW.md, CLAUDE/GEMINI, .agent-workflows, .codex prompts, Cursor/Continue/Windsurf rules. Command, contradiction, and bloat checks remain."
+    },
+    {
+      "id": "AGW-003",
+      "priority": "P0",
+      "repo": "repo-contract-kit",
+      "theme": "security",
+      "item": "Scan agent prompt/config files for hidden Unicode, secrets, wildcard permissions, and unsafe tool/network guidance.",
+      "why": "Agent config becomes a trusted execution surface.",
+      "source_examples": "aidevshield; microsoft/agent-governance-toolkit",
+      "delivery_shape": "Static checks with SARIF/JSON output.",
+      "status": "partial",
+      "completion_note": "Hidden Unicode scanning is covered by lint_agent_docs.py. Secrets, wildcard permissions, unsafe network/tool guidance, and SARIF/JSON security outputs remain."
+    },
+    {
+      "id": "AGW-004",
+      "priority": "P0",
+      "repo": "repo-contract-kit",
+      "theme": "instruction hygiene",
+      "item": "Add rule length, provenance, and failure-linked-rule format checks.",
+      "why": "Short rules tied to actual failure modes are more likely to help agents.",
+      "source_examples": "X CLAUDE.md minimization; HN AGENTS.md discussion",
+      "delivery_shape": "Markdown linter plus template examples.",
+      "status": "open"
+    },
+    {
+      "id": "AGW-005",
+      "priority": "P0",
+      "repo": "repo-contract-kit",
+      "theme": "security",
+      "item": "Add fork-safe read-only CI mode for agentic reviews.",
+      "why": "Untrusted PRs should never receive write-capable agent permissions.",
+      "source_examples": "GitHub Agentic Workflows; Continue PR bot; Copilot cloud agent",
+      "delivery_shape": "Workflow template with permissions tests.",
+      "status": "open"
+    },
+    {
+      "id": "AGW-006",
+      "priority": "P1",
+      "repo": "repo-contract-kit",
+      "theme": "security",
+      "item": "Emit SARIF for docs-contract and agent-safety findings.",
+      "why": "Lets GitHub Code Scanning display policy failures beside security/static analysis.",
+      "source_examples": "aidevshield; SonarQube; Codacy",
+      "delivery_shape": "SARIF writer and tests.",
+      "status": "open"
+    },
+    {
+      "id": "AGW-007",
+      "priority": "P0",
+      "repo": "agent-workflow-kit",
+      "theme": "observability",
+      "item": "Define session-receipt.json for prompt, context, diff, commands, tests, skipped checks, findings, and final disposition.",
+      "why": "Makes agent work auditable and comparable.",
+      "source_examples": "OpenAI Euphony; SWE-bench; agent-governance-toolkit",
+      "delivery_shape": "Schema, template, and example receipt.",
+      "status": "done",
+      "completion_note": "Local agent session receipt schema added to agent-workflow-kit and mirrored into repo-contract-kit templates."
+    },
+    {
+      "id": "AGW-008",
+      "priority": "P1",
+      "repo": "agent-workflow-kit",
+      "theme": "observability",
+      "item": "Add concise human summary rendered from session receipts.",
+      "why": "Humans need the evidence without reading full transcripts.",
+      "source_examples": "CodeRabbit; Devin Review; Euphony",
+      "delivery_shape": "Markdown renderer for receipt JSON.",
+      "status": "open"
+    },
+    {
+      "id": "AGW-009",
+      "priority": "P0",
+      "repo": "agent-workflow-kit",
+      "theme": "multi-agent review",
+      "item": "Create a persona manifest schema with source boundaries, allowed actions, expected output schema, max findings, and risk focus.",
+      "why": "Turns prompt personas into validated workflow components.",
+      "source_examples": "codex-subagents-mcp; open-code-review; Claude /ultrareview",
+      "delivery_shape": "personas/manifest.json plus validator.",
+      "status": "done",
+      "completion_note": "Persona manifest schema and local-first/tool-agnostic persona manifest added with read-only modes, allowed actions, finding caps, and required evidence."
+    },
+    {
+      "id": "AGW-010",
+      "priority": "P0",
+      "repo": "agent-workflow-kit",
+      "theme": "multi-agent review",
+      "item": "Add a review-synthesis JSON schema with severity, confidence, file/line, evidence, false-positive notes, and recommended action.",
+      "why": "Enables automation and noise controls.",
+      "source_examples": "Triplecheck; PR-Agent; code review automation papers",
+      "delivery_shape": "Template and schema tests.",
+      "status": "open"
+    },
+    {
+      "id": "AGW-011",
+      "priority": "P1",
+      "repo": "repo-contract-kit",
+      "theme": "runtime interop",
+      "item": "Generate REVIEW.md and optional DESIGN.md alongside AGENTS.md.",
+      "why": "Separates general agent conduct, review policy, and design intent.",
+      "source_examples": "Devin REVIEW.md; Stitch DESIGN.md; AGENTS.md",
+      "delivery_shape": "Templates and installer flags.",
+      "status": "partial",
+      "completion_note": "REVIEW.md now installs alongside AGENTS.md. Optional DESIGN.md remains future work."
+    },
+    {
+      "id": "AGW-012",
+      "priority": "P1",
+      "repo": "repo-contract-kit",
+      "theme": "runtime interop",
+      "item": "Export canonical policy to .cursor/rules, .continue/rules, .windsurf/rules, CLAUDE.md, and Copilot instructions.",
+      "why": "Reduces duplicate hand-maintained instructions across tools.",
+      "source_examples": "Cursor; Continue; Windsurf; Claude Code; Packmind",
+      "delivery_shape": "profiles/exporters with sync tests.",
+      "status": "open"
+    },
+    {
+      "id": "AGW-013",
+      "priority": "P1",
+      "repo": "agent-workflow-kit",
+      "theme": "multi-agent review",
+      "item": "Add risk classifier for high-risk diffs: auth, migrations, data deletion, CI, security, docs-contract changes, and public APIs.",
+      "why": "Deep review fleets should run where they add value.",
+      "source_examples": "Claude /ultrareview; SonarQube AI assurance",
+      "delivery_shape": "Prompt plus deterministic path/rule heuristics.",
+      "status": "done",
+      "completion_note": "scripts/classify_review_risk.py emits risk tier, trust profile, trigger rules, guidance, and persona routing; review-risk schema, prompt policy, Make target, and tests are in place."
+    },
+    {
+      "id": "AGW-014",
+      "priority": "P1",
+      "repo": "agent-workflow-kit",
+      "theme": "multi-agent review",
+      "item": "Prototype read-only multi-agent review runner that writes JSON artifacts only.",
+      "why": "Gets orchestration benefits without mutation risk.",
+      "source_examples": "codex-subagents-mcp; open-code-review",
+      "delivery_shape": "CLI wrapper or documented Codex command recipe.",
+      "status": "open"
+    },
+    {
+      "id": "AGW-015",
+      "priority": "P0",
+      "repo": "agent-workflow-kit",
+      "theme": "TDD",
+      "item": "Add red-green receipt fields to TDD prompts: failing test command/output, passing command/output, and exception reason if skipped.",
+      "why": "Prevents unverified claims of test-first work.",
+      "source_examples": "TDD Guard; ChatGPT unit test generation study",
+      "delivery_shape": "Prompt updates and receipt schema.",
+      "status": "done",
+      "completion_note": "TDD prompts and receipt schema now require failing/passing evidence, generated-test provenance, and skip/exception reasons."
+    },
+    {
+      "id": "AGW-016",
+      "priority": "P1",
+      "repo": "repo-contract-kit",
+      "theme": "TDD",
+      "item": "Make test-first profile optionally warn or block when code changes lack a red/green note.",
+      "why": "Moves from prompt preference to enforceable policy.",
+      "source_examples": "TDD Guard; Agent Teams TDD",
+      "delivery_shape": "Config option and checker tests.",
+      "status": "open"
+    },
+    {
+      "id": "AGW-017",
+      "priority": "P1",
+      "repo": "agent-workflow-kit",
+      "theme": "TDD",
+      "item": "Add generated-test provenance and human-review guidance to TDD prompts.",
+      "why": "Generated tests can encode misunderstandings.",
+      "source_examples": "FSE unit test generation study; SWE-bench",
+      "delivery_shape": "Prompt section and output template.",
+      "status": "done",
+      "completion_note": "TDD prompt set now includes generated-test provenance and human-review guidance."
+    },
+    {
+      "id": "AGW-018",
+      "priority": "P0",
+      "repo": "repo-contract-kit",
+      "theme": "docs contract",
+      "item": "Add docs-impact localizer that maps changed code paths to likely docs, ADRs, examples, changelog, and tests.",
+      "why": "Improves precision before invoking broad agent review.",
+      "source_examples": "Agentless; AutoCodeRover; Sourcebot",
+      "delivery_shape": "Script plus config mapping.",
+      "status": "done",
+      "completion_note": "localize_doc_impact.py emits local JSON mapping changed files to doc-impact categories and suggested doc paths."
+    },
+    {
+      "id": "AGW-019",
+      "priority": "P1",
+      "repo": "repo-contract-kit",
+      "theme": "docs contract",
+      "item": "Add docs patch proposal mode that writes reviewable patch artifacts, not direct commits by default.",
+      "why": "Separates detection from generation and approval.",
+      "source_examples": "ReadMe GitHub AI Writer; RepoAgent",
+      "delivery_shape": "Prompt/profile and artifact directory.",
+      "status": "open"
+    },
+    {
+      "id": "AGW-020",
+      "priority": "P1",
+      "repo": "repo-contract-kit",
+      "theme": "bootstrap",
+      "item": "Add onboarding PR generator for installing repo-contract-kit into an existing repo.",
+      "why": "Renovate-style onboarding is familiar and reviewable.",
+      "source_examples": "Renovate; Spec Kit",
+      "delivery_shape": "CLI mode with generated branch instructions.",
+      "status": "open"
+    },
+    {
+      "id": "AGW-021",
+      "priority": "P2",
+      "repo": "repo-contract-kit",
+      "theme": "bootstrap",
+      "item": "Add config migration command when profile schema changes.",
+      "why": "Keeps installed repos current without manual diffing.",
+      "source_examples": "Renovate config migrations; Packmind pull",
+      "delivery_shape": "upgrade subcommand.",
+      "status": "open"
+    },
+    {
+      "id": "AGW-022",
+      "priority": "P1",
+      "repo": "repo-contract-kit",
+      "theme": "PR interface",
+      "item": "Create GitHub Action that comments docs-contract status with links to policy docs and next actions.",
+      "why": "Makes policy visible in the normal PR flow.",
+      "source_examples": "Continue PR Review Bot; PR-Agent; Codacy",
+      "delivery_shape": "workflow template and comment renderer.",
+      "status": "open"
+    },
+    {
+      "id": "AGW-023",
+      "priority": "P1",
+      "repo": "repo-contract-kit",
+      "theme": "PR interface",
+      "item": "Define slash-command grammar: /docs-impact, /waive-docs, /review-docs, /add-docs, /update-changelog.",
+      "why": "Gives humans precise control over agent actions.",
+      "source_examples": "Qodo Merge; PR-Agent; Greptile mention trigger",
+      "delivery_shape": "Spec first, implementation later.",
+      "status": "open"
+    },
+    {
+      "id": "AGW-024",
+      "priority": "P2",
+      "repo": "repo-contract-kit",
+      "theme": "PR interface",
+      "item": "Add changelog-update helper tied to docs-impact results.",
+      "why": "Release notes are part of docs drift.",
+      "source_examples": "Qodo /update_changelog; docs-as-code",
+      "delivery_shape": "Template and checker.",
+      "status": "open"
+    },
+    {
+      "id": "AGW-025",
+      "priority": "P2",
+      "repo": "repo-contract-kit",
+      "theme": "PR interface",
+      "item": "Add docs Q&A/readme explainer mode for repo docs folder.",
+      "why": "Helps developers understand policy before waiving it.",
+      "source_examples": "Qodo /ask; Devin codebase chat",
+      "delivery_shape": "Prompt and local-only recipe.",
+      "status": "open"
+    },
+    {
+      "id": "AGW-026",
+      "priority": "P0",
+      "repo": "repo-contract-kit",
+      "theme": "CI control plane",
+      "item": "Define safe-output JSON schemas for docs-required findings, waiver requests, and proposed docs patches.",
+      "why": "Lets agentic CI consume outputs without arbitrary writes.",
+      "source_examples": "GitHub Agentic Workflows; agent-governance-toolkit",
+      "delivery_shape": "JSON schemas and examples.",
+      "status": "done",
+      "completion_note": "safe-output.schema.json added and installed under .agent-workflows/schemas for bounded local agent outputs."
+    },
+    {
+      "id": "AGW-027",
+      "priority": "P1",
+      "repo": "repo-contract-kit",
+      "theme": "CI control plane",
+      "item": "Add strict mode that fails when required evidence is missing or malformed.",
+      "why": "Evidence must be enforceable in CI.",
+      "source_examples": "agent-governance-toolkit strict CI; SonarQube gates",
+      "delivery_shape": "Checker mode and tests.",
+      "status": "open"
+    },
+    {
+      "id": "AGW-028",
+      "priority": "P1",
+      "repo": "repo-contract-kit",
+      "theme": "CI control plane",
+      "item": "Add network/tool allowlist notes for agentic CI jobs.",
+      "why": "Agent jobs need explicit boundaries.",
+      "source_examples": "GitHub Agentic Workflows; HN agentic CI discussion",
+      "delivery_shape": "Workflow docs and templates.",
+      "status": "done",
+      "completion_note": "repo-contract-kit installs docs/ops/agent-tool-network-allowlist.md, adds review-risk/trust-profile context to agent-start packets and receipts, and refreshes installed review policy docs."
+    },
+    {
+      "id": "AGW-029",
+      "priority": "P2",
+      "repo": "agent-workflow-kit",
+      "theme": "observability",
+      "item": "Add `codex-review trace` concept for opening or exporting run evidence.",
+      "why": "Supports transcript review and debugging.",
+      "source_examples": "OpenAI Euphony",
+      "delivery_shape": "Docs first; CLI later.",
+      "status": "open"
+    },
+    {
+      "id": "AGW-030",
+      "priority": "P2",
+      "repo": "repo-contract-kit",
+      "theme": "docs contract",
+      "item": "Prototype docs-as-tests for API docs in an experimental profile.",
+      "why": "Some documentation claims can be validated as behavior.",
+      "source_examples": "CASCADE",
+      "delivery_shape": "Experimental profile with high-confidence only.",
+      "status": "open"
+    },
+    {
+      "id": "AGW-031",
+      "priority": "P2",
+      "repo": "agent-workflow-kit",
+      "theme": "docs contract",
+      "item": "Add advisory code-comment/docstring drift prompt and false-positive labels.",
+      "why": "Inline comments should be maintained like docs but should not block CI initially.",
+      "source_examples": "DocChecker",
+      "delivery_shape": "Prompt and output labels.",
+      "status": "open"
+    },
+    {
+      "id": "AGW-032",
+      "priority": "P1",
+      "repo": "agent-workflow-kit",
+      "theme": "context retrieval",
+      "item": "Create diff-to-context packer guidance: changed files, callers, tests, docs, ADRs, scripts, and runtime configs.",
+      "why": "Improves review grounding.",
+      "source_examples": "Sourcebot; mrge.io; AutoCodeRover",
+      "delivery_shape": "Prompt plus optional script spike.",
+      "status": "open"
+    },
+    {
+      "id": "AGW-033",
+      "priority": "P2",
+      "repo": "agent-workflow-kit",
+      "theme": "context retrieval",
+      "item": "Add review-map artifact for large changesets.",
+      "why": "Helps humans and agents navigate broad diffs.",
+      "source_examples": "open-code-review; Devin Review",
+      "delivery_shape": "Markdown/JSON template.",
+      "status": "open"
+    },
+    {
+      "id": "AGW-034",
+      "priority": "P2",
+      "repo": "agent-workflow-kit",
+      "theme": "context retrieval",
+      "item": "Investigate LSP-backed context lookup for local review runner.",
+      "why": "Definitions/usages beat raw file stuffing for large repos.",
+      "source_examples": "mrge.io; Sourcebot",
+      "delivery_shape": "Spike note.",
+      "status": "open"
+    },
+    {
+      "id": "AGW-035",
+      "priority": "P2",
+      "repo": "repo-contract-kit",
+      "theme": "instruction layer",
+      "item": "Add optional project/user/private context templates with privacy warnings.",
+      "why": "Some workflows need user/project preferences but should not leak secrets.",
+      "source_examples": "Reddit SOUL/USER/AGENTS context; Claude private memory split",
+      "delivery_shape": "Templates and gitignore guidance.",
+      "status": "open"
+    },
+    {
+      "id": "AGW-036",
+      "priority": "P0",
+      "repo": "agent-workflow-kit",
+      "theme": "review quality",
+      "item": "Add review finding budget and no-nit default to synthesis prompts.",
+      "why": "AI review must optimize signal-to-noise.",
+      "source_examples": "HN AI code review bubble; TSE review automation",
+      "delivery_shape": "Prompt updates.",
+      "status": "done",
+      "completion_note": "Review synthesis and finding templates now include finding budgets, no-nit defaults, dispositions, and false-positive notes."
+    },
+    {
+      "id": "AGW-037",
+      "priority": "P1",
+      "repo": "agent-workflow-kit",
+      "theme": "review quality",
+      "item": "Track finding outcomes: accepted, rejected, stale, fixed, duplicate, false positive.",
+      "why": "Feedback turns reviews into measurable process improvement.",
+      "source_examples": "CodeRabbit feedback memory; Cursor learned rules",
+      "delivery_shape": "Receipt schema extension.",
+      "status": "done",
+      "completion_note": "Session receipt schema and synthesis prompt now track finding status/disposition values."
+    },
+    {
+      "id": "AGW-038",
+      "priority": "P1",
+      "repo": "repo-contract-kit",
+      "theme": "review quality",
+      "item": "Add accepted-finding-to-policy workflow for promoting lessons into rules.",
+      "why": "Useful findings should harden future runs without bloating AGENTS.md.",
+      "source_examples": "Cursor learned rules; Mozilla cq discussion",
+      "delivery_shape": "Docs and template.",
+      "status": "done",
+      "completion_note": "repo-contract-kit now installs docs/ops/agent-instruction-hygiene.md and .agent-workflows/instruction-budgets.json, and lint_agent_docs.py checks warning/error budgets for AGENTS.md, REVIEW.md, runtime rule files, and prompt docs."
+    },
+    {
+      "id": "AGW-039",
+      "priority": "P1",
+      "repo": "agent-workflow-kit",
+      "theme": "isolation",
+      "item": "Document worktree-per-task runner pattern for write-capable agents.",
+      "why": "Parallel work needs isolation and scoped diffs.",
+      "source_examples": "Optio; open-swe; Superpowers",
+      "delivery_shape": "Recipe and safety checklist.",
+      "status": "done",
+      "completion_note": "Added docs/worktree-per-task-runner.md and local-flow guidance so write-capable agent tasks use a separate branch/worktree, explicit scope, task packet, receipt template, overlap checks, and human approval before git or PR mutation."
+    },
+    {
+      "id": "AGW-040",
+      "priority": "P1",
+      "repo": "agent-workflow-kit",
+      "theme": "isolation",
+      "item": "Add read-only reviewer sandbox policy.",
+      "why": "Reviewers should not mutate files by default.",
+      "source_examples": "cross-model read-only reviewer Reddit thread; agentic CI safety",
+      "delivery_shape": "Prompt profile and manifest flag.",
+      "status": "done",
+      "completion_note": "Added policies/read-only-reviewer-sandbox.md and persona-manifest review_policies metadata so review personas default to no source writes, git mutation, account mutation, or non-allowlisted network calls."
+    },
+    {
+      "id": "AGW-041",
+      "priority": "P1",
+      "repo": "agent-workflow-kit",
+      "theme": "packaging",
+      "item": "Create canonical prompt/skill manifest that generates Codex prompts and future runtime projections.",
+      "why": "Prevents drift between formats.",
+      "source_examples": "speckit-agent-skills; LambdaTest agent-skills",
+      "delivery_shape": "manifest plus generator tests.",
+      "status": "open"
+    },
+    {
+      "id": "AGW-042",
+      "priority": "P1",
+      "repo": "agent-workflow-kit",
+      "theme": "packaging",
+      "item": "Add skill-pack export target for Codex skills.",
+      "why": "Makes the kit easier to install into Codex runtimes.",
+      "source_examples": "OpenAI/Codex skills; LambdaTest agent-skills",
+      "delivery_shape": "Export script and docs.",
+      "status": "open"
+    },
+    {
+      "id": "AGW-043",
+      "priority": "P2",
+      "repo": "agent-workflow-kit",
+      "theme": "packaging",
+      "item": "Add compatibility matrix for Codex, Claude Code, Cursor, Continue, Copilot, Goose, Aider, Cline/Roo.",
+      "why": "Clarifies which artifacts each runtime consumes.",
+      "source_examples": "Packmind; agentapi; ecosystem docs",
+      "delivery_shape": "docs/runtime-compatibility.md.",
+      "status": "open"
+    },
+    {
+      "id": "AGW-044",
+      "priority": "P1",
+      "repo": "agent-workflow-kit",
+      "theme": "learning",
+      "item": "Add comment-only receipt proving no behavior changes occurred in learning-comments mode.",
+      "why": "Learning comments should stay behavior-neutral.",
+      "source_examples": "DocChecker; learning-comments prompt requirements",
+      "delivery_shape": "Prompt output template.",
+      "status": "open"
+    },
+    {
+      "id": "AGW-045",
+      "priority": "P2",
+      "repo": "agent-workflow-kit",
+      "theme": "learning",
+      "item": "Add latest-ADR discovery guidance and fallback behavior when ADRs do not exist.",
+      "why": "Learning mode depends on design context.",
+      "source_examples": "RepoAgent; Claude project memory",
+      "delivery_shape": "Prompt refinement.",
+      "status": "open"
+    },
+    {
+      "id": "AGW-046",
+      "priority": "P1",
+      "repo": "agent-workflow-kit",
+      "theme": "evals",
+      "item": "Build small benchmark suite for docs-impact false positives/negatives.",
+      "why": "Validates repo-contract-kit behavior before broader automation.",
+      "source_examples": "SWE-bench; SWE-CI; Agentless",
+      "delivery_shape": "fixtures and expected outputs.",
+      "status": "open"
+    },
+    {
+      "id": "AGW-047",
+      "priority": "P1",
+      "repo": "agent-workflow-kit",
+      "theme": "evals",
+      "item": "Add prompt regression tests for persona output schemas and finding quality.",
+      "why": "Prompt changes need measurable checks.",
+      "source_examples": "Prompt engineering pattern SLR; AGENTS.md eval discussion",
+      "delivery_shape": "Golden examples and validator.",
+      "status": "open"
+    },
+    {
+      "id": "AGW-048",
+      "priority": "P2",
+      "repo": "agent-workflow-kit",
+      "theme": "metrics",
+      "item": "Track review yield, false-positive rate, cost/latency, time-to-green, and human review burden.",
+      "why": "Prevents productivity-only claims.",
+      "source_examples": "Copilot productivity study; TSE review automation; Reddit agent papers thread",
+      "delivery_shape": "Metrics schema and README caveat.",
+      "status": "open"
+    },
+    {
+      "id": "AGW-049",
+      "priority": "P1",
+      "repo": "agent-workflow-kit",
+      "theme": "local-first",
+      "item": "Add local/private review mode with explicit data-sent and provider notes.",
+      "why": "Private repos need clear boundaries.",
+      "source_examples": "Goose; Aider; Continue; Open Codex",
+      "delivery_shape": "Profile and docs.",
+      "status": "done",
+      "completion_note": "Added policies/local-private-review.md with data-boundary, provider-note, and stop-condition guidance for private or local-only reviews."
+    },
+    {
+      "id": "AGW-050",
+      "priority": "P1",
+      "repo": "agent-workflow-kit",
+      "theme": "research agents",
+      "item": "Add read-only browser research agent policy: no posts, likes, bookmarks, follows, DMs, account mutations, or CAPTCHA bypass.",
+      "why": "Browser research needs clear source and account safety.",
+      "source_examples": "OpenClaw; this X/Reddit/Scholar research run",
+      "delivery_shape": "research-agent-policy.md.",
+      "status": "done",
+      "completion_note": "Added policies/browser-research-agent.md with allowed read-only collection, forbidden account mutations, source-quality rules, and receipt requirements."
+    },
+    {
+      "id": "AGW-051",
+      "priority": "P2",
+      "repo": "agent-workflow-kit",
+      "theme": "local-first",
+      "item": "Add local-model compatibility notes for review-only tasks.",
+      "why": "Local models can help privacy but need capability expectations.",
+      "source_examples": "Open Codex; Triplecheck; Goose",
+      "delivery_shape": "Docs and caveats.",
+      "status": "open"
+    },
+    {
+      "id": "AGW-052",
+      "priority": "P2",
+      "repo": "repo-contract-kit",
+      "theme": "PR readiness",
+      "item": "Create PR-ready JSON command combining CI, docs-contract status, waiver state, and review disposition.",
+      "why": "Agents need deterministic stop/readiness signals.",
+      "source_examples": "gtg Good To Go; Mergify",
+      "delivery_shape": "CLI spec first.",
+      "status": "open"
+    },
+    {
+      "id": "AGW-053",
+      "priority": "P2",
+      "repo": "repo-contract-kit",
+      "theme": "PR readiness",
+      "item": "Add merge-condition examples for branch protection and merge queues.",
+      "why": "Docs contract should be a merge prerequisite where desired.",
+      "source_examples": "Mergify; SonarQube quality gates",
+      "delivery_shape": "Docs and GitHub examples.",
+      "status": "open"
+    },
+    {
+      "id": "AGW-054",
+      "priority": "P1",
+      "repo": "agent-workflow-kit",
+      "theme": "task packets",
+      "item": "Add task-packet template with scope, acceptance criteria, validation, docs impact, risk, and human approval state.",
+      "why": "Backlog items need to be executable by agents.",
+      "source_examples": "Spec Kit tasks; Factory Droids; Sweep",
+      "delivery_shape": "Template and prompt.",
+      "status": "done",
+      "completion_note": "Added .codex/prompts/task-packet.md, .codex/prompts/templates/task-packet.md, and schemas/task-packet.schema.json so backlog rows, issues, findings, and broad requests can become scoped agent handoffs."
+    },
+    {
+      "id": "AGW-055",
+      "priority": "P2",
+      "repo": "agent-workflow-kit",
+      "theme": "task packets",
+      "item": "Add phase-file generator for large reviews and implementations.",
+      "why": "Keeps fresh agent sessions aligned across phases.",
+      "source_examples": "Reddit plan/phase workflows; BMAD-METHOD",
+      "delivery_shape": "Prompt/template first.",
+      "status": "open"
+    }
+  ],
+  "top_takeaways": [
+    "The core should be a local repo-owned system, not a GitHub Actions dependency: bootstrap, instruction layer, deterministic checks, focused prompts, receipts, and optional adapters.",
+    "repo-contract-kit should remain the installer and local policy/check layer; agent-workflow-kit should remain the prompt/persona/TDD layer until a shared manifest/exporter matures.",
+    "AmpCode, Codex, and other agents should consume the same Markdown prompts and JSON schemas; tool-native folders are convenience projections only.",
+    "The first implemented slice now covers local agentic bootstrap, receipt schemas, persona manifest, TDD evidence, docs-impact localization, safe output schema, and review noise controls.",
+    "The next quality jump is hardening: command/reference linting, secret and unsafe-permission checks, schema validation for receipts, and a local runner that writes JSON artifacts.",
+    "Hosted CI, GitHub comments, slash commands, and branch protection should be optional adapters layered over the local contract, not prerequisites."
+  ],
+  "implementation_update": {
+    "date": "2026-04-29",
+    "constraint": "Local-only, agent-tool-agnostic baseline for Codex at home and AmpCode at work; GitHub Actions and hosted CI are optional adapters only.",
+    "completed_agws": [
+      "AGW-001",
+      "AGW-007",
+      "AGW-009",
+      "AGW-015",
+      "AGW-017",
+      "AGW-018",
+      "AGW-026",
+      "AGW-036",
+      "AGW-037"
+    ],
+    "partial_agws": [
+      "AGW-002",
+      "AGW-003",
+      "AGW-011"
+    ],
+    "local_validation": [
+      "repo-contract-kit: python3 -m unittest discover -s tests",
+      "installed agentic preset: make agent-docs-lint",
+      "installed agentic preset: make agent-verify",
+      "agent-workflow-kit and repo-contract-kit JSON artifacts parsed with python3 -m json.tool"
+    ]
+  }
+}

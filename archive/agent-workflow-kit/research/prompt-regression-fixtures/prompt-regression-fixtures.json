@@ -1,0 +1,338 @@
+{
+  "schema_version": 1,
+  "suite": {
+    "name": "prompt-regression-fixtures",
+    "purpose": "Small deterministic fixtures for checking persona output schema handling, finding quality, and synthesis duplicate discipline.",
+    "source_backlog": "AGW-047"
+  },
+  "cases": [
+    {
+      "id": "PRF-001",
+      "title": "Evidence-backed persona finding passes",
+      "intent": "valid-persona-finding",
+      "payload_type": "persona",
+      "persona_id": "test-behavior-risk",
+      "payload": {
+        "schema_version": 1,
+        "run_id": "prompt-regression",
+        "persona_id": "test-behavior-risk",
+        "status": "complete",
+        "findings": [
+          {
+            "id": "TBR-001",
+            "priority": "P2",
+            "area": "tests",
+            "title": "Prompt regression runner is not covered by focused tests",
+            "confidence": "high",
+            "evidence": [
+              "tests/test_prompt_regression_fixtures.py:1 should exercise the deterministic runner and fixture shape."
+            ],
+            "recommendation": "Add focused unit tests that call the prompt regression runner and assert valid and invalid golden payload outcomes.",
+            "status": "open",
+            "false_positive_notes": "none found"
+          }
+        ],
+        "notes": []
+      },
+      "expected": {
+        "status": "pass",
+        "reason_contains": []
+      },
+      "rationale": "A valid persona payload should pass when it has required fields, concrete evidence, a recommendation, an actionable status, and false-positive notes."
+    },
+    {
+      "id": "PRF-002",
+      "title": "Malformed persona payload fails required fields and evidence",
+      "intent": "malformed-persona-payload",
+      "payload_type": "persona",
+      "persona_id": "test-behavior-risk",
+      "payload": {
+        "schema_version": 1,
+        "run_id": "prompt-regression",
+        "persona_id": "test-behavior-risk",
+        "status": "complete",
+        "findings": [
+          {
+            "id": "TBR-002",
+            "priority": "P2",
+            "area": "tests",
+            "title": "Missing regression coverage",
+            "confidence": "medium",
+            "evidence": [],
+            "status": "open"
+          }
+        ],
+        "notes": []
+      },
+      "expected": {
+        "status": "fail",
+        "reason_contains": [
+          "missing required fields: recommendation",
+          "must include at least one evidence item"
+        ]
+      },
+      "rationale": "The existing persona payload validator must continue to reject missing required fields and empty evidence arrays."
+    },
+    {
+      "id": "PRF-003",
+      "title": "Low-signal nit stays out of open findings",
+      "intent": "low-signal-nit-finding",
+      "payload_type": "persona",
+      "persona_id": "doc-code-delta",
+      "payload": {
+        "schema_version": 1,
+        "run_id": "prompt-regression",
+        "persona_id": "doc-code-delta",
+        "status": "complete",
+        "findings": [
+          {
+            "id": "DCD-001",
+            "priority": "P3",
+            "area": "docs",
+            "title": "Nit: heading casing is inconsistent",
+            "confidence": "medium",
+            "evidence": [
+              "README.md:12 uses title case while a nearby heading uses sentence case."
+            ],
+            "recommendation": "Rename the heading for style consistency.",
+            "status": "open",
+            "false_positive_notes": "The team may prefer title case in top-level headings."
+          }
+        ],
+        "notes": []
+      },
+      "expected": {
+        "status": "fail",
+        "reason_contains": [
+          "low-signal nit must be rejected, deferred, or marked duplicate"
+        ]
+      },
+      "rationale": "Open findings should not carry cosmetic nits unless they include a concrete correctness, security, documentation, delivery, or maintainability risk."
+    },
+    {
+      "id": "PRF-004",
+      "title": "Merged synthesis finding preserves source personas",
+      "intent": "synthesis-duplicate-merged",
+      "payload_type": "synthesis",
+      "payload": {
+        "schema_version": 1,
+        "run": {
+          "run_id": "prompt-regression",
+          "mode": "drift",
+          "synthesized_at": "2026-06-15T00:00:00Z",
+          "source_artifacts": [
+            ".agent-workflows/runs/prompt-regression/review-run/personas/test-behavior-risk/findings.json",
+            ".agent-workflows/runs/prompt-regression/review-run/personas/doc-code-delta/findings.json"
+          ]
+        },
+        "summary": [
+          "Prompt regression fixtures are present and deterministic."
+        ],
+        "findings": [
+          {
+            "id": "SYN-001",
+            "priority": "P2",
+            "severity": "medium",
+            "area": "tests",
+            "title": "Prompt regression fixtures need validation coverage",
+            "confidence": "high",
+            "source_personas": [
+              "test-behavior-risk",
+              "doc-code-delta"
+            ],
+            "file": "Makefile",
+            "line": 95,
+            "evidence": [
+              "Makefile:95 runs local validation gates that should include prompt regression fixtures."
+            ],
+            "impact": "Prompt output regressions could ship without a deterministic local check.",
+            "recommendation": "Run the prompt regression fixture runner from the local validation path.",
+            "verification": "PYTHONDONTWRITEBYTECODE=1 python3 scripts/run_prompt_regression_fixtures.py",
+            "status": "open",
+            "false_positive_notes": "none found",
+            "related_finding_ids": [
+              "TBR-001",
+              "DCD-001"
+            ]
+          }
+        ],
+        "remediation_batches": [
+          {
+            "id": "BATCH-001",
+            "objective": "Wire prompt regression fixture checks into local validation.",
+            "files_likely_touched": [
+              "Makefile",
+              "scripts/run_prompt_regression_fixtures.py",
+              "tests/test_prompt_regression_fixtures.py"
+            ],
+            "findings_addressed": [
+              "SYN-001"
+            ],
+            "suggested_owner": "agent-workflow-kit",
+            "verification": "PYTHONDONTWRITEBYTECODE=1 make agent-verify",
+            "risk_if_deferred": "Prompt schema and quality regressions remain unchecked."
+          }
+        ],
+        "needs_human_decision": [],
+        "not_recommended": [
+          {
+            "title": "Keep separate persona findings for the same validation gap",
+            "reason": "The synthesis finding already preserves both source personas and strongest evidence."
+          }
+        ],
+        "disposition": {
+          "overall_status": "pass",
+          "summary": "Merged duplicate persona concerns into one evidence-backed synthesis finding.",
+          "next_actions": [
+            "Run the prompt regression fixture suite in local validation."
+          ]
+        }
+      },
+      "expected": {
+        "status": "pass",
+        "reason_contains": []
+      },
+      "rationale": "A synthesis payload should pass when overlapping persona concerns are merged, source personas are preserved, and rejected duplicate work is recorded."
+    },
+    {
+      "id": "PRF-005",
+      "title": "Duplicate synthesis findings fail without merge or duplicate disposition",
+      "intent": "duplicate-synthesis-findings",
+      "payload_type": "synthesis",
+      "payload": {
+        "schema_version": 1,
+        "run": {
+          "run_id": "prompt-regression",
+          "mode": "drift",
+          "synthesized_at": "2026-06-15T00:00:00Z",
+          "source_artifacts": [
+            ".agent-workflows/runs/prompt-regression/review-run/personas/test-behavior-risk/findings.json",
+            ".agent-workflows/runs/prompt-regression/review-run/personas/doc-code-delta/findings.json"
+          ]
+        },
+        "summary": [
+          "Two reviewers reported the same missing fixture coverage."
+        ],
+        "findings": [
+          {
+            "id": "SYN-002",
+            "priority": "P2",
+            "severity": "medium",
+            "area": "tests",
+            "title": "Prompt regression fixtures need validation coverage",
+            "confidence": "high",
+            "source_personas": [
+              "test-behavior-risk"
+            ],
+            "file": "Makefile",
+            "line": 95,
+            "evidence": [
+              "Makefile:95 runs local validation gates that should include prompt regression fixtures."
+            ],
+            "impact": "Prompt output regressions could ship without a deterministic local check.",
+            "recommendation": "Run the prompt regression fixture runner from the local validation path.",
+            "verification": "PYTHONDONTWRITEBYTECODE=1 python3 scripts/run_prompt_regression_fixtures.py",
+            "status": "open",
+            "false_positive_notes": "none found"
+          },
+          {
+            "id": "SYN-003",
+            "priority": "P2",
+            "severity": "medium",
+            "area": "docs",
+            "title": "Prompt regression fixtures need validation coverage",
+            "confidence": "high",
+            "source_personas": [
+              "doc-code-delta"
+            ],
+            "file": "Makefile",
+            "line": 95,
+            "evidence": [
+              "Makefile:95 runs local validation gates that should include prompt regression fixtures."
+            ],
+            "impact": "Prompt output regressions could ship without a deterministic local check.",
+            "recommendation": "Run the prompt regression fixture runner from the local validation path.",
+            "verification": "PYTHONDONTWRITEBYTECODE=1 python3 scripts/run_prompt_regression_fixtures.py",
+            "status": "open",
+            "false_positive_notes": "none found"
+          }
+        ],
+        "remediation_batches": [],
+        "needs_human_decision": [],
+        "not_recommended": [],
+        "disposition": {
+          "overall_status": "pass",
+          "summary": "Duplicate findings were not merged.",
+          "next_actions": [
+            "Review both findings separately."
+          ]
+        }
+      },
+      "expected": {
+        "status": "fail",
+        "reason_contains": [
+          "duplicates finding 1 without duplicate disposition or merge"
+        ]
+      },
+      "rationale": "Synthesis should merge overlapping persona findings or mark later duplicates instead of returning separate active findings for the same evidence."
+    },
+    {
+      "id": "PRF-006",
+      "title": "Advisory comment and docstring drift labels pass",
+      "intent": "comment-docstring-drift-labels",
+      "payload_type": "persona",
+      "persona_id": "doc-code-delta",
+      "payload": {
+        "schema_version": 1,
+        "run_id": "prompt-regression",
+        "persona_id": "doc-code-delta",
+        "status": "complete",
+        "findings": [
+          {
+            "id": "DCD-031",
+            "priority": "P2",
+            "area": "docs",
+            "labels": [
+              "comment-drift",
+              "stale-comment",
+              "misleading-comment"
+            ],
+            "title": "Retry comment overstates the current runtime behavior",
+            "confidence": "high",
+            "evidence": [
+              "src/sync.py:42 maintained comment says the retry loop stops after one retry.",
+              "src/sync.py:112 implementation and tests/test_sync.py:88 show the current runtime retries three times before surfacing an error."
+            ],
+            "recommendation": "Update or remove the maintained comment after confirming the intended retry behavior; do not add a scanner or CI gate.",
+            "status": "open",
+            "false_positive_notes": "Generated or vendored comments would be false positives, but src/sync.py is maintained source; intentionally historical comments should use intentionally-stable-comment instead."
+          },
+          {
+            "id": "DCD-032",
+            "priority": "P3",
+            "area": "docs",
+            "labels": [
+              "docstring-drift",
+              "stale-docstring"
+            ],
+            "title": "Public docstring disagrees with the documented missing-user path",
+            "confidence": "medium",
+            "evidence": [
+              "api/client.py:12 public docstring says get_user returns None when a user is missing.",
+              "tests/test_client.py:44 and docs/api.md:31 document the current implementation raising NotFoundError for missing users."
+            ],
+            "recommendation": "Treat this as advisory documentation hygiene unless the public API compatibility decision makes the stale docstring user-facing.",
+            "status": "open",
+            "false_positive_notes": "If this were a framework convention, simplified example, generated client docstring, or speculative low-confidence drift, it should be deferred or labeled generated-or-vendored-comment or low-confidence-drift."
+          }
+        ],
+        "notes": []
+      },
+      "expected": {
+        "status": "pass",
+        "reason_contains": []
+      },
+      "rationale": "Comment/docstring drift output should remain advisory while preserving labels, two-sided evidence, and explicit false-positive handling."
+    }
+  ]
+}

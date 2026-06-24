@@ -1,0 +1,279 @@
+{
+  "schema_version": 1,
+  "task": {
+    "id": "AGW-055",
+    "title": "Add phase-file generator for large reviews and implementations.",
+    "priority": "P2",
+    "status": "approved",
+    "source": {
+      "type": "backlog",
+      "reference": "research/agentic-workflow-review/backlog.csv:56"
+    }
+  },
+  "context": {
+    "repo_root": "/Volumes/Myrtle/Code/04_Code/Codex_CodeReview",
+    "mode": "verification",
+    "problem_statement": "Large reviews and implementations need phase files so fresh agent sessions can resume a bounded phase without reconstructing the whole plan.",
+    "background": [
+      "AGW-054 established source task-packet prompt, template, and schema surfaces.",
+      "AGW-055 is prompt/template-first source work for agent-workflow-kit, not an installed repo-contract-kit command.",
+      "Current backlog status is 4 open, 97 done, 0 partial; AGW-055 is the next open item.",
+      "Current source checkout is clean before this packet is written, and agent-task-status reports zero active tasks and no coordination warnings."
+    ],
+    "non_goals": [
+      "Do not add a hosted planning service, backlog UI, or external memory adapter.",
+      "Do not change repo-contract-kit installed target commands unless source prompt changes expose a strictly necessary generated adapter sync.",
+      "Do not implement GitHub, Reddit, BMAD, Keryx, Obsidian, or issue-tracker integration in this slice.",
+      "Do not replace the existing task-packet contract; add phase-file guidance as an extension for large work."
+    ]
+  },
+  "previous_task_state": {
+    "report_sources": [
+      "make backlog-status",
+      "make agent-next",
+      "make agent-task-status",
+      "make kit-status KIT=/Volumes/Myrtle/Code/04_Code/repo-contract-kit",
+      "repo-contract-kit AGW-053 validation and Codex_CodeReview closeout commits"
+    ],
+    "active_tasks": [],
+    "unresolved_blockers": [],
+    "dirty_or_stale_state": [],
+    "finalizer_receipt_paths": [
+      "Codex_CodeReview commit 35da7a8 closes AGW-053 source state",
+      "repo-contract-kit commit be27b2f implements AGW-053"
+    ],
+    "blocker_receipt_paths": [],
+    "allowed_to_start": true,
+    "notes": "AGW-055 may start after this packet commit; no active sibling tasks or dirty source files were reported before packet creation."
+  },
+  "closeout_required_before_start": {
+    "decision": "safe-start",
+    "reason": "Prior AGW-053 work is committed in both repo-contract-kit and Codex_CodeReview, kit-status is current, and task-status reports no active tasks.",
+    "required_next_step": "Commit this AGW-055 packet, then implement only the scoped source prompt/template/schema/docs work.",
+    "evidence_paths": [
+      "research/agentic-workflow-review/backlog.csv:56",
+      "research/agentic-workflow-review/summary.md",
+      "research/agentic-workflow-review/task-packets/agw-055-phase-file-generator.json",
+      "research/agentic-workflow-review/task-packets/agw-055-phase-file-generator.md"
+    ]
+  },
+  "goal_alignment": {
+    "repo_goal": "agent-workflow-kit is the canonical local-first workflow prompt source; repo-contract-kit is only the install layer.",
+    "area_contracts": [
+      {
+        "path": "workflows/prompts/",
+        "purpose": "Canonical workflow prompt source for task-packet and implementation handoffs.",
+        "source": "AGENTS.md; workflows/manifest.json; docs/using-the-prompt-kit.md",
+        "status": "aligned",
+        "notes": "AGW-055 is source prompt/template-first work."
+      },
+      {
+        "path": "schemas/",
+        "purpose": "Machine-readable contracts for source workflow artifacts.",
+        "source": "schemas/task-packet.schema.json; docs/using-the-prompt-kit.md",
+        "status": "aligned",
+        "notes": "Schema changes are allowed if phase-file metadata needs structured validation."
+      },
+      {
+        "path": "docs/",
+        "purpose": "Repository documentation, runbooks, decisions, and operator-facing guidance.",
+        "source": ".agent-workflows/area-contracts.json",
+        "status": "aligned",
+        "notes": "Docs must explain when to use phase files and how they relate to task packets."
+      }
+    ],
+    "alignment_decision": "aligned",
+    "adaptation_needed": false,
+    "stop_conditions": [
+      "Stop before implementation if the scope turns into an installed repo-contract-kit command rather than source prompt/template guidance.",
+      "Stop before implementation if phase files require a new external planning adapter or hosted service.",
+      "Stop before implementation if generated adapters cannot be synced from workflows/prompts."
+    ]
+  },
+  "scope": {
+    "inspect_first": [
+      "AGENTS.md",
+      "REVIEW.md",
+      ".agent-workflows/README.md",
+      "workflows/prompts/task-packet.md",
+      "workflows/prompts/templates/task-packet.md",
+      "schemas/task-packet.schema.json",
+      "docs/using-the-prompt-kit.md",
+      "docs/working-rhythm.md",
+      "tests/test_task_packet_contract.py",
+      "tests/test_export_workflow_adapters.py"
+    ],
+    "allowed_files": [
+      "workflows/prompts/task-packet.md",
+      "workflows/prompts/templates/task-packet.md",
+      "workflows/prompts/fix-planner.md",
+      "workflows/prompts/fix-implementer.md",
+      "workflows/prompts/verification-sentinel.md",
+      "schemas/task-packet.schema.json",
+      "docs/using-the-prompt-kit.md",
+      "docs/working-rhythm.md",
+      "tests/test_task_packet_contract.py",
+      "tests/test_export_workflow_adapters.py",
+      ".codex/prompts/",
+      ".github/copilot-instructions.md",
+      "VERSION",
+      "CHANGELOG.md",
+      "research/agentic-workflow-review/"
+    ],
+    "protected_files": [
+      "repo-contract-kit checkout unless a separate source/install-layer task is accepted",
+      "runtime credentials, external planning accounts, Keryx/Obsidian vault writes, GitHub issues, and hosted PR state",
+      ".doc-contract-kit/updates/ proposal artifacts unless reviewing kit update conflicts is explicitly in scope"
+    ],
+    "expected_outputs": [
+      "Task-packet prompt/template guidance for splitting large reviews or implementations into phase files.",
+      "Optional schema fields or examples for phase files if needed by validation.",
+      "Generated Codex and Copilot adapters synced from workflows/prompts.",
+      "Docs explaining phase-file lifecycle, handoff rules, and non-goals.",
+      "Backlog and summary closeout only after validation passes."
+    ]
+  },
+  "acceptance_criteria": [
+    {
+      "description": "Task-packet guidance defines when large reviews or implementations should be split into phase files.",
+      "verification": "Review workflows/prompts/task-packet.md and workflows/prompts/templates/task-packet.md for explicit phase-file trigger, fields, and handoff rules."
+    },
+    {
+      "description": "Phase files preserve fresh-session continuity without replacing task packets or allowing unbounded mega-plans.",
+      "verification": "Docs and prompts state that one task packet remains the executable scope and phase files are bounded continuation artifacts."
+    },
+    {
+      "description": "Implementation/fix and verification prompts know how to consume phase files when present.",
+      "verification": "Review workflows/prompts/fix-implementer.md, fix-planner.md, and verification-sentinel.md or document why each does not need changes."
+    },
+    {
+      "description": "Generated adapters are refreshed after source prompt edits.",
+      "verification": "Run make prompt-adapters-export and make prompt-adapters-check."
+    },
+    {
+      "description": "Tests or fixture checks cover the phase-file contract.",
+      "verification": "Run the focused task-packet/export tests plus make agent-verify."
+    }
+  ],
+  "validation": {
+    "commands": [
+      {
+        "command": "make prompt-adapters-export",
+        "required": true,
+        "expected_result": "generated Codex and Copilot adapters are synchronized from workflows/prompts"
+      },
+      {
+        "command": "make prompt-adapters-check",
+        "required": true,
+        "expected_result": "generated adapters match source"
+      },
+      {
+        "command": "PYTHONDONTWRITEBYTECODE=1 python3 -m unittest tests.test_task_packet_contract tests.test_export_workflow_adapters",
+        "required": true,
+        "expected_result": "focused source prompt/schema adapter tests pass"
+      },
+      {
+        "command": "make agent-verify",
+        "required": true,
+        "expected_result": "source validation suite passes"
+      },
+      {
+        "command": "make docs-check",
+        "required": true,
+        "expected_result": "docs contract and freshness checks pass"
+      },
+      {
+        "command": "make version-check",
+        "required": true,
+        "expected_result": "VERSION and CHANGELOG are valid"
+      },
+      {
+        "command": "git diff --check",
+        "required": true,
+        "expected_result": "no whitespace errors"
+      }
+    ],
+    "evidence_to_capture": [
+      "Prompt/template/schema diffs",
+      "Generated adapter diffs",
+      "Focused unittest output",
+      "agent-verify output",
+      "docs-check and version-check output",
+      "Backlog closeout evidence after implementation"
+    ]
+  },
+  "closeout_requirements": {
+    "final_receipt_path": ".agent-workflows/tasks/AGW-055/receipt.json or sidecar equivalent",
+    "readiness_check": {
+      "command": "make agent-task-ready TASK=AGW-055 TASK_READY_JSON=1 or record why unavailable",
+      "expected_result": "readiness passes or a blocker is recorded before handoff"
+    },
+    "lifecycle_action": {
+      "action": "finish",
+      "command": "make agent-task-finalize TASK=AGW-055 TASK_RECEIPT=.agent-workflows/tasks/AGW-055/receipt.json TASK_FINALIZE_JSON=1 or durable fallback receipt",
+      "expected_result": "task metadata is terminal and final receipt is linked, or fallback receipt is documented"
+    },
+    "final_task_status": {
+      "command": "make agent-task-status TASK_STATUS_INCLUDE_CLOSED=1 TASK_STATUS_JSON=1",
+      "expected_result": "terminal task state, receipt path, and active overlaps are visible or unavailable state is explained"
+    },
+    "closeout_preview": {
+      "command": "make agent-task-closeout TASK_CLOSEOUT_JSON=1",
+      "expected_result": "eligible, retained, or blocked cleanup state is recorded",
+      "apply_requires_explicit_approval": true
+    },
+    "dirty_state_explanation": "Final handoff must state whether the checkout is clean, contains only expected AGW-055 changes, or preserves unrelated dirt."
+  },
+  "docs_impact": {
+    "expected": "yes",
+    "paths": [
+      "docs/using-the-prompt-kit.md",
+      "docs/working-rhythm.md",
+      "CHANGELOG.md",
+      "research/agentic-workflow-review/summary.md"
+    ],
+    "waiver_allowed": false,
+    "notes": "Prompt/template behavior changes require docs and changelog updates."
+  },
+  "risk": {
+    "level": "medium",
+    "known_risks": [
+      "Phase files could become a second task-packet format if boundaries are unclear.",
+      "Adapters can drift if generated outputs are not refreshed.",
+      "Schema changes can break existing task-packet validation if not backward compatible.",
+      "Overly broad phase guidance could encourage large unbounded implementations."
+    ],
+    "stop_conditions": [
+      "Stop if phase-file generation requires external planning or memory service integration.",
+      "Stop if the implementation needs repo-contract-kit installed command changes.",
+      "Stop if schema migration would invalidate existing checked-in task packets."
+    ]
+  },
+  "approval": {
+    "human_approval_required": false,
+    "state": "approved",
+    "approver": "user",
+    "notes": "User requested task packets and serial implementation for every backlog item."
+  },
+  "coordination": {
+    "active_task_count": 0,
+    "active_tasks": [],
+    "overlap_warnings": []
+  },
+  "harness_metrics": {
+    "context_file_count": 10,
+    "token_budget": {
+      "source": "not run for packet creation",
+      "notes": "Implementation should run make agent-token-budget if prompt footprint changes materially."
+    }
+  },
+  "handoff": {
+    "recommended_prompt": "workflows/prompts/fix-implementer.md",
+    "owner": null,
+    "dependencies": [
+      "AGW-054 task-packet prompt/template/schema baseline",
+      "Generated adapter sync from workflows/prompts"
+    ],
+    "next_packet_hint": "Keep external planning and memory adapter examples separate for AGW-059."
+  }
+}

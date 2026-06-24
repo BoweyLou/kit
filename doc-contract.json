@@ -1,0 +1,56 @@
+{
+  "required_files": [
+    "README.md",
+    "templates/common/documentation-contract.md",
+    "templates/common/AGENTS.md"
+  ],
+  "doc_paths": [
+    "README.md",
+    "docs/",
+    "templates/common/",
+    "templates/profiles/",
+    "skills/"
+  ],
+  "ignore_paths": [
+    "tests/",
+    "examples/"
+  ],
+  "impact_rules": {
+    "cli": [
+      "scripts/repo_contract_kit.py"
+    ],
+    "checker": [
+      "scripts/check_doc_impact.py",
+      "scripts/check_docs_freshness.py"
+    ],
+    "installer": [
+      "scripts/install.py"
+    ],
+    "profiles": [
+      "templates/profiles/"
+    ]
+  },
+  "category_doc_paths": {
+    "cli": [
+      "README.md",
+      "docs/"
+    ],
+    "checker": [
+      "README.md",
+      "docs/",
+      "templates/common/documentation-contract.md",
+      "templates/common/AGENTS.md",
+      "templates/profiles/"
+    ],
+    "installer": [
+      "README.md",
+      "docs/",
+      "templates/common/"
+    ],
+    "profiles": [
+      "README.md",
+      "docs/",
+      "templates/profiles/"
+    ]
+  }
+}

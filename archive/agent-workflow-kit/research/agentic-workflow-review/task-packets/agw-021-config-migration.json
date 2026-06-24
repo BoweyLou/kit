@@ -1,0 +1,301 @@
+{
+  "schema_version": 1,
+  "task": {
+    "id": "AGW-021",
+    "title": "Add config migration command when profile schema changes.",
+    "priority": "P2",
+    "status": "approved",
+    "source": {
+      "type": "backlog",
+      "reference": "research/agentic-workflow-review/backlog.csv:22"
+    }
+  },
+  "context": {
+    "repo_root": "/Volumes/Myrtle/Code/04_Code/Hermes/doc-contract-kit",
+    "mode": "verification",
+    "problem_statement": "Installed repos need an explicit, plan-first way to detect and migrate repo-contract-kit install/profile configuration metadata when the profile or install schema changes, without manually diffing receipts, manifests, or managed-file state.",
+    "background": [
+      "AGW-021 is an older P2 bootstrap backlog row whose original delivery shape was an upgrade subcommand.",
+      "The kit already has plan-first update behavior in scripts/update.py and wrapper CLI update-plan/update.",
+      "AGW-077 made update.py plan-only by default and preserved mutation behind explicit --apply.",
+      "Current install/update metadata records schema_version, profiles, preset, runtime_adapters, source refs, prompt snapshots, managed files, and Makefile boundary state.",
+      "The kit checkout is clean at 2b3ef0b (repo-contract-kit 0.4.48), and make version-check && make docs-check passed at packet creation."
+    ],
+    "non_goals": [
+      "Do not rewrite the install/update architecture or collapse update-plan, update, kit-update, or kit-refresh into one command.",
+      "Do not migrate arbitrary target-owned files or user customizations.",
+      "Do not make update planning mutate target repos.",
+      "Do not introduce hosted CI, GitHub-only, or PR-bot behavior.",
+      "Do not edit agent-workflow-kit prompt/schema source except for source backlog closeout after kit validation passes."
+    ]
+  },
+  "previous_task_state": {
+    "report_sources": [
+      "make agent-task-status TASK_STATUS_INCLUDE_CLOSED=1 TASK_STATUS_JSON=1",
+      "make agent-next",
+      "git ls-remote origin refs/heads/main for source and kit remotes"
+    ],
+    "active_tasks": [],
+    "unresolved_blockers": [],
+    "dirty_or_stale_state": [],
+    "finalizer_receipt_paths": [
+      "source main commit b1c4680fc2f92279f948d820f8e1965cfc7c662e closed AGW-099; source agent-task-status reported no active, stale, hazardous, or unknown-scope tasks",
+      "kit main commit 2b3ef0bda8fff66fc4c7cfc334b99b39fe23578a completed repo-contract-kit 0.4.48"
+    ],
+    "blocker_receipt_paths": [],
+    "allowed_to_start": true,
+    "notes": "AGW-021 packet creation began only after AGW-099 was pushed in both repos, both remotes matched local HEADs, both worktrees were clean, and source task-status reported zero active tasks."
+  },
+  "closeout_required_before_start": {
+    "decision": "safe-start",
+    "reason": "The previous AGW-099 task has source and kit closeout commits, matching remote refs, clean worktrees, and no active task metadata.",
+    "required_next_step": "Proceed with exactly one AGW-021 worker in repo-contract-kit; refresh task-status if source or kit state becomes dirty before worker launch.",
+    "evidence_paths": [
+      "research/agentic-workflow-review/task-packets/agw-021-config-migration.md",
+      "source main commit b1c4680fc2f92279f948d820f8e1965cfc7c662e",
+      "kit main commit 2b3ef0bda8fff66fc4c7cfc334b99b39fe23578a"
+    ]
+  },
+  "goal_alignment": {
+    "repo_goal": "Keep repo-contract-kit as the install-layer guardrail provider that can safely install, inspect, plan, and explicitly apply target-repo contract updates without hiding local customizations.",
+    "area_contracts": [
+      {
+        "path": "/Volumes/Myrtle/Code/04_Code/Hermes/doc-contract-kit/scripts/update.py",
+        "purpose": "Plan and apply safe updates for installed repo-contract-kit files, manifests, receipts, profile selection, runtime adapters, and managed-file conflicts.",
+        "source": "existing update-plan/update implementation",
+        "status": "aligned"
+      },
+      {
+        "path": "/Volumes/Myrtle/Code/04_Code/Hermes/doc-contract-kit/scripts/install.py",
+        "purpose": "Defines install profiles, presets, runtime adapters, target-owned files, and install receipt/manifest metadata.",
+        "source": "installer implementation",
+        "status": "aligned"
+      },
+      {
+        "path": "/Volumes/Myrtle/Code/04_Code/Hermes/doc-contract-kit/scripts/repo_contract_kit.py",
+        "purpose": "Stable wrapper CLI for update-plan/update and any operator-facing migration command.",
+        "source": "repo-contract-kit CLI",
+        "status": "aligned"
+      },
+      {
+        "path": "/Volumes/Myrtle/Code/04_Code/Hermes/doc-contract-kit/tests/test_update.py",
+        "purpose": "Regression coverage for update planning, legacy adoption, managed-file preservation, and apply behavior.",
+        "source": "existing update tests",
+        "status": "aligned"
+      },
+      {
+        "path": "/Volumes/Myrtle/Code/04_Code/Hermes/doc-contract-kit/README.md",
+        "purpose": "Document operator-facing install/update/migration commands and plan/apply safety boundaries.",
+        "source": "public kit docs",
+        "status": "aligned"
+      }
+    ],
+    "alignment_decision": "aligned",
+    "adaptation_needed": false,
+    "stop_conditions": [
+      "Stop if the design would mutate target repos from a plan command.",
+      "Stop if migration requires overwriting target-owned files or customized managed files without an explicit apply/force flag.",
+      "Stop if profile-schema drift cannot be represented deterministically in install/manifest metadata and tests."
+    ]
+  },
+  "scope": {
+    "allowed_files": [
+      "/Volumes/Myrtle/Code/04_Code/Hermes/doc-contract-kit/scripts/update.py",
+      "/Volumes/Myrtle/Code/04_Code/Hermes/doc-contract-kit/scripts/install.py",
+      "/Volumes/Myrtle/Code/04_Code/Hermes/doc-contract-kit/scripts/repo_contract_kit.py",
+      "/Volumes/Myrtle/Code/04_Code/Hermes/doc-contract-kit/templates/common/kit-makefile.mk",
+      "/Volumes/Myrtle/Code/04_Code/Hermes/doc-contract-kit/templates/common/working-rhythm.md",
+      "/Volumes/Myrtle/Code/04_Code/Hermes/doc-contract-kit/templates/common/ops-agent-workflow.md",
+      "/Volumes/Myrtle/Code/04_Code/Hermes/doc-contract-kit/docs/rollout-guide.md",
+      "/Volumes/Myrtle/Code/04_Code/Hermes/doc-contract-kit/docs/adr/0002-managed-updates-and-versioning.md",
+      "/Volumes/Myrtle/Code/04_Code/Hermes/doc-contract-kit/README.md",
+      "/Volumes/Myrtle/Code/04_Code/Hermes/doc-contract-kit/CHANGELOG.md",
+      "/Volumes/Myrtle/Code/04_Code/Hermes/doc-contract-kit/VERSION",
+      "/Volumes/Myrtle/Code/04_Code/Hermes/doc-contract-kit/tests/test_update.py",
+      "/Volumes/Myrtle/Code/04_Code/Hermes/doc-contract-kit/tests/test_repo_contract_kit_cli.py",
+      "/Volumes/Myrtle/Code/04_Code/Hermes/doc-contract-kit/tests/test_install.py",
+      "/Volumes/Myrtle/Code/04_Code/Codex_CodeReview/research/agentic-workflow-review/backlog.csv",
+      "/Volumes/Myrtle/Code/04_Code/Codex_CodeReview/research/agentic-workflow-review/repo-contract-kit-backlog.csv",
+      "/Volumes/Myrtle/Code/04_Code/Codex_CodeReview/research/agentic-workflow-review/summary.md",
+      "/Volumes/Myrtle/Code/04_Code/Codex_CodeReview/research/agentic-workflow-review/feature_matrix.csv"
+    ],
+    "protected_files": [
+      "Target-owned files in any installed third-party repo.",
+      "Existing plan-first update safety: update-plan must remain non-mutating.",
+      "Existing managed-file conflict preservation unless an explicit force/apply flag is used.",
+      "Source prompt/schema contracts in agent-workflow-kit.",
+      "Unrelated backlog rows."
+    ],
+    "inspect_first": [
+      "/Volumes/Myrtle/Code/04_Code/Hermes/doc-contract-kit/scripts/update.py",
+      "/Volumes/Myrtle/Code/04_Code/Hermes/doc-contract-kit/scripts/install.py",
+      "/Volumes/Myrtle/Code/04_Code/Hermes/doc-contract-kit/scripts/repo_contract_kit.py",
+      "/Volumes/Myrtle/Code/04_Code/Hermes/doc-contract-kit/tests/test_update.py",
+      "/Volumes/Myrtle/Code/04_Code/Hermes/doc-contract-kit/tests/test_repo_contract_kit_cli.py",
+      "/Volumes/Myrtle/Code/04_Code/Hermes/doc-contract-kit/README.md",
+      "/Volumes/Myrtle/Code/04_Code/Hermes/doc-contract-kit/docs/rollout-guide.md",
+      "/Volumes/Myrtle/Code/04_Code/Hermes/doc-contract-kit/docs/adr/0002-managed-updates-and-versioning.md"
+    ],
+    "expected_outputs": [
+      "A deterministic current profile/config schema marker in install and manifest metadata, or an equivalent explicit migration-version field.",
+      "update-plan JSON/text reports whether installed config/profile metadata is current, missing, outdated, or blocked, with concrete next commands.",
+      "An explicit apply path migrates only kit metadata needed for profile-schema/config drift while preserving target-owned files and managed-file conflicts.",
+      "Wrapper CLI and installed Make/docs surfaces expose the new migration/update path consistently.",
+      "Tests cover current install, missing schema metadata, outdated schema metadata, invalid metadata, no-install, dry-run/no-write, and explicit apply behavior.",
+      "VERSION and CHANGELOG.md record the kit behavior change."
+    ]
+  },
+  "acceptance_criteria": [
+    {
+      "description": "Install receipts and manifests carry a deterministic profile/config schema version marker or equivalent migration version for future drift detection.",
+      "verification": "Install/update tests assert the marker appears in new metadata."
+    },
+    {
+      "description": "update-plan detects missing or outdated profile/config schema metadata and reports a migration action without writing target repo files.",
+      "verification": "Focused update-plan JSON tests assert target_repo_writes.performed is false and expected migration actions/blockers are present."
+    },
+    {
+      "description": "The explicit apply path updates only migration metadata and safe kit-managed metadata needed for schema drift while preserving target-owned files and customized managed-file conflicts.",
+      "verification": "Focused update apply tests with customized files and old metadata."
+    },
+    {
+      "description": "Wrapper CLI and installed operator docs expose the migration path and keep update-plan non-mutating.",
+      "verification": "repo_contract_kit CLI tests plus docs-check."
+    },
+    {
+      "description": "The feature is versioned and documented as a repo-contract-kit behavior change.",
+      "verification": "VERSION, CHANGELOG.md, docs review, and make version-check."
+    },
+    {
+      "description": "Source backlog rows and summary close AGW-021 only after kit validation passes.",
+      "verification": "source backlog checks after closeout."
+    }
+  ],
+  "validation": {
+    "commands": [
+      {
+        "command": "PYTHONDONTWRITEBYTECODE=1 python3 -m unittest tests.test_update tests.test_repo_contract_kit_cli tests.test_install",
+        "required": true,
+        "expected_result": "pass"
+      },
+      {
+        "command": "PYTHONDONTWRITEBYTECODE=1 make test",
+        "required": true,
+        "expected_result": "pass"
+      },
+      {
+        "command": "make docs-check",
+        "required": true,
+        "expected_result": "pass"
+      },
+      {
+        "command": "make version-check",
+        "required": true,
+        "expected_result": "pass"
+      },
+      {
+        "command": "git diff --check",
+        "required": true,
+        "expected_result": "pass"
+      },
+      {
+        "command": "make backlog-check",
+        "required": true,
+        "expected_result": "pass in source repo after closeout"
+      },
+      {
+        "command": "make backlog-split-check",
+        "required": true,
+        "expected_result": "pass in source repo after closeout"
+      },
+      {
+        "command": "PYTHONDONTWRITEBYTECODE=1 make agent-verify",
+        "required": true,
+        "expected_result": "pass in source repo after closeout"
+      }
+    ],
+    "evidence_to_capture": [
+      "Focused migration/update tests",
+      "Full repo-contract-kit tests",
+      "Docs and version checks",
+      "No-write update-plan proof for old schema metadata",
+      "Source backlog closeout checks"
+    ]
+  },
+  "closeout_requirements": {
+    "final_receipt_path": "/Volumes/Myrtle/Code/04_Code/Hermes/doc-contract-kit/.agent-workflows/tasks/agw-021/receipt.json",
+    "readiness_check": {
+      "command": "make agent-task-ready TASK=AGW-021 TASK_READY_JSON=1",
+      "expected_result": "pass before lifecycle finish, or blocked with explicit receipt if validation cannot complete"
+    },
+    "lifecycle_action": {
+      "action": "finish",
+      "command": "make agent-task-finalize TASK=AGW-021 TASK_RECEIPT=.agent-workflows/tasks/agw-021/receipt.json TASK_FINALIZE_JSON=1",
+      "expected_result": "done metadata or explicit blocked finalizer receipt"
+    },
+    "final_task_status": {
+      "command": "make agent-task-status TASK_STATUS_INCLUDE_CLOSED=1 TASK_STATUS_JSON=1",
+      "expected_result": "no active AGW-021 task metadata after parent closeout, or terminal metadata with linked receipt before cleanup"
+    },
+    "closeout_preview": {
+      "command": "make agent-task-closeout TASK_CLOSEOUT_JSON=1",
+      "expected_result": "preview reports no unsafe dirty terminal worktree removal",
+      "apply_requires_explicit_approval": true
+    },
+    "dirty_state_explanation": "Worker must explain any remaining dirty files in the kit checkout; parent should only integrate expected AGW-021 files and leave both repos clean after commits."
+  },
+  "docs_impact": {
+    "expected": "yes",
+    "paths": [
+      "/Volumes/Myrtle/Code/04_Code/Hermes/doc-contract-kit/README.md",
+      "/Volumes/Myrtle/Code/04_Code/Hermes/doc-contract-kit/docs/rollout-guide.md",
+      "/Volumes/Myrtle/Code/04_Code/Hermes/doc-contract-kit/docs/adr/0002-managed-updates-and-versioning.md",
+      "/Volumes/Myrtle/Code/04_Code/Hermes/doc-contract-kit/templates/common/ops-agent-workflow.md",
+      "/Volumes/Myrtle/Code/04_Code/Hermes/doc-contract-kit/templates/common/working-rhythm.md"
+    ],
+    "waiver_allowed": false,
+    "notes": "This changes install/update operator behavior and metadata contracts, so docs and changelog/version updates are required."
+  },
+  "risk": {
+    "level": "medium",
+    "known_risks": [
+      "Migration code can accidentally overwrite target-owned or customized managed files.",
+      "Schema-version naming can confuse install schema, profile selection, and managed-file manifest schema if not documented clearly.",
+      "A plan/apply regression could make update-plan mutate target repos."
+    ],
+    "stop_conditions": [
+      "Any non-apply command writes target repo files.",
+      "Any apply path overwrites target-owned files or conflicts without explicit force semantics.",
+      "Tests cannot model old/missing schema metadata deterministically."
+    ]
+  },
+  "approval": {
+    "human_approval_required": false,
+    "state": "approved",
+    "approver": "Yannick Bowe",
+    "notes": "User requested implementing all remaining open backlog items with one task agent per item and a committed packet before each task."
+  },
+  "coordination": {
+    "active_task_count": 0,
+    "active_tasks": [],
+    "overlap_warnings": []
+  },
+  "harness_metrics": {
+    "context_file_count": 8,
+    "token_budget": {
+      "source_files": 97,
+      "source_estimated_tokens": 77458,
+      "source_result": "passed"
+    }
+  },
+  "handoff": {
+    "recommended_prompt": "workflows/prompts/task-packet.md",
+    "owner": "repo-contract-kit worker",
+    "dependencies": [
+      "AGW-077 update-plan plan-first behavior",
+      "AGW-012 install-layer adapter selection/update boundaries",
+      "AGW-099 clean source/kit closeout"
+    ],
+    "next_packet_hint": "After AGW-021, make agent-next should select the next remaining P2 backlog item."
+  }
+}

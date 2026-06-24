@@ -1,0 +1,379 @@
+{
+  "schema_version": 1,
+  "task": {
+    "id": "AGW-045",
+    "title": "Add latest-ADR discovery guidance and fallback behavior when ADRs do not exist.",
+    "priority": "P2",
+    "status": "approved",
+    "source": {
+      "type": "backlog",
+      "reference": "research/agentic-workflow-review/backlog.csv:46"
+    }
+  },
+  "context": {
+    "repo_root": "/Volumes/Myrtle/Code/04_Code/Codex_CodeReview",
+    "mode": "verification",
+    "problem_statement": "The learning-comments prompt already asks agents to inspect latest ADRs, but it does not define a deterministic ADR discovery order, how to use an agent-start latest-ADR packet when present, or the fallback behavior when a repository has no ADRs or decision records. Learning mode depends on design context, so the prompt should make absence of ADRs explicit without blocking useful comment-only or explanation-note work.",
+    "background": [
+      "AGW-044 added comment-only receipt evidence for learning-comments mode.",
+      "AGW-078 added non-developer explainability guidance while keeping learning-comments behavior-neutral.",
+      "workflows/prompts/codebase-learning-comments.md currently says to inspect ADR surfaces and latest ADRs but does not define fallback behavior when none exist.",
+      "scripts/agent_start.py already emits a latest ADR line and warns when no current ADR is found under docs/adr/; AGW-045 should make the prompt consume that signal when available rather than adding a new startup implementation.",
+      "scripts/build_context_packet.py already includes an ADR bucket for changed terms or latest design constraints.",
+      "make agent-task-status TASK_STATUS_INCLUDE_CLOSED=1 TASK_STATUS_JSON=1 at packet creation reported active_task_count 0, no hazards, no stale tasks, and no unknown-scope tasks.",
+      "make agent-token-budget at packet creation reported 103 files and 84121 estimated tokens, result passed.",
+      "make kit-status at packet creation reported installed repo-contract-kit 0.4.41, target repo version 0.2.21, runtime adapters none, and managed-file drift relative to installed kit metadata; this is source self-dogfood drift, not a blocker for source prompt work."
+    ],
+    "non_goals": [
+      "Do not add or change ADR discovery behavior in scripts/agent_start.py, scripts/build_context_packet.py, or repo-contract-kit in this packet unless a focused prompt test proves a tiny source-side test helper is needed.",
+      "Do not create, update, or delete real ADR files.",
+      "Do not add an automated stale-comment scanner.",
+      "Do not change session receipt schema or strict validator behavior; AGW-044 already covers comment-only receipt enforcement.",
+      "Do not change runtime behavior, tests, dependencies, generated docs infrastructure, or source files outside prompt/docs/backlog/version/test surfaces.",
+      "Do not tell agents to fabricate architecture decisions, infer product intent as fact, or block learning work solely because no ADR exists."
+    ]
+  },
+  "previous_task_state": {
+    "report_sources": [
+      "git status --short",
+      "git rev-parse HEAD",
+      "git rev-parse origin/main",
+      "git ls-remote origin refs/heads/main",
+      "make agent-task-status TASK_STATUS_INCLUDE_CLOSED=1 TASK_STATUS_JSON=1",
+      "make agent-next",
+      "make backlog-status",
+      "make agent-token-budget",
+      "make kit-status",
+      "make agent-task-packet-from-backlog BACKLOG_ID=AGW-045",
+      "workflows/prompts/codebase-learning-comments.md",
+      "scripts/agent_start.py latest_adr behavior",
+      "scripts/build_context_packet.py ADR bucket behavior"
+    ],
+    "active_tasks": [],
+    "unresolved_blockers": [],
+    "dirty_or_stale_state": [
+      "make kit-status reports 4 modified kit-managed files relative to installed repo-contract-kit metadata; git status is clean and this source prompt task does not refresh installed kit files."
+    ],
+    "finalizer_receipt_paths": [
+      "source main commit e6f75979821811a85565707e12100ffb0613d703 completed AGW-043 and origin/main matched it",
+      ".agent-workflows/tasks/agw-043-runtime-compatibility-matrix/receipt.json was reported by the AGW-043 worker as the local ignored receipt",
+      "make agent-task-status TASK_STATUS_INCLUDE_CLOSED=1 TASK_STATUS_JSON=1 reported active_task_count 0 after AGW-043"
+    ],
+    "blocker_receipt_paths": [],
+    "allowed_to_start": true,
+    "notes": "AGW-045 packet creation began from a clean source checkout on main at e6f75979821811a85565707e12100ffb0613d703. make agent-next selected AGW-045 with dirty false, backlog-status reported 9 open and 90 done, and task-status reported zero active tasks, hazards, stale tasks, unknown-scope tasks, and untracked agent worktrees."
+  },
+  "closeout_required_before_start": {
+    "decision": "safe-start",
+    "reason": "AGW-043 is implemented, validated, pushed, and source-closed; local main matches origin/main; git status is clean; and task-status reports no active or stale task state.",
+    "required_next_step": "Proceed with one AGW-045 source prompt worker; refresh git status and task-status before edits, and stop if the checkout becomes dirty, remote diverges, or implementation requires script/runtime behavior.",
+    "evidence_paths": [
+      "research/agentic-workflow-review/task-packets/agw-045-latest-adr-learning-fallback.md",
+      "source main commit e6f75979821811a85565707e12100ffb0613d703",
+      "make agent-task-status TASK_STATUS_INCLUDE_CLOSED=1 TASK_STATUS_JSON=1 reported active_task_count 0",
+      "make agent-next selected AGW-045 with dirty false"
+    ]
+  },
+  "goal_alignment": {
+    "repo_goal": "Keep agent-workflow-kit as the source of prompt, schema, fixture, packaging, and workflow guidance for local agentic review and implementation.",
+    "area_contracts": [
+      {
+        "path": "/Volumes/Myrtle/Code/04_Code/Codex_CodeReview/workflows/prompts/codebase-learning-comments.md",
+        "purpose": "Canonical learning-comments prompt for behavior-neutral comment and explanation-note work.",
+        "source": "AGW-044; AGW-078; workflows/prompts/README.md",
+        "status": "aligned"
+      },
+      {
+        "path": "/Volumes/Myrtle/Code/04_Code/Codex_CodeReview/.codex/prompts/codebase-learning-comments.md",
+        "purpose": "Generated Codex adapter mirror of the canonical learning-comments prompt.",
+        "source": "Makefile prompt-adapters-export; ADR 0002",
+        "status": "aligned"
+      },
+      {
+        "path": "/Volumes/Myrtle/Code/04_Code/Codex_CodeReview/workflows/prompts/README.md",
+        "purpose": "Prompt index that should summarize learning-comments behavior without duplicating the full prompt.",
+        "source": "prompt source index",
+        "status": "aligned"
+      },
+      {
+        "path": "/Volumes/Myrtle/Code/04_Code/Codex_CodeReview/docs/using-the-prompt-kit.md",
+        "purpose": "Operator-facing prompt-kit usage guide for learning-comments flow.",
+        "source": "docs prompt workflow",
+        "status": "aligned"
+      },
+      {
+        "path": "/Volumes/Myrtle/Code/04_Code/Codex_CodeReview/tests/",
+        "purpose": "Focused source tests and prompt-regression fixtures for prompt contract changes.",
+        "source": "local validation suite",
+        "status": "aligned"
+      }
+    ],
+    "alignment_decision": "aligned",
+    "adaptation_needed": false,
+    "stop_conditions": [
+      "Stop if the implementation needs a new ADR parser, startup command behavior, context-packet behavior, or repo-contract-kit install behavior.",
+      "Stop if the prompt would block all learning-comments work when no ADR exists.",
+      "Stop if the prompt would allow agents to infer or invent architectural decisions as facts.",
+      "Stop if generated Codex adapters are edited without changing canonical prompt source.",
+      "Stop if receipt/schema validation changes become necessary; that is outside AGW-045."
+    ]
+  },
+  "scope": {
+    "allowed_files": [
+      "/Volumes/Myrtle/Code/04_Code/Codex_CodeReview/workflows/prompts/codebase-learning-comments.md",
+      "/Volumes/Myrtle/Code/04_Code/Codex_CodeReview/.codex/prompts/codebase-learning-comments.md",
+      "/Volumes/Myrtle/Code/04_Code/Codex_CodeReview/workflows/prompts/README.md",
+      "/Volumes/Myrtle/Code/04_Code/Codex_CodeReview/.codex/prompts/README.md",
+      "/Volumes/Myrtle/Code/04_Code/Codex_CodeReview/README.md",
+      "/Volumes/Myrtle/Code/04_Code/Codex_CodeReview/docs/using-the-prompt-kit.md",
+      "/Volumes/Myrtle/Code/04_Code/Codex_CodeReview/tests/test_learning_comments_prompt.py",
+      "/Volumes/Myrtle/Code/04_Code/Codex_CodeReview/research/prompt-regression-fixtures/prompt-regression-fixtures.json",
+      "/Volumes/Myrtle/Code/04_Code/Codex_CodeReview/VERSION",
+      "/Volumes/Myrtle/Code/04_Code/Codex_CodeReview/CHANGELOG.md",
+      "/Volumes/Myrtle/Code/04_Code/Codex_CodeReview/research/agentic-workflow-review/backlog.csv",
+      "/Volumes/Myrtle/Code/04_Code/Codex_CodeReview/research/agentic-workflow-review/agent-workflow-kit-backlog.csv",
+      "/Volumes/Myrtle/Code/04_Code/Codex_CodeReview/research/agentic-workflow-review/summary.md",
+      "/Volumes/Myrtle/Code/04_Code/Codex_CodeReview/research/agentic-workflow-review/feature_matrix.csv"
+    ],
+    "protected_files": [
+      "/Volumes/Myrtle/Code/04_Code/Hermes/doc-contract-kit/",
+      "/Volumes/Myrtle/Code/04_Code/Codex_CodeReview/scripts/agent_start.py",
+      "/Volumes/Myrtle/Code/04_Code/Codex_CodeReview/scripts/build_context_packet.py",
+      "/Volumes/Myrtle/Code/04_Code/Codex_CodeReview/schemas/session-receipt.schema.json",
+      "/Volumes/Myrtle/Code/04_Code/Codex_CodeReview/scripts/verify_agent_receipt.py",
+      "/Volumes/Myrtle/Code/04_Code/Codex_CodeReview/docs/adr/",
+      "/Volumes/Myrtle/Code/04_Code/Codex_CodeReview/workflows/manifest.json unless prompt adapter export proves a manifest typo",
+      "/Volumes/Myrtle/Code/04_Code/Codex_CodeReview/.agent-workflows/ runtime state except reading deterministic reports",
+      "generated files other than the Codex prompt adapter mirror",
+      "unrelated backlog rows and unrelated dirty work"
+    ],
+    "inspect_first": [
+      "/Volumes/Myrtle/Code/04_Code/Codex_CodeReview/AGENTS.md",
+      "/Volumes/Myrtle/Code/04_Code/Codex_CodeReview/REVIEW.md",
+      "/Volumes/Myrtle/Code/04_Code/Codex_CodeReview/.agent-workflows/README.md",
+      "make agent-task-status TASK_STATUS_INCLUDE_CLOSED=1 TASK_STATUS_JSON=1",
+      "make kit-status",
+      "/Volumes/Myrtle/Code/04_Code/Codex_CodeReview/workflows/prompts/codebase-learning-comments.md",
+      "/Volumes/Myrtle/Code/04_Code/Codex_CodeReview/workflows/prompts/README.md",
+      "/Volumes/Myrtle/Code/04_Code/Codex_CodeReview/docs/using-the-prompt-kit.md",
+      "/Volumes/Myrtle/Code/04_Code/Codex_CodeReview/README.md",
+      "/Volumes/Myrtle/Code/04_Code/Codex_CodeReview/scripts/agent_start.py latest_adr and no-ADR warning behavior",
+      "/Volumes/Myrtle/Code/04_Code/Codex_CodeReview/scripts/build_context_packet.py ADR bucket behavior",
+      "/Volumes/Myrtle/Code/04_Code/Codex_CodeReview/tests/test_export_workflow_adapters.py",
+      "/Volumes/Myrtle/Code/04_Code/Codex_CodeReview/tests/test_prompt_regression_fixtures.py",
+      "/Volumes/Myrtle/Code/04_Code/Codex_CodeReview/research/prompt-regression-fixtures/prompt-regression-fixtures.json"
+    ],
+    "expected_outputs": [
+      "The canonical learning-comments prompt defines deterministic ADR/decision-record discovery order before comment or explanation-note claims are made.",
+      "The prompt says to consume agent-start/latest-ADR or context-packet ADR evidence when present before scanning manually.",
+      "The prompt defines no-ADR fallback behavior: record that no ADR was found, use README/docs/tests/code/config evidence, avoid fabricating architecture intent, mark uncertainty, and proceed only with evidence-backed comments or explanation notes.",
+      "The ADR Reader subagent output requires files inspected, latest/current/superseded decision state, no-ADR fallback evidence, and uncertainty.",
+      "Verification requires checking that terminology and claims align with latest decisions when present, or with fallback docs/code evidence when absent.",
+      "Docs and prompt index mention the no-ADR fallback briefly.",
+      "Generated Codex adapter mirrors the canonical prompt after make prompt-adapters-export.",
+      "Focused regression coverage checks the prompt contains ADR discovery and no-ADR fallback language.",
+      "Version/changelog and source backlog closeout are updated after validation."
+    ]
+  },
+  "acceptance_criteria": [
+    {
+      "description": "workflows/prompts/codebase-learning-comments.md defines a deterministic order for ADR discovery that starts from existing agent-start/context evidence when present and then scans documented ADR or ADR-like decision record locations.",
+      "verification": "Inspect the prompt and focused prompt test."
+    },
+    {
+      "description": "The prompt defines fallback behavior for repositories without ADRs: record no ADR found, use other source-of-truth docs/tests/code evidence, preserve uncertainty, avoid fabricated design intent, and continue only with evidence-backed comments or explanation notes.",
+      "verification": "Inspect prompt sections and focused prompt test."
+    },
+    {
+      "description": "ADR Reader and output sections require the agent to report latest/current/superseded decisions, source files, no-ADR fallback evidence, and uncertainty.",
+      "verification": "Inspect workflows/prompts/codebase-learning-comments.md."
+    },
+    {
+      "description": "Docs/index surfaces make the learning-comments no-ADR fallback discoverable without duplicating the whole prompt.",
+      "verification": "Inspect workflows/prompts/README.md, docs/using-the-prompt-kit.md, and README.md if changed."
+    },
+    {
+      "description": "Generated .codex/prompts/codebase-learning-comments.md mirrors the canonical prompt.",
+      "verification": "PYTHONDONTWRITEBYTECODE=1 make prompt-adapters-check."
+    },
+    {
+      "description": "The change does not alter startup/context packet behavior, receipt schema, strict receipt validation, repo-contract-kit files, or actual ADR records.",
+      "verification": "git diff --name-only compared with the allowed/protected scope."
+    },
+    {
+      "description": "Version/changelog and source backlog rows close AGW-045 only after validation passes.",
+      "verification": "make version-check, make backlog-check, and make backlog-split-check."
+    }
+  ],
+  "validation": {
+    "commands": [
+      {
+        "command": "PYTHONDONTWRITEBYTECODE=1 python3 -m unittest tests.test_learning_comments_prompt",
+        "required": true,
+        "expected_result": "pass if a focused prompt text test is added; otherwise record why the prompt-regression fixture covers this instead"
+      },
+      {
+        "command": "PYTHONDONTWRITEBYTECODE=1 python3 scripts/run_prompt_regression_fixtures.py",
+        "required": true,
+        "expected_result": "pass"
+      },
+      {
+        "command": "PYTHONDONTWRITEBYTECODE=1 make prompt-adapters-export",
+        "required": true,
+        "expected_result": "pass and refresh generated Codex adapter"
+      },
+      {
+        "command": "PYTHONDONTWRITEBYTECODE=1 make prompt-adapters-check",
+        "required": true,
+        "expected_result": "pass"
+      },
+      {
+        "command": "PYTHONDONTWRITEBYTECODE=1 make agent-verify",
+        "required": true,
+        "expected_result": "pass; pre-existing unchanged instruction-hygiene warnings may be reported but must be identified"
+      },
+      {
+        "command": "PYTHONDONTWRITEBYTECODE=1 make validate",
+        "required": true,
+        "expected_result": "pass"
+      },
+      {
+        "command": "make docs-check",
+        "required": true,
+        "expected_result": "pass"
+      },
+      {
+        "command": "make docs-freshness",
+        "required": true,
+        "expected_result": "pass"
+      },
+      {
+        "command": "python3 scripts/check_doc_impact.py",
+        "required": true,
+        "expected_result": "pass"
+      },
+      {
+        "command": "make version-check",
+        "required": true,
+        "expected_result": "pass after a patch version/changelog update because this changes a user-facing prompt workflow"
+      },
+      {
+        "command": "make backlog-check",
+        "required": true,
+        "expected_result": "pass after source backlog closeout"
+      },
+      {
+        "command": "make backlog-split-check",
+        "required": true,
+        "expected_result": "pass after source backlog closeout"
+      },
+      {
+        "command": "git diff --check",
+        "required": true,
+        "expected_result": "pass"
+      }
+    ],
+    "evidence_to_capture": [
+      "Prompt diff summary showing ADR discovery and no-ADR fallback sections.",
+      "Generated adapter check output.",
+      "Focused test or prompt-regression output.",
+      "Docs-impact and docs-freshness output.",
+      "Version/changelog decision.",
+      "git diff --name-only showing source prompt/docs/test/backlog/version scope only.",
+      "Final git status and task-status output."
+    ]
+  },
+  "closeout_requirements": {
+    "final_receipt_path": ".agent-workflows/tasks/agw-045-latest-adr-learning-fallback/receipt.json or durable sidecar equivalent",
+    "readiness_check": {
+      "command": "make agent-task-ready TASK=AGW-045 TASK_READY_JSON=1 or record why unavailable for this parent-run packet",
+      "expected_result": "pass or explicit unavailable/omitted rationale with compensating validation evidence"
+    },
+    "lifecycle_action": {
+      "action": "finish",
+      "command": "make agent-task-finalize TASK=AGW-045 TASK_RECEIPT=<path> TASK_FINALIZE_JSON=1 or record why unavailable for this parent-run packet",
+      "expected_result": "task finished or unavailable/omitted rationale recorded"
+    },
+    "final_task_status": {
+      "command": "make agent-task-status TASK_STATUS_INCLUDE_CLOSED=1 TASK_STATUS_JSON=1",
+      "expected_result": "no active AGW-045 task remains, or any remaining task metadata is explicitly explained"
+    },
+    "closeout_preview": {
+      "command": "make agent-task-closeout TASK=AGW-045 TASK_CLOSEOUT_JSON=1 or record why unavailable for this parent-run packet",
+      "expected_result": "preview reports no unsafe cleanup, or unavailable/omitted rationale recorded",
+      "apply_requires_explicit_approval": true
+    },
+    "dirty_state_explanation": "Final handoff must say whether the source checkout is clean, only expected files remain dirty, cleanup is blocked, or unrelated dirt was preserved."
+  },
+  "docs_impact": {
+    "expected": "yes",
+    "paths": [
+      "workflows/prompts/codebase-learning-comments.md",
+      ".codex/prompts/codebase-learning-comments.md",
+      "workflows/prompts/README.md",
+      ".codex/prompts/README.md",
+      "README.md",
+      "docs/using-the-prompt-kit.md",
+      "CHANGELOG.md"
+    ],
+    "waiver_allowed": false,
+    "notes": "This changes a user-facing prompt workflow and generated Codex adapter."
+  },
+  "risk": {
+    "level": "medium",
+    "known_risks": [
+      "Too much ADR search detail can bloat the prompt and reduce token efficiency.",
+      "No-ADR fallback wording can accidentally permit speculative architecture claims.",
+      "Prompt-only changes can drift from generated Codex adapter output if export is skipped.",
+      "A broad implementation could unnecessarily change startup scripts or receipt validation."
+    ],
+    "stop_conditions": [
+      "Implementation requires changing agent-start or context-packet ADR discovery behavior.",
+      "Implementation requires changing session receipt schema, verify_agent_receipt.py, or repo-contract-kit.",
+      "The prompt cannot define a compact no-ADR fallback without weakening evidence requirements.",
+      "Validation finds unrelated generated adapter drift or dirty work outside this packet's scope."
+    ]
+  },
+  "approval": {
+    "human_approval_required": false,
+    "state": "approved",
+    "approver": "user",
+    "notes": "User requested implementation of the planned workflow-stack backlog items; AGW-045 is the next selected open item after AGW-043 closeout."
+  },
+  "coordination": {
+    "active_task_count": 0,
+    "active_tasks": [],
+    "overlap_warnings": [
+      "Use exactly one AGW-045 worker.",
+      "Refresh git status and task-status before worker edits.",
+      "Do not edit repo-contract-kit or installed kit runtime state.",
+      "Treat installed kit managed-file drift as known self-dogfood state unless it becomes actual git dirt or affects validation."
+    ]
+  },
+  "harness_metrics": {
+    "context_file_count": 13,
+    "token_budget": {
+      "packet_creation_files": 103,
+      "packet_creation_estimated_tokens": 84121,
+      "result": "passed"
+    },
+    "deterministic_reports": [
+      "make agent-task-status TASK_STATUS_INCLUDE_CLOSED=1 TASK_STATUS_JSON=1",
+      "make agent-next",
+      "make backlog-status",
+      "make agent-token-budget",
+      "make kit-status",
+      "make agent-task-packet-from-backlog BACKLOG_ID=AGW-045"
+    ]
+  },
+  "handoff": {
+    "recommended_prompt": "Implement AGW-045 from research/agentic-workflow-review/task-packets/agw-045-latest-adr-learning-fallback.md. Keep the change source prompt/docs/test/backlog/version only, refresh generated Codex adapters from the canonical prompt, validate, commit and push source main, and report final clean state.",
+    "owner": "single AGW-045 implementation worker",
+    "dependencies": [
+      "AGW-044",
+      "AGW-078",
+      "AGW-043 source closeout at e6f75979821811a85565707e12100ffb0613d703"
+    ],
+    "next_packet_hint": "After AGW-045, make agent-next should select the next open backlog item unless priorities change."
+  }
+}

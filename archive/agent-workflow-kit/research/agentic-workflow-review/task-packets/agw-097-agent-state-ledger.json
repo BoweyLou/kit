@@ -1,0 +1,253 @@
+{
+  "schema_version": 1,
+  "task": {
+    "id": "AGW-097",
+    "title": "Add a local agent-state ledger that indexes dirty-state, automation, task lifecycle, readiness, and closeout receipts.",
+    "priority": "P1",
+    "status": "approved",
+    "source": {
+      "type": "backlog",
+      "reference": "research/agentic-workflow-review/backlog.csv:98"
+    }
+  },
+  "context": {
+    "repo_root": "/Volumes/Myrtle/Code/04_Code/Hermes/doc-contract-kit",
+    "mode": "implementation",
+    "problem_statement": "The kit emits receipts and reports across preflight, automation handoff, task readiness, task finalization, closeout, dirty-primary baselines, and self-heal, but agents still need one deterministic local ledger that indexes those artifacts and reports unresolved state plus the next safe command.",
+    "background": [
+      "AGW-085 added preflight/doctor startup receipts.",
+      "AGW-087 added finalizer receipts and lifecycle closeout.",
+      "AGW-088 added automation baseline and blocked/passed sidecar receipts.",
+      "AGW-092 added compact context bundles with sidecar and readiness hints.",
+      "AGW-095 added dirty-primary task baselines.",
+      "AGW-096 added guarded self-heal and sidecar before/after receipts."
+    ],
+    "non_goals": [
+      "Do not mutate task metadata, sidecar receipts, worktrees, or source files.",
+      "Do not replace agent-task-status, agent-task-ready, agent-task-closeout, agent-self-heal, or agent-automation-handoff.",
+      "Do not require a hosted service, external database, or network access.",
+      "Do not infer ownership beyond local metadata; thread/session attribution expansion remains AGW-099."
+    ]
+  },
+  "goal_alignment": {
+    "repo_goal": "Keep repo-contract-kit as the install-layer guardrail provider that gives agents deterministic local state reports and next-command guidance without hiding or mutating user work.",
+    "area_contracts": [
+      {
+        "path": "/Volumes/Myrtle/Code/04_Code/Hermes/doc-contract-kit/scripts/repo_contract_kit.py",
+        "purpose": "Target-repo CLI and sidecar orchestration for local reports and receipts.",
+        "source": "installed CLI and Make targets",
+        "status": "aligned"
+      },
+      {
+        "path": "/Volumes/Myrtle/Code/04_Code/Hermes/doc-contract-kit/scripts/agent_task_status.py",
+        "purpose": "Authoritative task metadata, worktree, lease, and overlap report.",
+        "source": "installed make agent-task-status",
+        "status": "aligned"
+      },
+      {
+        "path": "/Volumes/Myrtle/Code/04_Code/Hermes/doc-contract-kit/scripts/agent_task_ready.py",
+        "purpose": "Readiness receipt validation, scope drift, freshness, and baseline drift report.",
+        "source": "installed make agent-task-ready",
+        "status": "aligned"
+      },
+      {
+        "path": "/Volumes/Myrtle/Code/04_Code/Hermes/doc-contract-kit/scripts/agent_task_cleanup.py",
+        "purpose": "Closeout and cleanup inventory for terminal task worktrees.",
+        "source": "installed make agent-task-cleanup and make agent-task-closeout",
+        "status": "aligned"
+      },
+      {
+        "path": "/Volumes/Myrtle/Code/04_Code/Hermes/doc-contract-kit/templates/common/kit-makefile.mk",
+        "purpose": "Installed target-repo Make surface for read-only state reports.",
+        "source": "installer tests and docs freshness",
+        "status": "aligned"
+      }
+    ],
+    "alignment_decision": "aligned",
+    "adaptation_needed": false,
+    "stop_conditions": [
+      "Stop if the ledger would write, prune, quarantine, close, or mutate any local state.",
+      "Stop if the report cannot distinguish missing receipts, stale metadata, dirty worktrees, and automation blockers as separate categories.",
+      "Stop if implementation duplicates broad task/worktree logic instead of reusing or composing existing deterministic reports where practical."
+    ]
+  },
+  "scope": {
+    "inspect_first": [
+      "/Volumes/Myrtle/Code/04_Code/Hermes/doc-contract-kit/scripts/repo_contract_kit.py",
+      "/Volumes/Myrtle/Code/04_Code/Hermes/doc-contract-kit/scripts/agent_task_status.py",
+      "/Volumes/Myrtle/Code/04_Code/Hermes/doc-contract-kit/scripts/agent_task_ready.py",
+      "/Volumes/Myrtle/Code/04_Code/Hermes/doc-contract-kit/scripts/agent_task_cleanup.py",
+      "/Volumes/Myrtle/Code/04_Code/Hermes/doc-contract-kit/scripts/agent_task_finalize.py",
+      "/Volumes/Myrtle/Code/04_Code/Hermes/doc-contract-kit/templates/common/kit-makefile.mk",
+      "/Volumes/Myrtle/Code/04_Code/Hermes/doc-contract-kit/templates/common/working-rhythm.md",
+      "/Volumes/Myrtle/Code/04_Code/Hermes/doc-contract-kit/templates/common/ops-agent-workflow.md",
+      "/Volumes/Myrtle/Code/04_Code/Hermes/doc-contract-kit/tests/test_repo_contract_kit_cli.py",
+      "/Volumes/Myrtle/Code/04_Code/Hermes/doc-contract-kit/tests/test_agent_task_prepare.py",
+      "/Volumes/Myrtle/Code/04_Code/Hermes/doc-contract-kit/tests/test_agent_task_cleanup.py"
+    ],
+    "allowed_files": [
+      "/Volumes/Myrtle/Code/04_Code/Hermes/doc-contract-kit/scripts/repo_contract_kit.py",
+      "/Volumes/Myrtle/Code/04_Code/Hermes/doc-contract-kit/scripts/",
+      "/Volumes/Myrtle/Code/04_Code/Hermes/doc-contract-kit/templates/common/",
+      "/Volumes/Myrtle/Code/04_Code/Hermes/doc-contract-kit/tests/",
+      "/Volumes/Myrtle/Code/04_Code/Hermes/doc-contract-kit/docs/",
+      "/Volumes/Myrtle/Code/04_Code/Hermes/doc-contract-kit/README.md",
+      "/Volumes/Myrtle/Code/04_Code/Hermes/doc-contract-kit/VERSION",
+      "/Volumes/Myrtle/Code/04_Code/Hermes/doc-contract-kit/CHANGELOG.md",
+      "/Volumes/Myrtle/Code/04_Code/Codex_CodeReview/research/agentic-workflow-review/backlog.csv",
+      "/Volumes/Myrtle/Code/04_Code/Codex_CodeReview/research/agentic-workflow-review/repo-contract-kit-backlog.csv",
+      "/Volumes/Myrtle/Code/04_Code/Codex_CodeReview/research/agentic-workflow-review/summary.md",
+      "/Volumes/Myrtle/Code/04_Code/Codex_CodeReview/research/agentic-workflow-review/feature_matrix.csv"
+    ],
+    "protected_files": [
+      "All target-repo source files, task metadata, sidecar receipts, and worktrees during ledger generation.",
+      "Existing command semantics for preflight, self-heal, automation handoff, readiness, finalizer, status, and closeout.",
+      "Unrelated backlog rows."
+    ],
+    "expected_outputs": [
+      "New read-only installed command, likely make agent-state-ledger, with JSON and concise text output.",
+      "Ledger sections for checkout dirty state, active/terminal/stale task metadata, task worktree status, final receipts, readiness/finalizer receipts, automation handoff receipts/baselines, self-heal receipts, and sidecar availability.",
+      "Per-task/session summary with task id, status, owner/session id, worktree, dirty state, lease, final receipt, latest related receipts, unresolved blockers, and next safe command where local metadata exists.",
+      "Repository-level unresolved blockers and warnings for dirty checkout, dirty/missing worktrees, stale metadata, missing final receipts, active overlaps, blocked automation receipts, missing sidecar, and missing readiness evidence.",
+      "Explicit no-write metadata in output: target_repo_writes and sidecar_writes false.",
+      "Docs, tests, version, changelog, and source backlog closeout."
+    ]
+  },
+  "coordination": {
+    "active_task_count": 0,
+    "active_tasks": [],
+    "overlap_warnings": [],
+    "worker_rule": "Use exactly one task worker for this backlog item. The worker owns kit implementation files only; the parent owns source task-packet and backlog closeout."
+  },
+  "acceptance_criteria": [
+    {
+      "description": "agent-state-ledger is read-only and performs no target or sidecar writes.",
+      "verification": "CLI/Make tests assert target_repo_writes and sidecar_writes are false."
+    },
+    {
+      "description": "JSON output includes sidecar paths, dirty-state summary, task metadata summary, receipt indexes, unresolved blockers/warnings, and next safe command.",
+      "verification": "Ledger JSON tests."
+    },
+    {
+      "description": "Text output is concise enough for startup use and highlights unresolved blockers before informational history.",
+      "verification": "Text render smoke test."
+    },
+    {
+      "description": "Receipt indexing covers at least preflight/doctor receipts, finalizer receipts, automation handoff receipts/baselines, and self-heal receipts when present in the sidecar.",
+      "verification": "Sidecar receipt fixture test."
+    },
+    {
+      "description": "Task indexing reports missing worktrees, dirty worktrees, stale leases, missing final receipts, and active overlaps without mutating them.",
+      "verification": "Task metadata/worktree tests."
+    },
+    {
+      "description": "Ledger output gives deterministic next safe commands based on unresolved state.",
+      "verification": "Command recommendation assertions."
+    },
+    {
+      "description": "Docs explain that the ledger is an index/report, not a cleanup or closeout command.",
+      "verification": "docs-check and docs freshness."
+    }
+  ],
+  "validation": {
+    "kit_commands": [
+      {
+        "command": "PYTHONDONTWRITEBYTECODE=1 python3 -m unittest tests.test_repo_contract_kit_cli",
+        "required": true,
+        "expected_result": "pass"
+      },
+      {
+        "command": "Run any new focused ledger test module directly if created.",
+        "required": true,
+        "expected_result": "pass"
+      },
+      {
+        "command": "PYTHONDONTWRITEBYTECODE=1 make test",
+        "required": true,
+        "expected_result": "pass"
+      },
+      {
+        "command": "make docs-check",
+        "required": true,
+        "expected_result": "pass"
+      },
+      {
+        "command": "make version-check",
+        "required": true,
+        "expected_result": "pass"
+      },
+      {
+        "command": "git diff --check",
+        "required": true,
+        "expected_result": "pass"
+      }
+    ],
+    "source_commands": [
+      {
+        "command": "make backlog-check",
+        "required": true,
+        "expected_result": "pass"
+      },
+      {
+        "command": "make backlog-split-check",
+        "required": true,
+        "expected_result": "pass"
+      },
+      {
+        "command": "PYTHONDONTWRITEBYTECODE=1 make agent-verify",
+        "required": true,
+        "expected_result": "pass"
+      },
+      {
+        "command": "git diff --check",
+        "required": true,
+        "expected_result": "pass"
+      }
+    ],
+    "evidence_to_capture": [
+      "focused and full kit test output",
+      "ledger JSON/text examples",
+      "docs/version validation",
+      "source backlog validation",
+      "remote ref match after push",
+      "dirty-state explanation for both checkouts"
+    ]
+  },
+  "docs_impact": {
+    "expected": "yes",
+    "paths": [
+      "/Volumes/Myrtle/Code/04_Code/Hermes/doc-contract-kit/README.md",
+      "/Volumes/Myrtle/Code/04_Code/Hermes/doc-contract-kit/templates/common/working-rhythm.md",
+      "/Volumes/Myrtle/Code/04_Code/Hermes/doc-contract-kit/templates/common/ops-agent-workflow.md",
+      "/Volumes/Myrtle/Code/04_Code/Hermes/doc-contract-kit/templates/common/harness-engineering.md",
+      "/Volumes/Myrtle/Code/04_Code/Hermes/doc-contract-kit/docs/harness-engineering.md",
+      "/Volumes/Myrtle/Code/04_Code/Hermes/doc-contract-kit/CHANGELOG.md",
+      "source backlog summary files"
+    ],
+    "waiver_allowed": false,
+    "notes": "This adds an installed read-only operator/reporting surface."
+  },
+  "risk": {
+    "level": "medium",
+    "known_risks": [
+      "A ledger can become noisy if it dumps every receipt instead of indexing the latest relevant state.",
+      "Receipt schema variants may differ across commands; parsing must tolerate old or partial receipts.",
+      "Next-command recommendations must stay conservative and not imply mutation authority."
+    ],
+    "stop_conditions": [
+      "The ledger needs to mutate local state to produce its report.",
+      "Receipt parsing failures crash the command instead of becoming warnings.",
+      "The command hides missing receipts or stale task metadata behind a generic dirty-state result."
+    ]
+  },
+  "approval": {
+    "human_approval_required": false,
+    "state": "approved",
+    "approver": null,
+    "notes": "User asked to implement all remaining workflow-stack backlog items serially with one task agent per backlog item."
+  },
+  "handoff": {
+    "recommended_prompt": "workflows/prompts/task-packet.md",
+    "owner": "one kit worker for implementation; parent for integration and closeout"
+  }
+}

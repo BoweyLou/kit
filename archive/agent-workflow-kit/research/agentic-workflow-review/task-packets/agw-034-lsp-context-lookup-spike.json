@@ -1,0 +1,325 @@
+{
+  "schema_version": 1,
+  "task": {
+    "id": "AGW-034",
+    "title": "Investigate LSP-backed context lookup for local review runner.",
+    "priority": "P2",
+    "status": "approved",
+    "source": {
+      "type": "backlog",
+      "reference": "research/agentic-workflow-review/backlog.csv:35"
+    }
+  },
+  "context": {
+    "repo_root": "/Volumes/Myrtle/Code/04_Code/Codex_CodeReview",
+    "mode": "verification",
+    "problem_statement": "Definitions and usages can ground large-repo review better than raw file stuffing, but the local review runner needs a bounded LSP-backed context lookup design before any command or runner behavior is added.",
+    "background": [
+      "AGW-032 added scripts/build_context_packet.py and make context-packet for changed-file adjacency using deterministic local git and text matching.",
+      "AGW-033 added a review-map Markdown/JSON artifact for large-changeset navigation and explicitly left LSP/codegraph lookup to AGW-034.",
+      "The source findings cite mrge.io for human-oriented code review UX with LSP context and logical file grouping, plus Sourcebot-style code search as a broader context-retrieval signal.",
+      "scripts/agent_review_run.py is currently a read-only review runner that loads startup context, personas, permission policy, executes manual or Amp review modes, writes artifacts, and fails on mutation.",
+      "The backlog delivery shape is Spike note, so this task should produce an evidence-backed recommendation and follow-on scope rather than shipping code."
+    ],
+    "non_goals": [
+      "Do not implement an LSP client, codegraph indexer, semantic search service, or review-runner integration in AGW-034.",
+      "Do not add a command, Make target, schema installed into target repos, repo-contract-kit behavior, hosted service, or GitHub/bot integration.",
+      "Do not auto-install language servers, run package-manager installs, start background daemons, or contact remote code-indexing services.",
+      "Do not mutate scripts/agent_review_run.py, scripts/build_context_packet.py, prompts, generated adapters, or installed kit-managed files.",
+      "Do not mark the task done with a vague recommendation; the spike note must name the recommended architecture, refusal cases, test strategy, and follow-on backlog shape.",
+      "Do not use non-primary external claims when current official docs, source repositories, or local source evidence are available."
+    ]
+  },
+  "previous_task_state": {
+    "report_sources": [
+      "git status --short",
+      "git rev-parse HEAD",
+      "git ls-remote origin refs/heads/main",
+      "make agent-next",
+      "make backlog-status",
+      "make agent-task-status TASK_STATUS_JSON=1",
+      "make agent-task-packet-from-backlog BACKLOG_ID=AGW-034"
+    ],
+    "active_tasks": [],
+    "unresolved_blockers": [],
+    "dirty_or_stale_state": [],
+    "finalizer_receipt_paths": [
+      "source main commit 5565519061b1c59e4518b649fb152553280cd341 completed AGW-033 and remote origin/main matched it",
+      "ignored local receipt directory .agent-workflows/tasks/agw-033-review-map-artifact/ recorded AGW-033 closeout; tracked worktree remained clean"
+    ],
+    "blocker_receipt_paths": [],
+    "allowed_to_start": true,
+    "notes": "AGW-034 packet creation began from a clean source checkout on main at 5565519061b1c59e4518b649fb152553280cd341. make agent-next selected AGW-034 with dirty false, make backlog-status reported 12 open and 87 done, and make agent-task-status TASK_STATUS_JSON=1 reported zero active tasks, zero hazards, zero stale tasks, zero unknown-scope tasks, and zero untracked agent worktrees."
+  },
+  "closeout_required_before_start": {
+    "decision": "safe-start",
+    "reason": "AGW-033 has been implemented, validated, pushed, and source-closed; source task-status reports no active, stale, hazardous, or unknown-scope tasks.",
+    "required_next_step": "Proceed with exactly one AGW-034 worker in agent-workflow-kit; refresh git status and task-status before launch and stop if new dirt, active task metadata, or remote divergence appears.",
+    "evidence_paths": [
+      "research/agentic-workflow-review/task-packets/agw-034-lsp-context-lookup-spike.md",
+      "source main commit 5565519061b1c59e4518b649fb152553280cd341",
+      "make agent-next selected AGW-034 with dirty false",
+      "make agent-task-status TASK_STATUS_JSON=1 reported active_task_count 0"
+    ]
+  },
+  "goal_alignment": {
+    "repo_goal": "Keep agent-workflow-kit as the canonical source for local-first review workflow research, prompts, schemas, task packets, and generated adapters while leaving installed target-repo commands to repo-contract-kit.",
+    "area_contracts": [
+      {
+        "path": "research/agentic-workflow-review/spikes/agw-034-lsp-context-lookup.md",
+        "purpose": "New spike note that investigates whether and how LSP-backed definition/usage lookup should later compose with local review runner context.",
+        "source": "new research spike artifact",
+        "status": "aligned"
+      },
+      {
+        "path": "scripts/agent_review_run.py",
+        "purpose": "Existing local read-only review runner; inspect to understand integration points but do not mutate in this spike.",
+        "source": "existing runner",
+        "status": "aligned"
+      },
+      {
+        "path": "scripts/build_context_packet.py",
+        "purpose": "Existing deterministic context packet; AGW-034 should identify how LSP lookup would compose with it, not replace it.",
+        "source": "AGW-032 source command",
+        "status": "aligned"
+      },
+      {
+        "path": "workflows/prompts/templates/review-map.md",
+        "purpose": "Existing AGW-033 review-map artifact; the spike should identify where LSP lookup evidence would appear in review maps.",
+        "source": "AGW-033 artifact template",
+        "status": "aligned"
+      },
+      {
+        "path": "research/agentic-workflow-review/feature_matrix.csv",
+        "purpose": "Research matrix row for codebase context retrieval; closeout should update current state and remaining risk after the spike.",
+        "source": "research summary contract",
+        "status": "aligned"
+      }
+    ],
+    "alignment_decision": "aligned",
+    "adaptation_needed": false,
+    "stop_conditions": [
+      "Stop if implementation pressure turns the spike into runner, CLI, LSP client, or repo-contract-kit code.",
+      "Stop if bounded source research cannot be cited from local files or primary current sources.",
+      "Stop if the worker cannot define read-only, local-only, timeout, cache, unsupported-language, and omission behavior.",
+      "Stop if the recommended architecture would require background daemons, auto-installers, remote indexing, or account credentials.",
+      "Stop if the spike cannot clearly distinguish deterministic context packets, review maps, LSP lookup, and future codegraph indexing."
+    ]
+  },
+  "scope": {
+    "allowed_files": [
+      "research/agentic-workflow-review/spikes/README.md",
+      "research/agentic-workflow-review/spikes/agw-034-lsp-context-lookup.md",
+      "research/agentic-workflow-review/backlog.csv",
+      "research/agentic-workflow-review/agent-workflow-kit-backlog.csv",
+      "research/agentic-workflow-review/summary.md",
+      "research/agentic-workflow-review/feature_matrix.csv"
+    ],
+    "protected_files": [
+      "/Volumes/Myrtle/Code/04_Code/Hermes/doc-contract-kit",
+      "repo-contract-kit managed templates or installed target-repo files",
+      "scripts/agent_review_run.py",
+      "scripts/build_context_packet.py",
+      "workflows/prompts/",
+      ".codex/prompts/",
+      "schemas/",
+      "tests/",
+      "Makefile",
+      "VERSION",
+      "CHANGELOG.md unless the worker intentionally changes user-facing behavior, which this packet does not expect",
+      "unrelated backlog rows, unrelated task packets, and unrelated dirty work"
+    ],
+    "inspect_first": [
+      "research/agentic-workflow-review/backlog.csv",
+      "research/agentic-workflow-review/feature_matrix.csv",
+      "research/agentic-workflow-review/source_findings.json",
+      "research/agentic-workflow-review/summary.md",
+      "research/agentic-workflow-review/task-packets/agw-033-review-map-artifact.md",
+      "scripts/agent_review_run.py",
+      "scripts/build_context_packet.py",
+      "workflows/prompts/templates/review-map.md",
+      "schemas/review-map.schema.json",
+      "docs/codex-review-trace.md",
+      "docs/harness-engineering.md"
+    ],
+    "expected_outputs": [
+      "A spike note at research/agentic-workflow-review/spikes/agw-034-lsp-context-lookup.md with evidence, constraints, recommendation, architecture options, and follow-on task shape.",
+      "If the spikes directory is new, a short README explaining the purpose and closeout expectations for spike notes.",
+      "A recommendation of build/defer/no-go for LSP-backed lookup, with explicit rationale.",
+      "A proposed read-only local architecture for later work, including inputs, outputs, artifact schema sketch, runner composition points, timeouts, cache/sidecar boundaries, token caps, unsupported-language behavior, and omission fields.",
+      "A comparison of at least three approaches: pure context-packet/review-map fallback, local LSP definition/reference lookup, and heavier codegraph/search indexing.",
+      "A language/tool availability table covering at least Python, TypeScript/JavaScript, Go, Rust, and unknown/unsupported repos without requiring installation.",
+      "Security/privacy/resource analysis for local-only behavior, no auto-installs, no network indexing, no credentials, read-only filesystem expectations, timeouts, and generated/vendor exclusions.",
+      "A test and validation plan for any later implementation, including fixture repos or golden JSON artifacts.",
+      "Backlog, split backlog, summary, and feature matrix closeout after the spike is complete."
+    ]
+  },
+  "acceptance_criteria": [
+    {
+      "description": "A durable AGW-034 spike note exists and cites the local source surfaces plus any bounded primary external sources used for the investigation.",
+      "verification": "Inspect research/agentic-workflow-review/spikes/agw-034-lsp-context-lookup.md for local evidence references and source notes."
+    },
+    {
+      "description": "The spike note gives a clear build/defer/no-go recommendation and explains how LSP lookup should compose with context packets, review maps, trace evidence, and the local read-only review runner.",
+      "verification": "Review the recommendation and architecture sections in the spike note."
+    },
+    {
+      "description": "The spike defines later implementation boundaries: local-only, read-only, no auto-install, no remote indexing, bounded timeouts, explicit unsupported-language behavior, cache/sidecar policy, token caps, and omission reporting.",
+      "verification": "Review the safety, resource, and failure-mode sections."
+    },
+    {
+      "description": "The spike compares pure deterministic context, local LSP lookup, and heavier codegraph/search indexing with concrete pros, cons, and go/no-go triggers.",
+      "verification": "Review the alternatives table."
+    },
+    {
+      "description": "The spike includes a later test plan and follow-on backlog shape instead of implementing runner behavior now.",
+      "verification": "Review validation and follow-on sections; confirm git diff contains no runner, prompt, schema, Makefile, or repo-contract-kit behavior changes."
+    },
+    {
+      "description": "Backlog closeout records AGW-034 as a completed spike note and keeps any implementation work as follow-on scope rather than silently shipping it.",
+      "verification": "Run make backlog-check and make backlog-split-check, then inspect backlog rows and summary."
+    },
+    {
+      "description": "Docs-impact and versioning checks pass with an explicit unchanged-version rationale if no behavior, prompt, schema, or user-facing command changed.",
+      "verification": "Run python3 scripts/check_doc_impact.py and VERSION_CHECK_ALLOW_UNCHANGED=1 make version-check."
+    }
+  ],
+  "validation": {
+    "commands": [
+      {
+        "command": "python3 scripts/check_doc_impact.py",
+        "required": true,
+        "expected_result": "pass because research summary/backlog docs cover the research change, or record a specific no-docs-needed waiver if this remains packet-only"
+      },
+      {
+        "command": "VERSION_CHECK_ALLOW_UNCHANGED=1 make version-check",
+        "required": true,
+        "expected_result": "pass with unchanged-version rationale for research-only spike work"
+      },
+      {
+        "command": "PYTHONDONTWRITEBYTECODE=1 make validate",
+        "required": true,
+        "expected_result": "pass; pre-existing instruction hygiene warnings may be reported if unchanged"
+      },
+      {
+        "command": "PYTHONDONTWRITEBYTECODE=1 make agent-verify",
+        "required": true,
+        "expected_result": "pass; pre-existing instruction hygiene warnings may be reported if unchanged"
+      },
+      {
+        "command": "make docs-check",
+        "required": true,
+        "expected_result": "pass"
+      },
+      {
+        "command": "make docs-lint",
+        "required": true,
+        "expected_result": "pass"
+      },
+      {
+        "command": "make docs-build",
+        "required": true,
+        "expected_result": "pass"
+      },
+      {
+        "command": "make docs-generate",
+        "required": true,
+        "expected_result": "pass"
+      },
+      {
+        "command": "git diff --check",
+        "required": true,
+        "expected_result": "pass"
+      },
+      {
+        "command": "make backlog-check && make backlog-split-check",
+        "required": true,
+        "expected_result": "pass after closeout"
+      }
+    ],
+    "evidence_to_capture": [
+      "Spike note path and recommendation.",
+      "Diff summary and changed-file list proving research-only scope.",
+      "Docs-impact and unchanged-version check output.",
+      "Validation output from validate, agent-verify, docs, and backlog checks.",
+      "Any external sources consulted, with URLs and dates in the spike note.",
+      "Dirty-state explanation at final handoff."
+    ]
+  },
+  "closeout_requirements": {
+    "final_receipt_path": ".agent-workflows/tasks/agw-034-lsp-context-lookup-spike/receipt.json or sidecar equivalent",
+    "readiness_check": {
+      "command": "make agent-task-ready TASK=AGW-034 TASK_READY_JSON=1 or record why unavailable in the source parent run",
+      "expected_result": "ready report passes or a blocker is recorded before implementation starts"
+    },
+    "lifecycle_action": {
+      "action": "finish",
+      "command": "make agent-task-finalize TASK=AGW-034 TASK_RECEIPT=<path> TASK_FINALIZE_JSON=1 or lifecycle fallback",
+      "expected_result": "metadata is closed and final receipt is linked, or fallback receipt is durable"
+    },
+    "final_task_status": {
+      "command": "make agent-task-status TASK_STATUS_INCLUDE_CLOSED=1 TASK_STATUS_JSON=1",
+      "expected_result": "task is terminal or no local metadata was created and the reason is recorded"
+    },
+    "closeout_preview": {
+      "command": "make agent-task-closeout TASK_CLOSEOUT_JSON=1",
+      "expected_result": "eligible, retained, or blocked cleanup state is recorded",
+      "apply_requires_explicit_approval": true
+    },
+    "dirty_state_explanation": "Final handoff must say whether the checkout is clean, only expected files are dirty, cleanup is blocked, or unrelated dirt was preserved."
+  },
+  "docs_impact": {
+    "expected": "yes",
+    "paths": [
+      "research/agentic-workflow-review/spikes/agw-034-lsp-context-lookup.md",
+      "research/agentic-workflow-review/spikes/README.md",
+      "research/agentic-workflow-review/summary.md"
+    ],
+    "waiver_allowed": false,
+    "notes": "This is research documentation and backlog closeout. It should not require VERSION or CHANGELOG changes unless the worker changes user-facing behavior, prompts, schemas, or commands."
+  },
+  "risk": {
+    "level": "medium",
+    "known_risks": [
+      "The task can expand from investigation into a half-built LSP client without enough language coverage or safety boundaries.",
+      "LSP servers can be slow, stateful, project-specific, or absent; a later design must treat missing servers as an omission, not a hard failure for every repo.",
+      "Auto-installing language servers or using remote code search would violate local-first and permission boundaries.",
+      "Definitions/usages can still be incomplete for dynamic languages, generated code, reflection, vendored dependencies, or monorepos.",
+      "A spike note can become stale if it does not record primary source dates and follow-on stop conditions."
+    ],
+    "stop_conditions": [
+      "The worker needs to mutate runner code, prompts, schemas, Makefile targets, or repo-contract-kit files.",
+      "The worker cannot inspect enough local source or primary external sources to make a defensible recommendation.",
+      "The recommendation requires background daemons, auto-installs, remote services, credentials, or write access.",
+      "Validation reveals unrelated dirty work or generated adapter drift."
+    ]
+  },
+  "approval": {
+    "human_approval_required": false,
+    "state": "approved",
+    "approver": null,
+    "notes": "Active user goal is to add fully planned backlog packets and implement remaining workflow-stack items serially with one worker per backlog item."
+  },
+  "coordination": {
+    "active_task_count": 0,
+    "active_tasks": [],
+    "overlap_warnings": []
+  },
+  "harness_metrics": {
+    "context_file_count": 10,
+    "token_budget": {
+      "guidance": "Keep the worker in a research-only slice. Use local source evidence first, then bounded primary external sources if internet access is available."
+    }
+  },
+  "handoff": {
+    "recommended_prompt": "workflows/prompts/task-packet.md, then workflows/prompts/research/research-brief.md if the worker needs structured current-source research",
+    "owner": "one worker agent",
+    "dependencies": [
+      "AGW-032 context packet exists and should be the deterministic fallback.",
+      "AGW-033 review map exists and should identify where LSP evidence would be surfaced.",
+      "AGW-014 review runner exists but must remain unchanged during the spike.",
+      "Any implementation backlog item should be explicit follow-on scope after the spike."
+    ],
+    "next_packet_hint": "After AGW-034 closes, continue with the next open backlog item selected by make agent-next."
+  }
+}

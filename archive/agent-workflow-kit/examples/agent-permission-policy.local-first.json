@@ -1,0 +1,125 @@
+{
+  "schema_version": 1,
+  "policy_id": "local-first-agent-permissions",
+  "default_profile": "read-only-review",
+  "profiles": [
+    {
+      "name": "read-only-review",
+      "trust_level": "read-only-review",
+      "purpose": "Inspect code, docs, diffs, and local command output without mutating repository or account state.",
+      "filesystem": {
+        "read": "allow",
+        "write": "deny",
+        "delete": "deny",
+        "allowed_roots": ["."],
+        "protected_paths": [".git", ".env", ".secrets", "node_modules"]
+      },
+      "shell": {
+        "mode": "allowlisted",
+        "allowlist": ["git status", "git diff", "rg", "sed", "python3 -m json.tool"],
+        "denylist": ["rm", "git reset", "git checkout --", "git push"]
+      },
+      "git": {
+        "status": "allow",
+        "diff": "allow",
+        "stage": "deny",
+        "commit": "deny",
+        "push": "deny",
+        "branch": "deny"
+      },
+      "browser": {
+        "mode": "read-only",
+        "allowed_domains": [],
+        "account_mutation": "deny",
+        "captcha_bypass": "deny"
+      },
+      "network": {
+        "mode": "allowlisted",
+        "allowed_hosts": []
+      },
+      "mcp": {
+        "mode": "read-only",
+        "allowed_servers": [],
+        "write_tools": "deny"
+      },
+      "ci": {
+        "run_checks": "allow",
+        "comment_on_pr": "deny",
+        "mutate_pr": "deny",
+        "secrets_access": "deny"
+      },
+      "human_approval_required_for": [
+        "file-write",
+        "file-delete",
+        "git-stage",
+        "git-commit",
+        "git-push",
+        "pr-comment",
+        "pr-mutation",
+        "browser-account-mutation",
+        "network-non-allowlisted",
+        "mcp-write-tool",
+        "ci-secret-access"
+      ]
+    },
+    {
+      "name": "browser-research",
+      "trust_level": "browser-research",
+      "purpose": "Use an existing browser session to collect source evidence without changing account state.",
+      "filesystem": {
+        "read": "allow",
+        "write": "approval-required",
+        "delete": "deny",
+        "allowed_roots": ["research"],
+        "protected_paths": [".git", ".env", ".secrets"]
+      },
+      "shell": {
+        "mode": "allowlisted",
+        "allowlist": ["osascript", "python3 -m json.tool", "rg"],
+        "denylist": ["rm", "git reset", "git push"]
+      },
+      "git": {
+        "status": "allow",
+        "diff": "allow",
+        "stage": "deny",
+        "commit": "deny",
+        "push": "deny",
+        "branch": "deny"
+      },
+      "browser": {
+        "mode": "read-only",
+        "allowed_domains": ["x.com", "github.com", "news.ycombinator.com"],
+        "account_mutation": "deny",
+        "captcha_bypass": "deny"
+      },
+      "network": {
+        "mode": "allowlisted",
+        "allowed_hosts": ["x.com", "api.github.com", "hn.algolia.com", "news.ycombinator.com"]
+      },
+      "mcp": {
+        "mode": "read-only",
+        "allowed_servers": [],
+        "write_tools": "deny"
+      },
+      "ci": {
+        "run_checks": "deny",
+        "comment_on_pr": "deny",
+        "mutate_pr": "deny",
+        "secrets_access": "deny"
+      },
+      "human_approval_required_for": [
+        "file-write",
+        "file-delete",
+        "git-stage",
+        "git-commit",
+        "git-push",
+        "pr-comment",
+        "pr-mutation",
+        "browser-account-mutation",
+        "network-non-allowlisted",
+        "mcp-write-tool",
+        "ci-secret-access"
+      ]
+    }
+  ]
+}

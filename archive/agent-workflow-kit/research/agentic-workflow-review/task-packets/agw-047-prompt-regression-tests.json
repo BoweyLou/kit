@@ -1,0 +1,224 @@
+{
+  "schema_version": 1,
+  "task": {
+    "id": "AGW-047",
+    "title": "Add prompt regression tests for persona output schemas and finding quality.",
+    "priority": "P1",
+    "status": "approved",
+    "source": {
+      "type": "backlog",
+      "reference": "research/agentic-workflow-review/backlog.csv:48"
+    }
+  },
+  "context": {
+    "repo_root": "/Volumes/Myrtle/Code/04_Code/Codex_CodeReview",
+    "mode": "verification",
+    "problem_statement": "Persona review prompts and synthesis prompts require structured, evidence-backed findings, but the repo does not yet have a small deterministic regression suite that proves malformed or low-signal persona outputs are rejected and good examples still pass.",
+    "background": [
+      "agent-workflow-kit owns canonical prompts under workflows/prompts/; .codex/prompts/ is generated and must stay in sync if prompt sources change.",
+      "Existing schema work covers the persona manifest, session receipt findings, and review synthesis JSON shape.",
+      "scripts/agent_review_run.py already parses and lightly validates persona and synthesis payloads.",
+      "scripts/run_agentic_regression_fixtures.py checks broader workflow controls, but it does not run golden persona-output examples.",
+      "AGW-046 added a pattern for small deterministic benchmark fixtures with text/JSON runner output and focused tests."
+    ],
+    "non_goals": [
+      "Do not run live LLM/model reviews or add network-dependent evaluation.",
+      "Do not change reviewer persona missions unless a fixture proves the current prompt text cannot express the expected quality gate.",
+      "Do not redesign schemas/review-synthesis.schema.json or schemas/session-receipt.schema.json beyond narrowly required quality fields.",
+      "Do not change repo-contract-kit unless a source-owned fixture exposes an installed-runner bug that the parent thread explicitly integrates."
+    ]
+  },
+  "scope": {
+    "allowed_files": [
+      "research/prompt-regression-fixtures/",
+      "scripts/run_prompt_regression_fixtures.py",
+      "tests/test_prompt_regression_fixtures.py",
+      "README.md",
+      "docs/harness-engineering.md",
+      "workflows/prompts/",
+      ".codex/prompts/",
+      "VERSION",
+      "CHANGELOG.md",
+      "research/agentic-workflow-review/backlog.csv",
+      "research/agentic-workflow-review/agent-workflow-kit-backlog.csv",
+      "research/agentic-workflow-review/summary.md"
+    ],
+    "protected_files": [
+      "/Volumes/Myrtle/Code/04_Code/Hermes/doc-contract-kit",
+      "scripts/agent_review_run.py unless a focused validation hook is required and tests prove it",
+      "schemas/review-synthesis.schema.json unless narrowly required by a fixture-backed quality field",
+      "schemas/session-receipt.schema.json unless narrowly required by a fixture-backed quality field",
+      "research/agentic-workflow-review/repo-contract-kit-backlog.csv",
+      ".agent-workflows/runs/"
+    ],
+    "inspect_first": [
+      "workflows/prompts/templates/review-finding.md",
+      "workflows/prompts/review-synthesis.md",
+      "workflows/prompts/personas/manifest.json",
+      "workflows/prompts/personas/*.md",
+      "schemas/session-receipt.schema.json",
+      "schemas/review-synthesis.schema.json",
+      "scripts/agent_review_run.py",
+      "scripts/run_agentic_regression_fixtures.py",
+      "tests/",
+      "research/agentic-regression-research/fixtures/",
+      "research/docs-impact-benchmarks/"
+    ],
+    "expected_outputs": [
+      "A small fixture suite with named golden examples for valid persona findings, malformed persona payloads, unsupported/nit findings, duplicate findings, and synthesis quality.",
+      "A deterministic local runner that validates fixture expectations without calling a model or the network.",
+      "Tests proving that bad examples fail for the intended reason and good examples pass.",
+      "Documentation showing how to run the suite and what quality signals it protects."
+    ]
+  },
+  "acceptance_criteria": [
+    {
+      "description": "The fixture suite has explicit case ids, intent labels, payload inputs, expected status, and expected validation or quality reasons.",
+      "verification": "Read the fixture file."
+    },
+    {
+      "description": "At least one valid persona finding passes with required fields, evidence, recommendation, status, and false-positive notes.",
+      "verification": "Run the prompt regression runner and focused tests."
+    },
+    {
+      "description": "At least one malformed persona payload fails because required fields or evidence are missing.",
+      "verification": "Run the prompt regression runner and focused tests."
+    },
+    {
+      "description": "At least one low-signal/nit finding is rejected or downgraded by deterministic quality rules.",
+      "verification": "Run the prompt regression runner and focused tests."
+    },
+    {
+      "description": "At least one duplicate/overlapping finding example proves synthesis quality expectations such as source-persona preservation or duplicate suppression.",
+      "verification": "Run the prompt regression runner and focused tests."
+    },
+    {
+      "description": "The runner reuses existing payload validators where possible instead of duplicating schema parsing.",
+      "verification": "Read scripts/run_prompt_regression_fixtures.py."
+    },
+    {
+      "description": "The benchmark is documented and integrated into local validation if appropriate.",
+      "verification": "Read docs and Make/test changes."
+    },
+    {
+      "description": "The backlog row can be closed with evidence from focused tests, prompt adapter checks if prompts changed, and make agent-verify.",
+      "verification": "Run required validation commands."
+    }
+  ],
+  "validation": {
+    "commands": [
+      {
+        "command": "PYTHONDONTWRITEBYTECODE=1 python3 -m unittest tests.test_prompt_regression_fixtures",
+        "required": true,
+        "expected_result": "pass"
+      },
+      {
+        "command": "PYTHONDONTWRITEBYTECODE=1 python3 scripts/run_prompt_regression_fixtures.py",
+        "required": true,
+        "expected_result": "pass"
+      },
+      {
+        "command": "PYTHONDONTWRITEBYTECODE=1 python3 scripts/run_prompt_regression_fixtures.py --json",
+        "required": true,
+        "expected_result": "pass"
+      },
+      {
+        "command": "PYTHONDONTWRITEBYTECODE=1 make prompt-adapters-check",
+        "required": false,
+        "expected_result": "pass if prompt sources or generated adapters changed",
+        "skip_policy": "Skip when implementation does not change workflows/prompts/ or .codex/prompts/."
+      },
+      {
+        "command": "PYTHONDONTWRITEBYTECODE=1 make agent-verify",
+        "required": true,
+        "expected_result": "pass"
+      },
+      {
+        "command": "git diff --check",
+        "required": true,
+        "expected_result": "pass"
+      }
+    ],
+    "evidence_to_capture": [
+      "focused test output",
+      "prompt regression runner text output",
+      "prompt regression runner JSON output",
+      "adapter check output when applicable",
+      "agent verification output",
+      "diff summary",
+      "dirty-state explanation"
+    ]
+  },
+  "closeout_requirements": {
+    "final_receipt_path": ".agent-workflows/tasks/agw-047-prompt-regression-tests/receipt.json or sidecar equivalent",
+    "readiness_check": {
+      "command": "make agent-task-ready TASK=AGW-047 TASK_READY_JSON=1 or record why unavailable for this non-worktree parent-run packet",
+      "expected_result": "ready report passes or blocker is recorded"
+    },
+    "lifecycle_action": {
+      "action": "finish",
+      "command": "make agent-task-finish TASK=AGW-047 TASK_RECEIPT=<path> TASK_LIFECYCLE_JSON=1 or lifecycle fallback",
+      "expected_result": "metadata is closed and final receipt is linked, or fallback receipt is durable"
+    },
+    "final_task_status": {
+      "command": "make agent-task-status TASK_STATUS_INCLUDE_CLOSED=1 TASK_STATUS_JSON=1",
+      "expected_result": "task is terminal or no local metadata was created and the reason is recorded"
+    },
+    "closeout_preview": {
+      "command": "make agent-task-closeout TASK_CLOSEOUT_JSON=1",
+      "expected_result": "eligible, retained, or blocked cleanup state is recorded",
+      "apply_requires_explicit_approval": true
+    },
+    "dirty_state_explanation": "Final handoff must say whether the checkout is clean, only expected files are dirty, cleanup is blocked, or unrelated dirt was preserved."
+  },
+  "docs_impact": {
+    "expected": "yes",
+    "paths": [
+      "research/prompt-regression-fixtures/",
+      "README.md",
+      "docs/harness-engineering.md",
+      "CHANGELOG.md"
+    ],
+    "waiver_allowed": false,
+    "notes": "This adds a new local eval surface and likely a new command."
+  },
+  "risk": {
+    "level": "medium",
+    "known_risks": [
+      "Deterministic quality checks can overfit local wording and reject valid future findings.",
+      "Too much validation in the runner can duplicate schema ownership or make prompt iteration brittle.",
+      "Prompt edits require adapter regeneration and can affect installed target repos on the next kit update."
+    ],
+    "stop_conditions": [
+      "The implementation needs live LLM calls or external evaluation services.",
+      "A required fix belongs in repo-contract-kit and cannot be safely integrated in this parent thread.",
+      "The task grows into a broader review-runner redesign instead of fixture-backed regression checks."
+    ]
+  },
+  "approval": {
+    "human_approval_required": false,
+    "state": "approved",
+    "approver": null,
+    "notes": "Active user goal is to implement remaining backlog items serially with one task agent per item."
+  },
+  "coordination": {
+    "active_task_count": 0,
+    "active_tasks": [],
+    "overlap_warnings": []
+  },
+  "harness_metrics": {
+    "context_file_count": 10,
+    "token_budget": {
+      "guidance": "Prefer fixture-driven tests and existing runner helpers over broad prompt rewrites; keep golden examples small."
+    }
+  },
+  "handoff": {
+    "recommended_prompt": "workflows/prompts/task-packet.md, then workflows/prompts/verification-sentinel.md",
+    "owner": "one worker agent",
+    "dependencies": [
+      "Existing review-finding template, persona manifest, session receipt schema, synthesis schema, and scripts/agent_review_run.py.",
+      "Existing deterministic fixture patterns from AGW-046 and agentic regression fixtures."
+    ],
+    "next_packet_hint": "AGW-048 should cover review-yield and human-burden metrics separately."
+  }
+}

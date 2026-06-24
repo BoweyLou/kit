@@ -1,0 +1,306 @@
+{
+  "schema_version": 1,
+  "task": {
+    "id": "AGW-024",
+    "title": "Add changelog-update helper tied to docs-impact results.",
+    "priority": "P2",
+    "status": "approved",
+    "source": {
+      "type": "backlog",
+      "reference": "research/agentic-workflow-review/backlog.csv:25"
+    }
+  },
+  "context": {
+    "repo_root": "/Volumes/Myrtle/Code/04_Code/Hermes/doc-contract-kit",
+    "mode": "verification",
+    "problem_statement": "Release notes are part of documentation drift. The kit already detects docs-impact and has local versioning commands, but operators need a deterministic helper that turns docs-impact/versioning context into a reviewable changelog proposal or check rather than relying on ad hoc agent memory.",
+    "background": [
+      "AGW-018 added docs-impact localization.",
+      "AGW-022 and AGW-023 made docs-impact and changelog-update part of the PR interface contract, but /update-changelog is still spec-only.",
+      "The versioning profile creates target-owned VERSION, CHANGELOG.md, and docs/versioning.md plus make version-check/version-bump.",
+      "AGW-021 is closed in source commit 6417391 and kit commit 3fdbbcd; both remotes match local HEADs at packet creation.",
+      "The kit checkout is clean at repo-contract-kit 0.4.49, and make version-check && make docs-check passed at packet creation."
+    ],
+    "non_goals": [
+      "Do not create an autonomous release bot or open PRs.",
+      "Do not write CHANGELOG.md by default.",
+      "Do not change SemVer bump semantics or release tagging.",
+      "Do not replace docs-impact, docs-propose, version-check, or version-bump.",
+      "Do not edit agent-workflow-kit prompt/schema source except for source backlog closeout after kit validation passes."
+    ]
+  },
+  "previous_task_state": {
+    "report_sources": [
+      "make agent-task-status TASK_STATUS_INCLUDE_CLOSED=1 TASK_STATUS_JSON=1",
+      "make agent-next",
+      "git ls-remote origin refs/heads/main for source and kit remotes"
+    ],
+    "active_tasks": [],
+    "unresolved_blockers": [],
+    "dirty_or_stale_state": [],
+    "finalizer_receipt_paths": [
+      "source main commit 6417391e36f1c485f6f90c152754c0abe2fc738c closed AGW-021; source agent-task-status reported no active, stale, hazardous, or unknown-scope tasks",
+      "kit main commit 3fdbbcd1efc211c1d4635e64d039910379c213a1 completed repo-contract-kit 0.4.49"
+    ],
+    "blocker_receipt_paths": [],
+    "allowed_to_start": true,
+    "notes": "AGW-024 packet creation began only after AGW-021 was pushed in both repos, both remotes matched local HEADs, both worktrees were clean, and source task-status reported zero active tasks."
+  },
+  "closeout_required_before_start": {
+    "decision": "safe-start",
+    "reason": "The previous AGW-021 task has source and kit closeout commits, matching remote refs, clean worktrees, and no active task metadata.",
+    "required_next_step": "Proceed with exactly one AGW-024 worker in repo-contract-kit; refresh task-status if source or kit state becomes dirty before worker launch.",
+    "evidence_paths": [
+      "research/agentic-workflow-review/task-packets/agw-024-changelog-update-helper.md",
+      "source main commit 6417391e36f1c485f6f90c152754c0abe2fc738c",
+      "kit main commit 3fdbbcd1efc211c1d4635e64d039910379c213a1"
+    ]
+  },
+  "goal_alignment": {
+    "repo_goal": "Keep repo-contract-kit as the install-layer guardrail provider that helps local agents detect documentation/release-note impact and produce reviewable evidence without mutating target repos by default.",
+    "area_contracts": [
+      {
+        "path": "/Volumes/Myrtle/Code/04_Code/Hermes/doc-contract-kit/scripts/check_doc_impact.py",
+        "purpose": "Classifies changed paths into docs-impact categories and provides the source signal for release-note/changelog impact.",
+        "source": "docs-impact implementation",
+        "status": "aligned"
+      },
+      {
+        "path": "/Volumes/Myrtle/Code/04_Code/Hermes/doc-contract-kit/scripts/version.py",
+        "purpose": "Validates VERSION and performs explicit version bumps with changelog stubs.",
+        "source": "versioning profile implementation",
+        "status": "aligned"
+      },
+      {
+        "path": "/Volumes/Myrtle/Code/04_Code/Hermes/doc-contract-kit/scripts/repo_contract_kit.py",
+        "purpose": "Stable wrapper CLI for any changelog proposal/check command.",
+        "source": "repo-contract-kit CLI",
+        "status": "aligned"
+      },
+      {
+        "path": "/Volumes/Myrtle/Code/04_Code/Hermes/doc-contract-kit/templates/common/kit-makefile.mk",
+        "purpose": "Installed Make target surface for local changelog proposal/check workflows.",
+        "source": "installed Make bridge",
+        "status": "aligned"
+      },
+      {
+        "path": "/Volumes/Myrtle/Code/04_Code/Hermes/doc-contract-kit/templates/common/slash-command-grammar.md",
+        "purpose": "Spec-only /update-changelog grammar that should remain consistent with the new local helper.",
+        "source": "PR interface contract",
+        "status": "aligned"
+      }
+    ],
+    "alignment_decision": "aligned",
+    "adaptation_needed": false,
+    "stop_conditions": [
+      "Stop if the helper would write CHANGELOG.md or VERSION by default.",
+      "Stop if the helper duplicates or weakens docs-impact/version-check gates.",
+      "Stop if the helper cannot produce deterministic output suitable for tests."
+    ]
+  },
+  "scope": {
+    "allowed_files": [
+      "/Volumes/Myrtle/Code/04_Code/Hermes/doc-contract-kit/scripts/changelog_update.py",
+      "/Volumes/Myrtle/Code/04_Code/Hermes/doc-contract-kit/scripts/repo_contract_kit.py",
+      "/Volumes/Myrtle/Code/04_Code/Hermes/doc-contract-kit/scripts/check_doc_impact.py",
+      "/Volumes/Myrtle/Code/04_Code/Hermes/doc-contract-kit/scripts/version.py",
+      "/Volumes/Myrtle/Code/04_Code/Hermes/doc-contract-kit/templates/common/kit-makefile.mk",
+      "/Volumes/Myrtle/Code/04_Code/Hermes/doc-contract-kit/templates/common/ops-agent-workflow.md",
+      "/Volumes/Myrtle/Code/04_Code/Hermes/doc-contract-kit/templates/common/working-rhythm.md",
+      "/Volumes/Myrtle/Code/04_Code/Hermes/doc-contract-kit/templates/common/slash-command-grammar.md",
+      "/Volumes/Myrtle/Code/04_Code/Hermes/doc-contract-kit/templates/profiles/versioning/files/docs/versioning.md",
+      "/Volumes/Myrtle/Code/04_Code/Hermes/doc-contract-kit/README.md",
+      "/Volumes/Myrtle/Code/04_Code/Hermes/doc-contract-kit/docs/rollout-guide.md",
+      "/Volumes/Myrtle/Code/04_Code/Hermes/doc-contract-kit/docs/harness-engineering.md",
+      "/Volumes/Myrtle/Code/04_Code/Hermes/doc-contract-kit/CHANGELOG.md",
+      "/Volumes/Myrtle/Code/04_Code/Hermes/doc-contract-kit/VERSION",
+      "/Volumes/Myrtle/Code/04_Code/Hermes/doc-contract-kit/tests/test_changelog_update.py",
+      "/Volumes/Myrtle/Code/04_Code/Hermes/doc-contract-kit/tests/test_repo_contract_kit_cli.py",
+      "/Volumes/Myrtle/Code/04_Code/Hermes/doc-contract-kit/tests/test_install.py",
+      "/Volumes/Myrtle/Code/04_Code/Codex_CodeReview/research/agentic-workflow-review/backlog.csv",
+      "/Volumes/Myrtle/Code/04_Code/Codex_CodeReview/research/agentic-workflow-review/repo-contract-kit-backlog.csv",
+      "/Volumes/Myrtle/Code/04_Code/Codex_CodeReview/research/agentic-workflow-review/summary.md",
+      "/Volumes/Myrtle/Code/04_Code/Codex_CodeReview/research/agentic-workflow-review/feature_matrix.csv"
+    ],
+    "protected_files": [
+      "Target repo CHANGELOG.md and VERSION must remain target-owned and not overwritten by kit updates.",
+      "Existing docs-impact waiver semantics.",
+      "Existing version-bump behavior.",
+      "Spec-only PR command grammar must not imply hosted bot execution unless implemented.",
+      "Unrelated backlog rows."
+    ],
+    "inspect_first": [
+      "/Volumes/Myrtle/Code/04_Code/Hermes/doc-contract-kit/scripts/check_doc_impact.py",
+      "/Volumes/Myrtle/Code/04_Code/Hermes/doc-contract-kit/scripts/version.py",
+      "/Volumes/Myrtle/Code/04_Code/Hermes/doc-contract-kit/scripts/repo_contract_kit.py",
+      "/Volumes/Myrtle/Code/04_Code/Hermes/doc-contract-kit/templates/common/kit-makefile.mk",
+      "/Volumes/Myrtle/Code/04_Code/Hermes/doc-contract-kit/templates/common/slash-command-grammar.md",
+      "/Volumes/Myrtle/Code/04_Code/Hermes/doc-contract-kit/tests/test_versioning.py",
+      "/Volumes/Myrtle/Code/04_Code/Hermes/doc-contract-kit/tests/test_repo_contract_kit_cli.py",
+      "/Volumes/Myrtle/Code/04_Code/Hermes/doc-contract-kit/tests/test_install.py"
+    ],
+    "expected_outputs": [
+      "A deterministic changelog proposal/check helper that can consume docs-impact output or derive it from changed files/working tree.",
+      "JSON and text output that reports docs-impact categories, release-note/changelog need, candidate changelog text, target VERSION/CHANGELOG state, and next safe commands.",
+      "Default behavior is non-mutating; any write/update behavior, if implemented, is explicit and preserves versioning profile ownership rules.",
+      "Wrapper CLI and installed Make target expose the helper.",
+      "Docs explain how the helper relates to docs-impact, version-check, version-bump, and /update-changelog.",
+      "VERSION and CHANGELOG.md record the repo-contract-kit behavior change."
+    ]
+  },
+  "acceptance_criteria": [
+    {
+      "description": "A local changelog-update helper produces deterministic JSON/text proposals from docs-impact or changed-file input without writing by default.",
+      "verification": "Focused helper tests cover docs-impacting and no-impact changes and assert no target writes."
+    },
+    {
+      "description": "The helper reports target VERSION/CHANGELOG presence, whether a changelog update appears required, a candidate changelog entry, and next safe commands such as version-check or version-bump.",
+      "verification": "Focused helper tests inspect JSON fields and text output."
+    },
+    {
+      "description": "Wrapper CLI and installed Make target expose the helper while preserving non-mutating defaults.",
+      "verification": "repo_contract_kit CLI and install tests."
+    },
+    {
+      "description": "Docs and slash-command grammar explain the local helper and keep write behavior behind explicit accepted scope.",
+      "verification": "docs-check and changed docs review."
+    },
+    {
+      "description": "The behavior change is versioned and documented in repo-contract-kit.",
+      "verification": "VERSION, CHANGELOG.md, and make version-check."
+    },
+    {
+      "description": "Source backlog rows and summary close AGW-024 only after kit validation passes.",
+      "verification": "source backlog checks after closeout."
+    }
+  ],
+  "validation": {
+    "commands": [
+      {
+        "command": "PYTHONDONTWRITEBYTECODE=1 python3 -m unittest tests.test_changelog_update tests.test_repo_contract_kit_cli tests.test_install tests.test_versioning",
+        "required": true,
+        "expected_result": "pass"
+      },
+      {
+        "command": "PYTHONDONTWRITEBYTECODE=1 make test",
+        "required": true,
+        "expected_result": "pass"
+      },
+      {
+        "command": "make docs-check",
+        "required": true,
+        "expected_result": "pass"
+      },
+      {
+        "command": "make version-check",
+        "required": true,
+        "expected_result": "pass"
+      },
+      {
+        "command": "git diff --check",
+        "required": true,
+        "expected_result": "pass"
+      },
+      {
+        "command": "make backlog-check",
+        "required": true,
+        "expected_result": "pass in source repo after closeout"
+      },
+      {
+        "command": "make backlog-split-check",
+        "required": true,
+        "expected_result": "pass in source repo after closeout"
+      },
+      {
+        "command": "PYTHONDONTWRITEBYTECODE=1 make agent-verify",
+        "required": true,
+        "expected_result": "pass in source repo after closeout"
+      }
+    ],
+    "evidence_to_capture": [
+      "Focused changelog helper tests",
+      "No-write proof for proposal/check mode",
+      "Full repo-contract-kit tests",
+      "Docs and version checks",
+      "Source backlog closeout checks"
+    ]
+  },
+  "closeout_requirements": {
+    "final_receipt_path": "/Volumes/Myrtle/Code/04_Code/Hermes/doc-contract-kit/.agent-workflows/tasks/agw-024/receipt.json",
+    "readiness_check": {
+      "command": "make agent-task-ready TASK=AGW-024 TASK_READY_JSON=1",
+      "expected_result": "pass before lifecycle finish, or blocked with explicit receipt if validation cannot complete"
+    },
+    "lifecycle_action": {
+      "action": "finish",
+      "command": "make agent-task-finalize TASK=AGW-024 TASK_RECEIPT=.agent-workflows/tasks/agw-024/receipt.json TASK_FINALIZE_JSON=1",
+      "expected_result": "done metadata or explicit blocked finalizer receipt"
+    },
+    "final_task_status": {
+      "command": "make agent-task-status TASK_STATUS_INCLUDE_CLOSED=1 TASK_STATUS_JSON=1",
+      "expected_result": "no active AGW-024 task metadata after parent closeout, or terminal metadata with linked receipt before cleanup"
+    },
+    "closeout_preview": {
+      "command": "make agent-task-closeout TASK_CLOSEOUT_JSON=1",
+      "expected_result": "preview reports no unsafe dirty terminal worktree removal",
+      "apply_requires_explicit_approval": true
+    },
+    "dirty_state_explanation": "Worker must explain any remaining dirty files in the kit checkout; parent should only integrate expected AGW-024 files and leave both repos clean after commits."
+  },
+  "docs_impact": {
+    "expected": "yes",
+    "paths": [
+      "/Volumes/Myrtle/Code/04_Code/Hermes/doc-contract-kit/README.md",
+      "/Volumes/Myrtle/Code/04_Code/Hermes/doc-contract-kit/docs/rollout-guide.md",
+      "/Volumes/Myrtle/Code/04_Code/Hermes/doc-contract-kit/templates/common/ops-agent-workflow.md",
+      "/Volumes/Myrtle/Code/04_Code/Hermes/doc-contract-kit/templates/common/working-rhythm.md",
+      "/Volumes/Myrtle/Code/04_Code/Hermes/doc-contract-kit/templates/common/slash-command-grammar.md",
+      "/Volumes/Myrtle/Code/04_Code/Hermes/doc-contract-kit/templates/profiles/versioning/files/docs/versioning.md"
+    ],
+    "waiver_allowed": false,
+    "notes": "This adds an operator-facing command and release-note workflow, so docs and changelog/version updates are required."
+  },
+  "risk": {
+    "level": "medium",
+    "known_risks": [
+      "A changelog helper could imply release authority if docs are unclear.",
+      "A write mode could accidentally modify target-owned CHANGELOG.md or VERSION.",
+      "Docs-impact categories may be too broad for a useful release note without clear caveats."
+    ],
+    "stop_conditions": [
+      "Any default mode writes CHANGELOG.md, VERSION, or target files.",
+      "The helper bypasses docs-impact or version-check rather than composing them.",
+      "The helper cannot produce deterministic testable output."
+    ]
+  },
+  "approval": {
+    "human_approval_required": false,
+    "state": "approved",
+    "approver": "Yannick Bowe",
+    "notes": "User requested implementing all remaining open backlog items with one task agent per item and a committed packet before each task."
+  },
+  "coordination": {
+    "active_task_count": 0,
+    "active_tasks": [],
+    "overlap_warnings": []
+  },
+  "harness_metrics": {
+    "context_file_count": 8,
+    "token_budget": {
+      "source_files": 97,
+      "source_estimated_tokens": 77458,
+      "source_result": "passed"
+    }
+  },
+  "handoff": {
+    "recommended_prompt": "workflows/prompts/task-packet.md",
+    "owner": "repo-contract-kit worker",
+    "dependencies": [
+      "AGW-018 docs-impact localizer",
+      "AGW-023 slash-command grammar",
+      "versioning profile and version.py",
+      "AGW-021 clean source/kit closeout"
+    ],
+    "next_packet_hint": "After AGW-024, make agent-next should select AGW-025 unless priority changes."
+  }
+}

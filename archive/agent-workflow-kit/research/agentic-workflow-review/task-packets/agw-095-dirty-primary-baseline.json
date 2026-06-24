@@ -1,0 +1,222 @@
+{
+  "schema_version": 1,
+  "task": {
+    "id": "AGW-095",
+    "title": "Add dirty-primary baseline mode to task preparation.",
+    "priority": "P1",
+    "status": "approved",
+    "source": {
+      "type": "backlog",
+      "reference": "research/agentic-workflow-review/backlog.csv:96"
+    }
+  },
+  "context": {
+    "repo_root": "/Volumes/Myrtle/Code/04_Code/Hermes/doc-contract-kit",
+    "mode": "implementation",
+    "problem_statement": "agent-task-prepare blocks dirty primary checkouts by default, but safe isolated work can be blocked when unrelated primary-checkout dirt already exists. Add an explicit baseline mode that records current dirty state, allows isolated task work only by opt-in, and later proves whether the primary checkout changed after that baseline.",
+    "background": [
+      "AGW-061 added task worktree preparation.",
+      "AGW-085 and AGW-086 added preflight/doctor and actionable dirty blockers.",
+      "AGW-088 added original-checkout baseline comparison for automation handoff.",
+      "AGW-092 added compact context bundles that surface dirty state and omissions.",
+      "The user reported on 2026-06-15 that automations and task starts fail when agents see unrelated dirty work in the target repo."
+    ],
+    "non_goals": [
+      "Do not weaken the default clean-primary safety gate.",
+      "Do not silently ignore dirty tracked or untracked work.",
+      "Do not mutate, stash, revert, or clean user files.",
+      "Do not make baseline mode the default for write-capable task preparation."
+    ]
+  },
+  "goal_alignment": {
+    "repo_goal": "Keep repo-contract-kit as the install-layer guardrail provider for target repos, with explicit opt-in recovery paths that preserve user work and produce receipts.",
+    "area_contracts": [
+      {
+        "path": "/Volumes/Myrtle/Code/04_Code/Hermes/doc-contract-kit/scripts/agent_task_prepare.py",
+        "purpose": "Prepare isolated task worktrees and in-flight metadata for write-capable agents.",
+        "source": "installed make agent-task-prepare",
+        "status": "aligned"
+      },
+      {
+        "path": "/Volumes/Myrtle/Code/04_Code/Hermes/doc-contract-kit/scripts/agent_task_ready.py",
+        "purpose": "Verify handoff readiness for prepared task worktrees.",
+        "source": "installed make agent-task-ready",
+        "status": "aligned"
+      },
+      {
+        "path": "/Volumes/Myrtle/Code/04_Code/Hermes/doc-contract-kit/templates/common/kit-makefile.mk",
+        "purpose": "Installed target-repo Make surface for task preparation flags.",
+        "source": "installer tests and docs freshness",
+        "status": "aligned"
+      },
+      {
+        "path": "/Volumes/Myrtle/Code/04_Code/Hermes/doc-contract-kit/docs/",
+        "purpose": "Operator-facing installed workflow and rollout guidance.",
+        "source": "docs contract",
+        "status": "aligned"
+      }
+    ],
+    "alignment_decision": "aligned",
+    "adaptation_needed": false,
+    "stop_conditions": [
+      "Stop if baseline mode would allow task preparation without an explicit operator flag.",
+      "Stop if baseline metadata cannot prove whether the primary checkout changed after task preparation.",
+      "Stop if finalize/readiness/handoff logic cannot block or warn on primary drift after the baseline."
+    ]
+  },
+  "scope": {
+    "allowed_files": [
+      "/Volumes/Myrtle/Code/04_Code/Hermes/doc-contract-kit/scripts/agent_task_prepare.py",
+      "/Volumes/Myrtle/Code/04_Code/Hermes/doc-contract-kit/scripts/agent_task_ready.py",
+      "/Volumes/Myrtle/Code/04_Code/Hermes/doc-contract-kit/scripts/agent_task_finalize.py",
+      "/Volumes/Myrtle/Code/04_Code/Hermes/doc-contract-kit/scripts/repo_contract_kit.py",
+      "/Volumes/Myrtle/Code/04_Code/Hermes/doc-contract-kit/templates/common/",
+      "/Volumes/Myrtle/Code/04_Code/Hermes/doc-contract-kit/tests/",
+      "/Volumes/Myrtle/Code/04_Code/Hermes/doc-contract-kit/docs/",
+      "/Volumes/Myrtle/Code/04_Code/Hermes/doc-contract-kit/README.md",
+      "/Volumes/Myrtle/Code/04_Code/Hermes/doc-contract-kit/VERSION",
+      "/Volumes/Myrtle/Code/04_Code/Hermes/doc-contract-kit/CHANGELOG.md",
+      "/Volumes/Myrtle/Code/04_Code/Codex_CodeReview/research/agentic-workflow-review/backlog.csv",
+      "/Volumes/Myrtle/Code/04_Code/Codex_CodeReview/research/agentic-workflow-review/repo-contract-kit-backlog.csv",
+      "/Volumes/Myrtle/Code/04_Code/Codex_CodeReview/research/agentic-workflow-review/summary.md",
+      "/Volumes/Myrtle/Code/04_Code/Codex_CodeReview/research/agentic-workflow-review/feature_matrix.csv"
+    ],
+    "protected_files": [
+      "User target repos outside the kit checkout.",
+      "Existing default clean-primary prepare behavior.",
+      "Unrelated task lifecycle, closeout, and automation-handoff semantics.",
+      "Unrelated backlog rows."
+    ],
+    "inspect_first": [
+      "/Volumes/Myrtle/Code/04_Code/Hermes/doc-contract-kit/scripts/agent_task_prepare.py",
+      "/Volumes/Myrtle/Code/04_Code/Hermes/doc-contract-kit/scripts/agent_task_ready.py",
+      "/Volumes/Myrtle/Code/04_Code/Hermes/doc-contract-kit/scripts/agent_task_finalize.py",
+      "/Volumes/Myrtle/Code/04_Code/Hermes/doc-contract-kit/scripts/repo_contract_kit.py",
+      "/Volumes/Myrtle/Code/04_Code/Hermes/doc-contract-kit/templates/common/kit-makefile.mk",
+      "/Volumes/Myrtle/Code/04_Code/Hermes/doc-contract-kit/templates/common/working-rhythm.md",
+      "/Volumes/Myrtle/Code/04_Code/Hermes/doc-contract-kit/templates/common/ops-agent-workflow.md",
+      "/Volumes/Myrtle/Code/04_Code/Hermes/doc-contract-kit/tests/test_agent_task_prepare.py",
+      "/Volumes/Myrtle/Code/04_Code/Hermes/doc-contract-kit/tests/test_agent_task_ready.py",
+      "/Volumes/Myrtle/Code/04_Code/Hermes/doc-contract-kit/tests/test_agent_task_finalize.py"
+    ],
+    "expected_outputs": [
+      "Explicit baseline flag for agent-task-prepare and installed Make target.",
+      "Dirty-state baseline with tracked/untracked entries, counts, HEAD, and deterministic state hash in metadata and receipt scaffolds.",
+      "Readiness/finalize or handoff guard that compares current primary state to the stored baseline and blocks on drift.",
+      "JSON/text output explaining the baseline and safe next command.",
+      "Docs, tests, version, changelog, and source backlog closeout."
+    ]
+  },
+  "acceptance_criteria": [
+    {
+      "description": "Default agent-task-prepare still blocks dirty primary checkouts.",
+      "verification": "Existing and new prepare tests."
+    },
+    {
+      "description": "A new explicit baseline mode allows preparation from a dirty primary checkout while recording the baseline in task metadata and receipt scaffolds.",
+      "verification": "Prepare tests inspect metadata and generated artifacts."
+    },
+    {
+      "description": "The baseline includes enough deterministic evidence to compare later primary state.",
+      "verification": "Tests assert entries, counts, HEAD, changed files, and state hash."
+    },
+    {
+      "description": "Readiness/finalize or handoff checks block or report when the primary checkout changed after the baseline.",
+      "verification": "Ready/finalize tests mutate primary after prepare and assert blocker output."
+    },
+    {
+      "description": "Docs explain when baseline mode is appropriate and that it does not clean or bless unrelated dirt.",
+      "verification": "docs-check and docs freshness."
+    }
+  ],
+  "validation": {
+    "commands": [
+      {
+        "command": "PYTHONDONTWRITEBYTECODE=1 python3 -m unittest tests.test_agent_task_prepare tests.test_agent_task_ready tests.test_agent_task_finalize",
+        "required": true,
+        "expected_result": "pass"
+      },
+      {
+        "command": "PYTHONDONTWRITEBYTECODE=1 make test",
+        "required": true,
+        "expected_result": "pass"
+      },
+      {
+        "command": "make docs-check",
+        "required": true,
+        "expected_result": "pass"
+      },
+      {
+        "command": "make version-check",
+        "required": true,
+        "expected_result": "pass"
+      },
+      {
+        "command": "git diff --check",
+        "required": true,
+        "expected_result": "pass"
+      },
+      {
+        "command": "make backlog-check",
+        "required": true,
+        "expected_result": "pass"
+      },
+      {
+        "command": "PYTHONDONTWRITEBYTECODE=1 make agent-verify",
+        "required": true,
+        "expected_result": "pass"
+      }
+    ],
+    "evidence_to_capture": [
+      "focused and full kit test output",
+      "docs/version validation",
+      "source backlog validation",
+      "remote ref match after push",
+      "dirty-state explanation for both checkouts"
+    ]
+  },
+  "docs_impact": {
+    "expected": "yes",
+    "paths": [
+      "/Volumes/Myrtle/Code/04_Code/Hermes/doc-contract-kit/README.md",
+      "/Volumes/Myrtle/Code/04_Code/Hermes/doc-contract-kit/templates/common/working-rhythm.md",
+      "/Volumes/Myrtle/Code/04_Code/Hermes/doc-contract-kit/templates/common/ops-agent-workflow.md",
+      "/Volumes/Myrtle/Code/04_Code/Hermes/doc-contract-kit/templates/common/harness-engineering.md",
+      "/Volumes/Myrtle/Code/04_Code/Hermes/doc-contract-kit/docs/harness-engineering.md",
+      "/Volumes/Myrtle/Code/04_Code/Hermes/doc-contract-kit/CHANGELOG.md",
+      "source backlog summary files"
+    ],
+    "waiver_allowed": false,
+    "notes": "This changes installed task preparation, readiness, and dirty-state behavior."
+  },
+  "risk": {
+    "level": "medium",
+    "known_risks": [
+      "Baseline mode could be misread as permission to ignore unrelated user work.",
+      "Hashing untracked file contents must remain deterministic and local-only.",
+      "Drift checks must compare primary checkout state, not task worktree state."
+    ],
+    "stop_conditions": [
+      "The design requires force-cleaning, stashing, or modifying user dirty files.",
+      "The guard cannot distinguish matching pre-existing dirt from new primary checkout drift.",
+      "The change would make dirty baseline mode implicit or automatic."
+    ]
+  },
+  "approval": {
+    "human_approval_required": false,
+    "state": "approved",
+    "approver": null,
+    "notes": "User asked to implement all remaining workflow-stack backlog items serially with one task agent per backlog item."
+  },
+  "coordination": {
+    "active_task_count": 0,
+    "active_tasks": [],
+    "overlap_warnings": [
+      "Use exactly one task worker for this backlog item. The worker owns kit implementation files only; the parent owns source task-packet and backlog closeout."
+    ]
+  },
+  "handoff": {
+    "recommended_prompt": "workflows/prompts/task-packet.md",
+    "owner": "one kit worker for implementation; parent for integration and closeout"
+  }
+}

@@ -1,0 +1,334 @@
+{
+  "schema_version": 1,
+  "task": {
+    "id": "AGW-031",
+    "title": "Add advisory code-comment/docstring drift prompt and false-positive labels.",
+    "priority": "P2",
+    "status": "approved",
+    "source": {
+      "type": "backlog",
+      "reference": "research/agentic-workflow-review/backlog.csv:32"
+    }
+  },
+  "context": {
+    "repo_root": "/Volumes/Myrtle/Code/04_Code/Codex_CodeReview",
+    "mode": "verification",
+    "problem_statement": "Inline comments and docstrings can become stale in the same way as docs, but AGW-031 should keep this as an advisory review signal with explicit false-positive handling rather than a blocking CI gate or scanner.",
+    "background": [
+      "workflows/prompts/personas/doc-code-delta.md already includes in-code comments that describe behavior or constraints in its review scope.",
+      "workflows/prompts/templates/review-finding.md and workflows/prompts/review-synthesis.md already require confidence, disposition, and false-positive notes.",
+      "AGW-044 already added formal comment-only receipt evidence for learning-comments mode.",
+      "AGW-078 already expanded learning-comments for sparse maintained comments and non-developer explanation notes.",
+      "AGW-030 added an opt-in docs-as-tests experiment in repo-contract-kit; AGW-031 should stay prompt/output-label focused in agent-workflow-kit."
+    ],
+    "non_goals": [
+      "Do not implement a static stale-comment scanner, parser, or blocking CI gate.",
+      "Do not auto-edit source comments or docstrings.",
+      "Do not change learning-comments receipt validation or comment-only proof semantics from AGW-044.",
+      "Do not modify repo-contract-kit templates, installed Make targets, or kit release files.",
+      "Do not treat every stale-looking comment as a defect; low-confidence cases must remain advisory, rejected, deferred, or explicitly false-positive-labeled.",
+      "Do not add network, browser, hosted model, or GitHub API behavior."
+    ]
+  },
+  "previous_task_state": {
+    "report_sources": [
+      "make agent-task-status TASK_STATUS_JSON=1",
+      "make agent-next",
+      "git status --short",
+      "source and kit remote refs checked after AGW-030 closeout"
+    ],
+    "active_tasks": [],
+    "unresolved_blockers": [],
+    "dirty_or_stale_state": [],
+    "finalizer_receipt_paths": [
+      "source main commit d594e7028ec1dc69cf645b2437d5bbea129671d1 closed AGW-030",
+      "repo-contract-kit main commit c12c19c3d0fe2b5744c22b07a371a1e8728b4674 completed repo-contract-kit 0.4.52"
+    ],
+    "blocker_receipt_paths": [],
+    "allowed_to_start": true,
+    "notes": "AGW-031 packet creation began with a clean source checkout, source task-status reporting zero active tasks and no hazards, and make agent-next selecting AGW-031."
+  },
+  "closeout_required_before_start": {
+    "decision": "safe-start",
+    "reason": "AGW-030 has been implemented, validated, pushed in repo-contract-kit, and source-closed; source task-status reports no active, stale, hazardous, or unknown-scope tasks.",
+    "required_next_step": "Proceed with exactly one AGW-031 worker in agent-workflow-kit; refresh git status and task-status if the checkout becomes dirty before worker launch.",
+    "evidence_paths": [
+      "research/agentic-workflow-review/task-packets/agw-031-comment-docstring-drift.md",
+      "source main commit d594e7028ec1dc69cf645b2437d5bbea129671d1",
+      "kit main commit c12c19c3d0fe2b5744c22b07a371a1e8728b4674"
+    ]
+  },
+  "goal_alignment": {
+    "repo_goal": "Keep agent-workflow-kit as the canonical prompt, schema, fixture, and workflow source for local-first review agents and their generated Codex adapters.",
+    "area_contracts": [
+      {
+        "path": "workflows/prompts/personas/doc-code-delta.md",
+        "purpose": "Documentation/code delta reviewer prompt that already compares docs, examples, comments, runbooks, and workflows against implementation evidence.",
+        "source": "canonical prompt source",
+        "status": "aligned"
+      },
+      {
+        "path": "workflows/prompts/templates/review-finding.md",
+        "purpose": "Shared review finding format with priority, area, confidence, disposition, evidence, recommendation, verification, and false-positive check.",
+        "source": "canonical prompt template",
+        "status": "aligned"
+      },
+      {
+        "path": "workflows/prompts/review-synthesis.md",
+        "purpose": "Synthesis prompt that merges findings, records dispositions, suppresses nits, and preserves false-positive notes.",
+        "source": "canonical prompt source",
+        "status": "aligned"
+      },
+      {
+        "path": "schemas/review-synthesis.schema.json",
+        "purpose": "Machine-readable synthesis contract for findings, dispositions, and false-positive notes.",
+        "source": "schema contract",
+        "status": "aligned"
+      },
+      {
+        "path": "research/prompt-regression-fixtures/prompt-regression-fixtures.json",
+        "purpose": "Deterministic prompt-output regression fixtures for schema handling, finding quality, false-positive notes, and duplicate discipline.",
+        "source": "fixture suite",
+        "status": "aligned"
+      }
+    ],
+    "alignment_decision": "aligned",
+    "adaptation_needed": false,
+    "stop_conditions": [
+      "Stop if the implementation requires repo-contract-kit installer or target-repo managed-file changes.",
+      "Stop if output labels would require a breaking schema migration rather than additive optional fields or prompt guidance.",
+      "Stop if the design would make comment/docstring drift a default blocker or CI failure.",
+      "Stop if the worker cannot define evidence requirements that distinguish stale comments from plausible false positives.",
+      "Stop if validation reveals generated adapter drift or prompt fixture failures outside the AGW-031 scope."
+    ]
+  },
+  "scope": {
+    "allowed_files": [
+      "workflows/prompts/personas/doc-code-delta.md",
+      ".codex/prompts/personas/doc-code-delta.md",
+      "workflows/prompts/templates/review-finding.md",
+      ".codex/prompts/templates/review-finding.md",
+      "workflows/prompts/review-synthesis.md",
+      ".codex/prompts/review-synthesis.md",
+      "workflows/prompts/README.md",
+      "README.md",
+      "docs/using-the-prompt-kit.md",
+      "docs/harness-engineering.md",
+      "schemas/review-synthesis.schema.json",
+      "research/prompt-regression-fixtures/prompt-regression-fixtures.json",
+      "research/prompt-regression-fixtures/README.md",
+      "scripts/run_prompt_regression_fixtures.py",
+      "tests/test_prompt_regression_fixtures.py",
+      "research/agentic-workflow-review/backlog.csv",
+      "research/agentic-workflow-review/agent-workflow-kit-backlog.csv",
+      "research/agentic-workflow-review/summary.md",
+      "research/agentic-workflow-review/feature_matrix.csv",
+      "VERSION",
+      "CHANGELOG.md"
+    ],
+    "protected_files": [
+      "/Volumes/Myrtle/Code/04_Code/Hermes/doc-contract-kit",
+      "repo-contract-kit managed templates or installed target-repo files",
+      "learning-comments receipt validation unless a validation failure proves a direct prompt-adapter bug",
+      "runtime review runner behavior unless fixture validation cannot represent the new labels without a narrow additive check",
+      "unrelated backlog rows, unrelated prompt personas, and unrelated dirty work"
+    ],
+    "inspect_first": [
+      "workflows/prompts/personas/doc-code-delta.md",
+      "workflows/prompts/templates/review-finding.md",
+      "workflows/prompts/review-synthesis.md",
+      "schemas/review-synthesis.schema.json",
+      "research/prompt-regression-fixtures/prompt-regression-fixtures.json",
+      "scripts/run_prompt_regression_fixtures.py",
+      "tests/test_prompt_regression_fixtures.py",
+      "workflows/prompts/README.md",
+      "README.md",
+      "docs/using-the-prompt-kit.md"
+    ],
+    "expected_outputs": [
+      "Prompt guidance that treats comment and docstring drift as advisory documentation hygiene unless concrete implementation or public behavior evidence makes it higher severity.",
+      "Evidence rules requiring reviewers to cite the stale comment/docstring and the current implementation, tests, docs, ADR, or runtime behavior that contradicts it.",
+      "Output labels or finding fields that distinguish comment-drift, docstring-drift, stale-comment, misleading-comment, stale-docstring, intentionally-stable-comment, generated-or-vendored-comment, and low-confidence/speculative drift cases.",
+      "False-positive handling that tells agents when to reject, defer, duplicate, or record a harmless explanation instead of opening a finding.",
+      "Prompt regression fixture coverage or equivalent focused tests that prevent the new labels and false-positive notes from being dropped.",
+      "Generated Codex prompt adapters refreshed from workflows/prompts.",
+      "Docs and changelog/version updates for the prompt-output contract change.",
+      "Backlog and summary closeout only after validation passes."
+    ]
+  },
+  "acceptance_criteria": [
+    {
+      "description": "The doc-code-delta prompt explicitly reviews behavior-describing comments and docstrings for drift, while keeping low-confidence cases advisory and non-blocking.",
+      "verification": "Review workflows/prompts/personas/doc-code-delta.md and generated .codex adapter."
+    },
+    {
+      "description": "The finding template or synthesis guidance names labels for comment/docstring drift and false-positive categories without making schema-breaking changes.",
+      "verification": "Review workflows/prompts/templates/review-finding.md, workflows/prompts/review-synthesis.md, and schemas/review-synthesis.schema.json if touched."
+    },
+    {
+      "description": "Every comment/docstring drift finding requires concrete evidence from both the maintained comment/docstring and the current source of truth.",
+      "verification": "Prompt review plus prompt-regression fixture or focused test evidence."
+    },
+    {
+      "description": "False-positive labels cover generated/vendor code, intentional historical notes, examples or docs intentionally not mirroring implementation internals, framework convention comments, and speculative or low-confidence drift.",
+      "verification": "Review prompt/template text and fixture expectations."
+    },
+    {
+      "description": "The change does not add a scanner, CI gate, repo-contract-kit target, or automatic source comment edits.",
+      "verification": "Run git diff --name-only and inspect changed files."
+    },
+    {
+      "description": "Prompt adapters are regenerated and checked.",
+      "verification": "Run PYTHONDONTWRITEBYTECODE=1 make prompt-adapters-export and PYTHONDONTWRITEBYTECODE=1 make prompt-adapters-check."
+    },
+    {
+      "description": "Prompt regression fixtures or equivalent tests pass and include at least one advisory comment/docstring drift case with false-positive handling.",
+      "verification": "Run PYTHONDONTWRITEBYTECODE=1 python3 -m unittest tests.test_prompt_regression_fixtures and PYTHONDONTWRITEBYTECODE=1 python3 scripts/run_prompt_regression_fixtures.py."
+    },
+    {
+      "description": "Docs impact is handled in user-facing prompt docs and version/changelog bookkeeping.",
+      "verification": "Run docs checks, make version-check, and inspect changed docs."
+    }
+  ],
+  "validation": {
+    "commands": [
+      {
+        "command": "PYTHONDONTWRITEBYTECODE=1 python3 -m unittest tests.test_prompt_regression_fixtures",
+        "required": true,
+        "expected_result": "pass"
+      },
+      {
+        "command": "PYTHONDONTWRITEBYTECODE=1 python3 scripts/run_prompt_regression_fixtures.py",
+        "required": true,
+        "expected_result": "pass"
+      },
+      {
+        "command": "PYTHONDONTWRITEBYTECODE=1 make prompt-adapters-export",
+        "required": true,
+        "expected_result": "pass and refresh generated .codex prompt adapters"
+      },
+      {
+        "command": "PYTHONDONTWRITEBYTECODE=1 make prompt-adapters-check",
+        "required": true,
+        "expected_result": "pass"
+      },
+      {
+        "command": "PYTHONDONTWRITEBYTECODE=1 make agent-verify",
+        "required": true,
+        "expected_result": "pass; pre-existing instruction hygiene warning may be reported if unchanged"
+      },
+      {
+        "command": "make docs-check",
+        "required": true,
+        "expected_result": "pass"
+      },
+      {
+        "command": "python3 scripts/check_doc_impact.py",
+        "required": true,
+        "expected_result": "pass"
+      },
+      {
+        "command": "make version-check",
+        "required": true,
+        "expected_result": "pass after a patch bump and changelog entry"
+      },
+      {
+        "command": "git diff --check",
+        "required": true,
+        "expected_result": "pass"
+      },
+      {
+        "command": "make backlog-check && make backlog-split-check",
+        "required": true,
+        "expected_result": "pass after closeout"
+      }
+    ],
+    "evidence_to_capture": [
+      "Diff summary and changed-file list proving source-side prompt/docs/fixture scope.",
+      "Prompt adapter export/check result.",
+      "Prompt regression fixture output.",
+      "Docs-impact and version-check output.",
+      "Backlog closeout command results.",
+      "Dirty-state explanation at final handoff."
+    ]
+  },
+  "closeout_requirements": {
+    "final_receipt_path": ".agent-workflows/tasks/agw-031-comment-docstring-drift/receipt.json or sidecar equivalent",
+    "readiness_check": {
+      "command": "make agent-task-ready TASK=AGW-031 TASK_READY_JSON=1 or record why unavailable in the source parent run",
+      "expected_result": "ready report passes or a blocker is recorded before implementation starts"
+    },
+    "lifecycle_action": {
+      "action": "finish",
+      "command": "make agent-task-finalize TASK=AGW-031 TASK_RECEIPT=<path> TASK_FINALIZE_JSON=1 or lifecycle fallback",
+      "expected_result": "metadata is closed and final receipt is linked, or fallback receipt is durable"
+    },
+    "final_task_status": {
+      "command": "make agent-task-status TASK_STATUS_INCLUDE_CLOSED=1 TASK_STATUS_JSON=1",
+      "expected_result": "task is terminal or no local metadata was created and the reason is recorded"
+    },
+    "closeout_preview": {
+      "command": "make agent-task-closeout TASK_CLOSEOUT_JSON=1",
+      "expected_result": "eligible, retained, or blocked cleanup state is recorded",
+      "apply_requires_explicit_approval": true
+    },
+    "dirty_state_explanation": "Final handoff must say whether the checkout is clean, only expected files are dirty, cleanup is blocked, or unrelated dirt was preserved."
+  },
+  "docs_impact": {
+    "expected": "yes",
+    "paths": [
+      "workflows/prompts/personas/doc-code-delta.md",
+      "workflows/prompts/templates/review-finding.md",
+      "workflows/prompts/review-synthesis.md",
+      "workflows/prompts/README.md",
+      "README.md",
+      "docs/using-the-prompt-kit.md",
+      "docs/harness-engineering.md",
+      "CHANGELOG.md"
+    ],
+    "waiver_allowed": false,
+    "notes": "This changes user-facing prompt behavior and the review-output labeling contract."
+  },
+  "risk": {
+    "level": "medium",
+    "known_risks": [
+      "Agents may over-report harmless comments as defects if evidence thresholds and false-positive labels are vague.",
+      "Docstrings can be part of public API documentation in some languages, so severity must depend on concrete user-facing impact.",
+      "Prompt labels can drift from schema/fixture validation if only prose changes are made.",
+      "The task can expand into scanner or CI-gate work unless the worker preserves the advisory-only boundary."
+    ],
+    "stop_conditions": [
+      "The implementation needs repo-contract-kit or installed target-repo changes.",
+      "The worker cannot add labels without a breaking schema change.",
+      "Validation shows prompt adapters cannot be regenerated cleanly.",
+      "A proposed change would make comment/docstring drift blocking by default."
+    ]
+  },
+  "approval": {
+    "human_approval_required": false,
+    "state": "approved",
+    "approver": null,
+    "notes": "Active user goal is to add fully planned backlog packets and implement remaining workflow-stack items serially with one worker per backlog item."
+  },
+  "coordination": {
+    "active_task_count": 0,
+    "active_tasks": [],
+    "overlap_warnings": []
+  },
+  "harness_metrics": {
+    "context_file_count": 10,
+    "token_budget": {
+      "guidance": "Use the inspect_first list before broad repo reads; this is a prompt/template/fixture slice, not a kit or scanner implementation."
+    }
+  },
+  "handoff": {
+    "recommended_prompt": "workflows/prompts/task-packet.md, then workflows/prompts/personas/doc-code-delta.md",
+    "owner": "one worker agent",
+    "dependencies": [
+      "AGW-044 comment-only receipt proof is already separate and should not be changed.",
+      "AGW-078 learning-comments explainability work is already separate and should not be reworked.",
+      "Generated .codex adapters must come from make prompt-adapters-export."
+    ],
+    "next_packet_hint": "After AGW-031 closes, continue with the next source-side AGW item selected by make agent-next, likely AGW-048 unless priority order changes."
+  }
+}

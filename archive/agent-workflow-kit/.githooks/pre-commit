@@ -1,0 +1,7 @@
+#!/usr/bin/env sh
+set -eu
+
+PYTHONDONTWRITEBYTECODE=1 python3 scripts/check_doc_impact.py --staged
+PYTHONDONTWRITEBYTECODE=1 python3 scripts/lint_agent_docs.py --strict-paths
+PYTHONDONTWRITEBYTECODE=1 python3 scripts/check_self_dogfood_boundary.py
+PYTHONDONTWRITEBYTECODE=1 python3 scripts/check_versioning.py --staged

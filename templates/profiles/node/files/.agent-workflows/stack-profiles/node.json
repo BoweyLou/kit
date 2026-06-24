@@ -1,0 +1,61 @@
+{
+  "schema_version": 1,
+  "stack": "node",
+  "profile": "repo-contract-kit-node",
+  "purpose": "Local-only Node.js repository hygiene hints for agents and maintainers.",
+  "detection": {
+    "primary_files": [
+      "package.json"
+    ],
+    "lockfiles": [
+      "package-lock.json",
+      "npm-shrinkwrap.json",
+      "pnpm-lock.yaml",
+      "yarn.lock",
+      "bun.lock",
+      "bun.lockb"
+    ],
+    "config_files": [
+      "tsconfig.json",
+      "jsconfig.json",
+      "eslint.config.js",
+      "eslint.config.mjs",
+      "prettier.config.js",
+      "vite.config.js",
+      "vite.config.ts",
+      "next.config.js",
+      "next.config.mjs"
+    ]
+  },
+  "safe_start": [
+    "Read package.json scripts before choosing commands.",
+    "Prefer the repo's existing package manager based on the committed lockfile.",
+    "Do not install dependencies, rewrite lockfiles, or create node_modules unless the human explicitly asks."
+  ],
+  "command_hints": [
+    {
+      "name": "list-scripts",
+      "when": "package.json exists",
+      "command": "node -e \"const p=require('./package.json'); console.log(Object.keys(p.scripts||{}).sort().join('\\n'))\"",
+      "writes": false
+    },
+    {
+      "name": "npm-test",
+      "when": "package.json has a test script and npm is the selected package manager",
+      "command": "npm test",
+      "writes": "maybe"
+    },
+    {
+      "name": "npm-lint",
+      "when": "package.json has a lint script and npm is the selected package manager",
+      "command": "npm run lint",
+      "writes": "maybe"
+    }
+  ],
+  "non_goals": [
+    "No dependency installation.",
+    "No lockfile generation.",
+    "No framework scaffolding.",
+    "No hosted package registry access by default."
+  ]
+}

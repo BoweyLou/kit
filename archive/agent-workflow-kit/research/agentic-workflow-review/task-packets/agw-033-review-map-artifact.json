@@ -1,0 +1,350 @@
+{
+  "schema_version": 1,
+  "task": {
+    "id": "AGW-033",
+    "title": "Add review-map artifact for large changesets.",
+    "priority": "P2",
+    "status": "approved",
+    "source": {
+      "type": "backlog",
+      "reference": "research/agentic-workflow-review/backlog.csv:34"
+    }
+  },
+  "context": {
+    "repo_root": "/Volumes/Myrtle/Code/04_Code/Codex_CodeReview",
+    "mode": "verification",
+    "problem_statement": "Large changesets need a reusable review-map artifact that turns a broad diff into navigable review clusters, sequence, risk hotspots, and omission notes for humans and agents.",
+    "background": [
+      "AGW-032 added scripts/build_context_packet.py and make context-packet for deterministic changed-file adjacency: likely callers, likely tests, related docs, ADRs, scripts, and runtime configs.",
+      "The research feature matrix still records review-map artifacts for large changes as the remaining AGW-033 context-retrieval slice.",
+      "The backlog delivery shape is Markdown/JSON template, so this task should define artifact templates and schema contracts rather than shipping a new CLI command.",
+      "AGW-029 defined the source-side trace concept that composes receipts, task packets, context packets, task status, and closeout receipts without exposing private transcripts.",
+      "AGW-034 remains the likely place for LSP or codegraph lookup; AGW-033 should not implement that deeper analysis."
+    ],
+    "non_goals": [
+      "Do not add a new command, Make target, hosted service, GitHub adapter, browser workflow, or network behavior.",
+      "Do not modify repo-contract-kit templates, installed target-repo files, or kit release behavior.",
+      "Do not rework scripts/build_context_packet.py unless a focused test proves the template cannot compose with its current output.",
+      "Do not implement AGW-034 LSP/codegraph lookup, semantic call graphing, or cross-language symbol indexing.",
+      "Do not change review-runner execution behavior or agent dispatch orchestration.",
+      "Do not mark AGW-033 done until the Markdown template, JSON schema, docs references, generated adapters, tests, and backlog closeout all agree."
+    ]
+  },
+  "previous_task_state": {
+    "report_sources": [
+      "git status --short",
+      "git rev-parse HEAD",
+      "make agent-next",
+      "make agent-task-status TASK_STATUS_JSON=1",
+      "make agent-task-packet-from-backlog BACKLOG_ID=AGW-033"
+    ],
+    "active_tasks": [],
+    "unresolved_blockers": [],
+    "dirty_or_stale_state": [],
+    "finalizer_receipt_paths": [
+      "source main commit 67476a373b7e4ebe885e125e787f359d44e1468c closed AGW-031"
+    ],
+    "blocker_receipt_paths": [],
+    "allowed_to_start": true,
+    "notes": "AGW-033 packet creation began from a clean source checkout on main at 67476a373b7e4ebe885e125e787f359d44e1468c. make agent-next selected AGW-033 with dirty false, and make agent-task-status TASK_STATUS_JSON=1 reported zero active tasks, zero hazards, zero stale tasks, zero unknown-scope tasks, and zero untracked agent worktrees."
+  },
+  "closeout_required_before_start": {
+    "decision": "safe-start",
+    "reason": "AGW-031 is closed and pushed, the source checkout is clean, and the task-status receipt reports no active or stale work to finalize before AGW-033 starts.",
+    "required_next_step": "Proceed with exactly one AGW-033 worker in agent-workflow-kit; refresh git status and task-status before launch and stop if new dirt, active task metadata, or remote divergence appears.",
+    "evidence_paths": [
+      "research/agentic-workflow-review/task-packets/agw-033-review-map-artifact.md",
+      "source main commit 67476a373b7e4ebe885e125e787f359d44e1468c",
+      "make agent-next selected AGW-033 with dirty false",
+      "make agent-task-status TASK_STATUS_JSON=1 reported active_task_count 0"
+    ]
+  },
+  "goal_alignment": {
+    "repo_goal": "Keep agent-workflow-kit as the canonical source for local-first review prompts, workflow templates, schemas, research artifacts, tests, and generated Codex adapters.",
+    "area_contracts": [
+      {
+        "path": "workflows/prompts/templates/review-map.md",
+        "purpose": "New canonical Markdown artifact template for mapping a broad changeset into review clusters, sequence, risk hotspots, and omissions.",
+        "source": "new prompt template",
+        "status": "aligned"
+      },
+      {
+        "path": "schemas/review-map.schema.json",
+        "purpose": "New machine-readable contract for review-map artifacts so agents and tools can validate the same structure as the Markdown template.",
+        "source": "new schema contract",
+        "status": "aligned"
+      },
+      {
+        "path": "scripts/build_context_packet.py",
+        "purpose": "Existing deterministic context packet source that AGW-033 should compose with, not replace.",
+        "source": "AGW-032 source command",
+        "status": "aligned"
+      },
+      {
+        "path": "workflows/prompts/README.md",
+        "purpose": "Prompt index and workflow routing docs for reusable templates, deterministic reports, and output artifacts.",
+        "source": "canonical prompt docs",
+        "status": "aligned"
+      },
+      {
+        "path": "docs/harness-engineering.md",
+        "purpose": "Harness artifact inventory and metric families that should name review maps as a context-relevance and review-navigation surface.",
+        "source": "source docs",
+        "status": "aligned"
+      },
+      {
+        "path": "workflows/manifest.json",
+        "purpose": "Adapter and skill-pack manifest; include the review-map template in the review skill if the worker adds it to the review workflow surface.",
+        "source": "workflow manifest",
+        "status": "aligned"
+      }
+    ],
+    "alignment_decision": "aligned",
+    "adaptation_needed": false,
+    "stop_conditions": [
+      "Stop if the implementation requires repo-contract-kit installed behavior, release changes, or managed target files.",
+      "Stop if a review-map command or runner behavior is required; create a follow-on item instead.",
+      "Stop if LSP, codegraph, or semantic symbol lookup is needed to satisfy the template; leave that to AGW-034.",
+      "Stop if the Markdown template and JSON schema cannot be kept structurally aligned.",
+      "Stop if generated adapter checks show unrelated prompt drift outside the AGW-033 scope.",
+      "Stop if the final artifact encourages reviewers to skip direct inspection of source, tests, docs, ADRs, or runtime evidence."
+    ]
+  },
+  "scope": {
+    "allowed_files": [
+      "workflows/prompts/templates/review-map.md",
+      ".codex/prompts/templates/review-map.md",
+      "schemas/review-map.schema.json",
+      "tests/test_review_map_artifact.py",
+      "workflows/prompts/README.md",
+      ".codex/prompts/README.md",
+      "workflows/manifest.json",
+      ".github/copilot-instructions.md",
+      "README.md",
+      "docs/using-the-prompt-kit.md",
+      "docs/harness-engineering.md",
+      "docs/codex-review-trace.md",
+      "research/agentic-workflow-review/backlog.csv",
+      "research/agentic-workflow-review/agent-workflow-kit-backlog.csv",
+      "research/agentic-workflow-review/summary.md",
+      "research/agentic-workflow-review/feature_matrix.csv",
+      "VERSION",
+      "CHANGELOG.md"
+    ],
+    "protected_files": [
+      "/Volumes/Myrtle/Code/04_Code/Hermes/doc-contract-kit",
+      "repo-contract-kit managed templates or installed target-repo files",
+      "scripts/build_context_packet.py unless a focused failing test proves a narrow composition bug",
+      "scripts/agent_review_run.py and runtime review-runner behavior",
+      "AGW-034 LSP or codegraph lookup surfaces",
+      "AGW-092 installed context-bundle behavior",
+      "unrelated personas, unrelated backlog rows, unrelated task packets, and unrelated dirty work"
+    ],
+    "inspect_first": [
+      "research/agentic-workflow-review/backlog.csv",
+      "research/agentic-workflow-review/feature_matrix.csv",
+      "research/agentic-workflow-review/source_findings.json",
+      "scripts/build_context_packet.py",
+      "tests/test_build_context_packet.py",
+      "workflows/prompts/templates/task-packet.md",
+      "workflows/prompts/templates/review-finding.md",
+      "workflows/prompts/README.md",
+      "workflows/manifest.json",
+      "docs/using-the-prompt-kit.md",
+      "docs/harness-engineering.md",
+      "docs/codex-review-trace.md"
+    ],
+    "expected_outputs": [
+      "A Markdown review-map template under workflows/prompts/templates/ with sections for source inputs, scope summary, change clusters, entrypoints, contracts, risk hotspots, review order, validation surfaces, omissions, and follow-up packet candidates.",
+      "A JSON schema under schemas/ that represents the same review-map artifact with stable required fields and bounded optional fields.",
+      "Prompt/docs guidance that review maps compose with make context-packet and context bundles, and do not replace source inspection or evidence-backed findings.",
+      "Generated .codex prompt adapter files refreshed from workflows/prompts.",
+      "A focused test that validates the review-map schema and checks that the Markdown template names the required navigation and omission sections.",
+      "Manifest or skill-pack include updates only if needed so review users receive the template through the existing review prompt surface.",
+      "Version, changelog, docs, feature matrix, summary, and backlog closeout updates after validation."
+    ]
+  },
+  "acceptance_criteria": [
+    {
+      "description": "A reusable Markdown review-map template exists for large changesets and guides reviewers through changed-file clusters, entrypoints, contracts, risk hotspots, review sequence, validation surfaces, omissions, and follow-up packet candidates.",
+      "verification": "Inspect workflows/prompts/templates/review-map.md and generated .codex/prompts/templates/review-map.md."
+    },
+    {
+      "description": "A machine-readable review-map JSON schema exists and mirrors the Markdown artifact structure without requiring private transcript data or hosted-service fields.",
+      "verification": "Inspect schemas/review-map.schema.json and run the focused schema/template test."
+    },
+    {
+      "description": "The review-map guidance explicitly composes with make context-packet or installed context bundles and says when direct source, tests, docs, ADRs, scripts, runtime config, or receipts must still be inspected.",
+      "verification": "Inspect template and docs references in workflows/prompts/README.md, docs/using-the-prompt-kit.md, docs/harness-engineering.md, or docs/codex-review-trace.md as applicable."
+    },
+    {
+      "description": "The artifact has explicit omission and uncertainty fields so reviewers can record skipped files, unclassified clusters, missing context-packet data, ambiguous ownership, and validation gaps.",
+      "verification": "Schema test and manual template review confirm required omission fields."
+    },
+    {
+      "description": "The change stays source-side and does not add a CLI, Make target, repo-contract-kit behavior, LSP/codegraph lookup, or review-runner mutation.",
+      "verification": "Run git diff --name-only and inspect changed files against the allowed/protected scope."
+    },
+    {
+      "description": "Generated Codex adapters are current and any manifest/skill-pack include change is validated.",
+      "verification": "Run PYTHONDONTWRITEBYTECODE=1 make prompt-adapters-export, PYTHONDONTWRITEBYTECODE=1 make prompt-adapters-check, and the relevant adapter/skill-pack unittest if manifest changed."
+    },
+    {
+      "description": "Docs impact, version, changelog, feature matrix, summary, and backlog closeout reflect that AGW-033 shipped a Markdown/JSON artifact contract, not a command.",
+      "verification": "Run docs checks, make version-check, make backlog-check, and make backlog-split-check after closeout."
+    }
+  ],
+  "validation": {
+    "commands": [
+      {
+        "command": "PYTHONDONTWRITEBYTECODE=1 python3 -m unittest tests.test_review_map_artifact",
+        "required": true,
+        "expected_result": "pass after the focused review-map schema/template test is added"
+      },
+      {
+        "command": "PYTHONDONTWRITEBYTECODE=1 python3 -m unittest tests.test_export_workflow_adapters",
+        "required": true,
+        "expected_result": "pass"
+      },
+      {
+        "command": "PYTHONDONTWRITEBYTECODE=1 python3 -m unittest tests.test_export_codex_skill_pack",
+        "required": true,
+        "expected_result": "pass if workflows/manifest.json changed; otherwise record not applicable"
+      },
+      {
+        "command": "PYTHONDONTWRITEBYTECODE=1 make prompt-adapters-export",
+        "required": true,
+        "expected_result": "pass and refresh generated prompt adapters"
+      },
+      {
+        "command": "PYTHONDONTWRITEBYTECODE=1 make prompt-adapters-check",
+        "required": true,
+        "expected_result": "pass"
+      },
+      {
+        "command": "PYTHONDONTWRITEBYTECODE=1 make validate",
+        "required": true,
+        "expected_result": "pass; pre-existing instruction hygiene warnings may be reported if unchanged"
+      },
+      {
+        "command": "PYTHONDONTWRITEBYTECODE=1 make agent-verify",
+        "required": true,
+        "expected_result": "pass; pre-existing instruction hygiene warnings may be reported if unchanged"
+      },
+      {
+        "command": "make docs-check",
+        "required": true,
+        "expected_result": "pass"
+      },
+      {
+        "command": "python3 scripts/check_doc_impact.py",
+        "required": true,
+        "expected_result": "pass"
+      },
+      {
+        "command": "make version-check",
+        "required": true,
+        "expected_result": "pass after a patch bump and changelog entry"
+      },
+      {
+        "command": "git diff --check",
+        "required": true,
+        "expected_result": "pass"
+      },
+      {
+        "command": "make backlog-check && make backlog-split-check",
+        "required": true,
+        "expected_result": "pass after closeout"
+      }
+    ],
+    "evidence_to_capture": [
+      "Diff summary and changed-file list proving source-side template/schema/docs scope.",
+      "Focused review-map schema/template test output.",
+      "Prompt adapter export/check output.",
+      "Docs-impact and version-check output.",
+      "Backlog closeout command output.",
+      "Dirty-state explanation at final handoff."
+    ]
+  },
+  "closeout_requirements": {
+    "final_receipt_path": ".agent-workflows/tasks/agw-033-review-map-artifact/receipt.json or sidecar equivalent",
+    "readiness_check": {
+      "command": "make agent-task-ready TASK=AGW-033 TASK_READY_JSON=1 or record why unavailable in the source parent run",
+      "expected_result": "ready report passes or a blocker is recorded before implementation starts"
+    },
+    "lifecycle_action": {
+      "action": "finish",
+      "command": "make agent-task-finalize TASK=AGW-033 TASK_RECEIPT=<path> TASK_FINALIZE_JSON=1 or lifecycle fallback",
+      "expected_result": "metadata is closed and final receipt is linked, or fallback receipt is durable"
+    },
+    "final_task_status": {
+      "command": "make agent-task-status TASK_STATUS_INCLUDE_CLOSED=1 TASK_STATUS_JSON=1",
+      "expected_result": "task is terminal or no local metadata was created and the reason is recorded"
+    },
+    "closeout_preview": {
+      "command": "make agent-task-closeout TASK_CLOSEOUT_JSON=1",
+      "expected_result": "eligible, retained, or blocked cleanup state is recorded",
+      "apply_requires_explicit_approval": true
+    },
+    "dirty_state_explanation": "Final handoff must say whether the checkout is clean, only expected files are dirty, cleanup is blocked, or unrelated dirt was preserved."
+  },
+  "docs_impact": {
+    "expected": "yes",
+    "paths": [
+      "workflows/prompts/templates/review-map.md",
+      "workflows/prompts/README.md",
+      "README.md",
+      "docs/using-the-prompt-kit.md",
+      "docs/harness-engineering.md",
+      "docs/codex-review-trace.md",
+      "CHANGELOG.md"
+    ],
+    "waiver_allowed": false,
+    "notes": "This adds a user-facing review artifact contract and schema for large changesets."
+  },
+  "risk": {
+    "level": "medium",
+    "known_risks": [
+      "A review map can become a substitute for direct source inspection if the template does not require evidence and omissions.",
+      "A broad template can become too verbose, increasing token cost for large reviews unless sections are bounded and optional details are summarized.",
+      "Schema and Markdown template drift can undermine downstream validation if tests only check one side.",
+      "The task can expand into CLI, LSP, or repo-contract-kit behavior unless the worker preserves the Markdown/JSON artifact boundary.",
+      "If manifest skill includes are missed, generated skill-pack users may not receive the new template even though Codex adapters do."
+    ],
+    "stop_conditions": [
+      "The implementation needs repo-contract-kit or installed target-repo changes.",
+      "The worker cannot keep the Markdown template and JSON schema structurally aligned.",
+      "Validation shows prompt adapters cannot be regenerated cleanly.",
+      "A proposed change adds review-runner, CLI, Make target, network, or LSP behavior.",
+      "The artifact omits explicit unknowns, skipped files, or validation gaps."
+    ]
+  },
+  "approval": {
+    "human_approval_required": false,
+    "state": "approved",
+    "approver": null,
+    "notes": "Active user goal is to add fully planned backlog packets and implement remaining workflow-stack items serially with one worker per backlog item."
+  },
+  "coordination": {
+    "active_task_count": 0,
+    "active_tasks": [],
+    "overlap_warnings": []
+  },
+  "harness_metrics": {
+    "context_file_count": 11,
+    "token_budget": {
+      "guidance": "Use the inspect_first list and existing context-packet output before broad rereads. Keep the review-map template bounded enough for large-diff handoff."
+    }
+  },
+  "handoff": {
+    "recommended_prompt": "workflows/prompts/task-packet.md, then workflows/prompts/fix-implementer.md for the approved AGW-033 source-side artifact slice",
+    "owner": "one worker agent",
+    "dependencies": [
+      "AGW-032 context packet exists and should be composed with, not replaced.",
+      "AGW-029 trace concept exists and can mention review-map artifacts as a local evidence surface if docs are updated.",
+      "AGW-034 LSP/codegraph lookup remains a follow-on and must not be implemented here.",
+      "Generated .codex adapters must come from make prompt-adapters-export."
+    ],
+    "next_packet_hint": "After AGW-033 closes, continue with the next open backlog item selected by make agent-next."
+  }
+}

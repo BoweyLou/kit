@@ -1,0 +1,22 @@
+{
+  "name": "local-agentic",
+  "description": "Local-only, agent-tool-agnostic workflow files for AmpCode, Codex, and other coding agents.",
+  "files": [
+    {
+      "source": "files/.agent-workflows/README.md",
+      "target": ".agent-workflows/README.md"
+    },
+    {
+      "source": "files/.agent-workflows/repo-review.md",
+      "target": ".agent-workflows/repo-review.md"
+    },
+    {
+      "source": "files/.agent-workflows/tdd-red-green-receipt.md",
+      "target": ".agent-workflows/tdd-red-green-receipt.md"
+    },
+    {
+      "source": "files/.agent-workflows/session-receipt.schema.json",
+      "target": ".agent-workflows/schemas/session-receipt.schema.json"
+    }
+  ]
+}

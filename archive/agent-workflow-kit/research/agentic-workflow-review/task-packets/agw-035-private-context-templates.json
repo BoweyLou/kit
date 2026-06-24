@@ -1,0 +1,348 @@
+{
+  "schema_version": 1,
+  "task": {
+    "id": "AGW-035",
+    "title": "Add optional project/user/private context templates with privacy warnings.",
+    "priority": "P2",
+    "status": "approved",
+    "source": {
+      "type": "backlog",
+      "reference": "research/agentic-workflow-review/backlog.csv:36"
+    }
+  },
+  "context": {
+    "repo_root": "/Volumes/Myrtle/Code/04_Code/Hermes/doc-contract-kit",
+    "mode": "verification",
+    "problem_statement": "Some target repos need a place to record project preferences, user preferences, and private local context for agents, but repo-contract-kit must make the safe path explicit so secrets and personal context are not accidentally committed or copied into hosted prompts.",
+    "background": [
+      "AGW-035 is a repo-contract-kit backlog item with delivery shape: Templates and gitignore guidance.",
+      "repo-contract-kit already owns installer profiles, target-repo managed templates, runtime adapter routing, local workflow docs, instruction linting, and target gitignore scaffolds for run/task sidecar state.",
+      "agent-workflow-kit already has local/private review policy guidance, but this task belongs in repo-contract-kit because it installs target-repo files and update-safe managed profile content.",
+      "Existing installer profiles are explicit and composable; privacy-sensitive context should not be part of default, minimal, or agentic preset installation without a separate decision.",
+      "The current local-agentic profile installs workflow mechanics but no dedicated private context templates or ignore rules."
+    ],
+    "non_goals": [
+      "Do not add this profile to the default, minimal, learning, test-first, or agentic presets.",
+      "Do not install real user context, secrets, credentials, account identifiers, private URLs, customer data, personal messages, or machine-specific paths.",
+      "Do not create a memory system, Keryx/Obsidian integration, browser profile integration, hosted sync, secret scanner, or external planning adapter.",
+      "Do not change agent-workflow-kit canonical prompts, schemas, generated adapters, or runtime adapter source files.",
+      "Do not change installed review-runner, task-runner, context-bundle, preflight, self-heal, or lifecycle behavior.",
+      "Do not make linting or docs checks read ignored private context content by default."
+    ]
+  },
+  "previous_task_state": {
+    "report_sources": [
+      "source git status --short",
+      "source git rev-parse HEAD",
+      "source git ls-remote origin refs/heads/main",
+      "source make agent-next",
+      "source make backlog-status",
+      "source make agent-task-status TASK_STATUS_INCLUDE_CLOSED=1 TASK_STATUS_JSON=1",
+      "kit git status --short",
+      "kit git rev-parse HEAD",
+      "kit git ls-remote origin refs/heads/main",
+      "make agent-task-packet-from-backlog BACKLOG_ID=AGW-035"
+    ],
+    "active_tasks": [],
+    "unresolved_blockers": [],
+    "dirty_or_stale_state": [],
+    "finalizer_receipt_paths": [
+      "source main commit 2828d372d2a1706242855c8f7fc0df47d31913a3 completed AGW-034 and remote origin/main matched it",
+      "kit main commit c12c19c3d0fe2b5744c22b07a371a1e8728b4674 is clean and remote origin/main matches it"
+    ],
+    "blocker_receipt_paths": [],
+    "allowed_to_start": true,
+    "notes": "AGW-035 packet creation began with source and kit worktrees clean. Source make agent-next selected AGW-035 with dirty false, source backlog-status reported 11 open and 88 done, and source task-status reported zero active tasks, hazards, stale tasks, unknown-scope tasks, and untracked agent worktrees."
+  },
+  "closeout_required_before_start": {
+    "decision": "safe-start",
+    "reason": "AGW-034 is implemented, validated, pushed, and source-closed; source and kit remotes match local HEADs; no active source task metadata blocks AGW-035.",
+    "required_next_step": "Proceed with exactly one AGW-035 worker in repo-contract-kit; refresh source and kit status before worker launch and stop if either checkout becomes dirty or diverges.",
+    "evidence_paths": [
+      "research/agentic-workflow-review/task-packets/agw-035-private-context-templates.md",
+      "source main commit 2828d372d2a1706242855c8f7fc0df47d31913a3",
+      "kit main commit c12c19c3d0fe2b5744c22b07a371a1e8728b4674",
+      "source make agent-next selected AGW-035 with dirty false",
+      "source make agent-task-status TASK_STATUS_INCLUDE_CLOSED=1 TASK_STATUS_JSON=1 reported active_task_count 0"
+    ]
+  },
+  "goal_alignment": {
+    "repo_goal": "Keep repo-contract-kit as the install-layer guardrail provider for target repos, with explicit opt-in profiles, update-safe managed files, local-first workflow docs, and privacy-preserving defaults.",
+    "area_contracts": [
+      {
+        "path": "/Volumes/Myrtle/Code/04_Code/Hermes/doc-contract-kit/templates/profiles/",
+        "purpose": "Composable optional install profiles and profile-owned target-repo templates.",
+        "source": "installer profile system",
+        "status": "aligned"
+      },
+      {
+        "path": "/Volumes/Myrtle/Code/04_Code/Hermes/doc-contract-kit/scripts/install.py",
+        "purpose": "Resolves explicit profiles, copies managed template files, and records install receipt/manifest metadata.",
+        "source": "installer implementation",
+        "status": "aligned"
+      },
+      {
+        "path": "/Volumes/Myrtle/Code/04_Code/Hermes/doc-contract-kit/templates/common/agent-tool-network-allowlist.md",
+        "purpose": "Installed local policy for tools, network, secrets, accounts, and trust profile boundaries.",
+        "source": "installed policy docs",
+        "status": "aligned"
+      },
+      {
+        "path": "/Volumes/Myrtle/Code/04_Code/Hermes/doc-contract-kit/templates/common/ops-agent-workflow.md",
+        "purpose": "Installed operator workflow docs where optional context templates and privacy warnings should be discoverable.",
+        "source": "installed workflow docs",
+        "status": "aligned"
+      },
+      {
+        "path": "/Volumes/Myrtle/Code/04_Code/Hermes/doc-contract-kit/tests/test_install.py",
+        "purpose": "Installer regression tests for explicit profiles, preset membership, managed manifests, and installed files.",
+        "source": "test suite",
+        "status": "aligned"
+      }
+    ],
+    "alignment_decision": "aligned",
+    "adaptation_needed": false,
+    "stop_conditions": [
+      "Stop if the implementation would install private context by default or include it in existing presets.",
+      "Stop if generated target files encourage writing secrets, tokens, cookies, customer data, personal messages, private URLs, or credentials.",
+      "Stop if private local context files are tracked by default instead of ignored or example-only.",
+      "Stop if the worker needs to change agent-workflow-kit prompt source or runtime adapters.",
+      "Stop if docs or tests would require reading ignored private context by default.",
+      "Stop if profile/update behavior cannot preserve customized managed files or target-owned files."
+    ]
+  },
+  "scope": {
+    "allowed_files": [
+      "/Volumes/Myrtle/Code/04_Code/Hermes/doc-contract-kit/templates/profiles/private-context/",
+      "/Volumes/Myrtle/Code/04_Code/Hermes/doc-contract-kit/templates/common/ops-agent-workflow.md",
+      "/Volumes/Myrtle/Code/04_Code/Hermes/doc-contract-kit/templates/common/working-rhythm.md",
+      "/Volumes/Myrtle/Code/04_Code/Hermes/doc-contract-kit/templates/common/agent-tool-network-allowlist.md",
+      "/Volumes/Myrtle/Code/04_Code/Hermes/doc-contract-kit/README.md",
+      "/Volumes/Myrtle/Code/04_Code/Hermes/doc-contract-kit/docs/rollout-guide.md",
+      "/Volumes/Myrtle/Code/04_Code/Hermes/doc-contract-kit/docs/roadmap.md",
+      "/Volumes/Myrtle/Code/04_Code/Hermes/doc-contract-kit/docs/harness-engineering.md",
+      "/Volumes/Myrtle/Code/04_Code/Hermes/doc-contract-kit/tests/test_install.py",
+      "/Volumes/Myrtle/Code/04_Code/Hermes/doc-contract-kit/tests/test_update.py",
+      "/Volumes/Myrtle/Code/04_Code/Hermes/doc-contract-kit/tests/test_repo_contract_kit_cli.py",
+      "/Volumes/Myrtle/Code/04_Code/Hermes/doc-contract-kit/VERSION",
+      "/Volumes/Myrtle/Code/04_Code/Hermes/doc-contract-kit/CHANGELOG.md",
+      "/Volumes/Myrtle/Code/04_Code/Codex_CodeReview/research/agentic-workflow-review/backlog.csv",
+      "/Volumes/Myrtle/Code/04_Code/Codex_CodeReview/research/agentic-workflow-review/repo-contract-kit-backlog.csv",
+      "/Volumes/Myrtle/Code/04_Code/Codex_CodeReview/research/agentic-workflow-review/summary.md",
+      "/Volumes/Myrtle/Code/04_Code/Codex_CodeReview/research/agentic-workflow-review/feature_matrix.csv"
+    ],
+    "protected_files": [
+      "/Volumes/Myrtle/Code/04_Code/Codex_CodeReview/workflows/prompts/",
+      "/Volumes/Myrtle/Code/04_Code/Codex_CodeReview/.codex/prompts/",
+      "/Volumes/Myrtle/Code/04_Code/Hermes/doc-contract-kit/scripts/agent_review_run.py",
+      "/Volumes/Myrtle/Code/04_Code/Hermes/doc-contract-kit/scripts/agent_start.py unless tests prove startup docs must name the new optional profile",
+      "/Volumes/Myrtle/Code/04_Code/Hermes/doc-contract-kit/templates/runtime-adapters/",
+      "/Volumes/Myrtle/Code/04_Code/Hermes/doc-contract-kit/templates/profiles/minimal/manifest.json",
+      "/Volumes/Myrtle/Code/04_Code/Hermes/doc-contract-kit/templates/profiles/local-agentic/manifest.json unless the worker only links to opt-in docs without installing private files by default",
+      "/Volumes/Myrtle/Code/04_Code/Hermes/doc-contract-kit/scripts/install.py preset membership except tests proving private-context is absent from presets",
+      "target-owned VERSION and CHANGELOG.md in installed target repos",
+      "real private context files without .example suffix",
+      "unrelated backlog rows and unrelated dirty work"
+    ],
+    "inspect_first": [
+      "/Volumes/Myrtle/Code/04_Code/Hermes/doc-contract-kit/scripts/install.py",
+      "/Volumes/Myrtle/Code/04_Code/Hermes/doc-contract-kit/templates/profiles/local-agentic/manifest.json",
+      "/Volumes/Myrtle/Code/04_Code/Hermes/doc-contract-kit/templates/profiles/docs-as-tests/manifest.json",
+      "/Volumes/Myrtle/Code/04_Code/Hermes/doc-contract-kit/templates/common/agent-tool-network-allowlist.md",
+      "/Volumes/Myrtle/Code/04_Code/Hermes/doc-contract-kit/templates/common/ops-agent-workflow.md",
+      "/Volumes/Myrtle/Code/04_Code/Hermes/doc-contract-kit/templates/common/working-rhythm.md",
+      "/Volumes/Myrtle/Code/04_Code/Hermes/doc-contract-kit/templates/common/instruction-budgets.json",
+      "/Volumes/Myrtle/Code/04_Code/Hermes/doc-contract-kit/templates/common/agent-instruction-hygiene.md",
+      "/Volumes/Myrtle/Code/04_Code/Hermes/doc-contract-kit/tests/test_install.py",
+      "/Volumes/Myrtle/Code/04_Code/Hermes/doc-contract-kit/tests/test_update.py",
+      "/Volumes/Myrtle/Code/04_Code/Hermes/doc-contract-kit/README.md",
+      "/Volumes/Myrtle/Code/04_Code/Hermes/doc-contract-kit/docs/rollout-guide.md"
+    ],
+    "expected_outputs": [
+      "An explicit optional profile, likely private-context, installable with python3 scripts/install.py <target> --profile private-context or composed through --profiles.",
+      "Managed example templates for project, user, and private context that contain privacy warnings and placeholders only, not real local context.",
+      "A managed .gitignore in the private-context directory that tracks README/example files but ignores real local context files by default.",
+      "Template guidance that separates shareable project context from personal/user/private context and says what must never be recorded.",
+      "Docs explaining install syntax, safe use, what remains ignored, how to review before sharing, and how this differs from AGENTS.md, REVIEW.md, runtime adapters, Keryx/Obsidian memory, and secrets management.",
+      "Installer tests proving the profile installs explicitly, can compose with local-agentic/review-prompts, is absent from all presets, records managed manifest entries, and ignores real private context files in a temp git repo.",
+      "Version and changelog updates in repo-contract-kit for the new profile/template behavior.",
+      "Source backlog rows, repo-contract-kit split backlog, feature matrix, and summary close AGW-035 only after kit validation passes."
+    ]
+  },
+  "acceptance_criteria": [
+    {
+      "description": "The optional private-context profile installs explicitly and is absent from default/minimal/learning/test-first/agentic presets.",
+      "verification": "Focused install tests inspect profile selection and preset membership."
+    },
+    {
+      "description": "Installed profile files provide project, user, and private context examples with clear privacy warnings and no real secret, credential, account, private URL, customer data, or personal-message placeholders that look live.",
+      "verification": "Review templates and run instruction lint/docs checks."
+    },
+    {
+      "description": "The installed context directory tracks only README/example guidance and ignores real local context files by default.",
+      "verification": "Install into a temporary git repo, create real context files, and verify git status ignores them while example files remain visible/managed."
+    },
+    {
+      "description": "Docs explain how to use the templates safely, how to review/redact before sharing, and why the profile is opt-in rather than part of normal agentic installs.",
+      "verification": "Inspect README, rollout/operator docs, and installed workflow docs."
+    },
+    {
+      "description": "Update behavior remains safe: managed template changes are tracked in the manifest and customized managed files are not overwritten silently.",
+      "verification": "Focused update/install tests or existing update tests pass."
+    },
+    {
+      "description": "The change does not add memory integrations, prompt-source changes, runtime adapter changes, or runner behavior.",
+      "verification": "Run git diff --name-only in both repos and inspect against the allowed/protected scope."
+    },
+    {
+      "description": "repo-contract-kit version/changelog records the new opt-in profile, and source backlog closeout records AGW-035 only after kit validation and push.",
+      "verification": "Run kit make version-check and source backlog checks."
+    }
+  ],
+  "validation": {
+    "commands": [
+      {
+        "command": "PYTHONDONTWRITEBYTECODE=1 python3 -m unittest tests.test_install tests.test_update tests.test_repo_contract_kit_cli",
+        "required": true,
+        "expected_result": "pass"
+      },
+      {
+        "command": "PYTHONDONTWRITEBYTECODE=1 make test",
+        "required": true,
+        "expected_result": "pass"
+      },
+      {
+        "command": "make docs-check",
+        "required": true,
+        "expected_result": "pass"
+      },
+      {
+        "command": "make docs-freshness",
+        "required": true,
+        "expected_result": "pass"
+      },
+      {
+        "command": "make version-check",
+        "required": true,
+        "expected_result": "pass after a repo-contract-kit patch bump and changelog entry"
+      },
+      {
+        "command": "git diff --check",
+        "required": true,
+        "expected_result": "pass in repo-contract-kit before commit"
+      },
+      {
+        "command": "Install smoke: install --profile private-context into a temporary git repo, verify example files and .gitignore behavior, then verify private local files are ignored.",
+        "required": true,
+        "expected_result": "pass"
+      },
+      {
+        "command": "make backlog-check",
+        "required": true,
+        "expected_result": "pass in source repo after closeout"
+      },
+      {
+        "command": "make backlog-split-check",
+        "required": true,
+        "expected_result": "pass in source repo after closeout"
+      },
+      {
+        "command": "PYTHONDONTWRITEBYTECODE=1 make agent-verify",
+        "required": true,
+        "expected_result": "pass in source repo after closeout; pre-existing instruction hygiene warnings may be reported if unchanged"
+      },
+      {
+        "command": "git diff --check",
+        "required": true,
+        "expected_result": "pass in source repo after closeout"
+      }
+    ],
+    "evidence_to_capture": [
+      "kit diff summary and changed-file list proving opt-in profile/template/docs/test/version scope.",
+      "install smoke output proving private local context files are ignored.",
+      "kit test, docs, freshness, version, and diff-check output.",
+      "kit commit SHA and pushed remote ref.",
+      "source backlog closeout diff summary and validation output.",
+      "source commit SHA and pushed remote ref.",
+      "Dirty-state explanation for both source and kit repos."
+    ]
+  },
+  "closeout_requirements": {
+    "final_receipt_path": ".agent-workflows/tasks/agw-035-private-context-templates/receipt.json or sidecar equivalent in the source repo, plus kit commit evidence",
+    "readiness_check": {
+      "command": "make agent-task-ready TASK=AGW-035 TASK_READY_JSON=1 or record why unavailable in the source parent run",
+      "expected_result": "ready report passes or unavailable surface is recorded before implementation starts"
+    },
+    "lifecycle_action": {
+      "action": "finish",
+      "command": "make agent-task-finalize TASK=AGW-035 TASK_RECEIPT=<path> TASK_FINALIZE_JSON=1 or lifecycle fallback",
+      "expected_result": "metadata is closed and final receipt is linked, or fallback receipt is durable"
+    },
+    "final_task_status": {
+      "command": "make agent-task-status TASK_STATUS_INCLUDE_CLOSED=1 TASK_STATUS_JSON=1",
+      "expected_result": "task is terminal or no local metadata was created and the reason is recorded"
+    },
+    "closeout_preview": {
+      "command": "make agent-task-closeout TASK_CLOSEOUT_JSON=1",
+      "expected_result": "eligible, retained, or blocked cleanup state is recorded",
+      "apply_requires_explicit_approval": true
+    },
+    "dirty_state_explanation": "Final handoff must say whether both repos are clean, only expected files are dirty, cleanup is blocked, or unrelated dirt was preserved."
+  },
+  "docs_impact": {
+    "expected": "yes",
+    "paths": [
+      "/Volumes/Myrtle/Code/04_Code/Hermes/doc-contract-kit/templates/profiles/private-context/",
+      "/Volumes/Myrtle/Code/04_Code/Hermes/doc-contract-kit/README.md",
+      "/Volumes/Myrtle/Code/04_Code/Hermes/doc-contract-kit/docs/rollout-guide.md",
+      "/Volumes/Myrtle/Code/04_Code/Hermes/doc-contract-kit/docs/roadmap.md",
+      "/Volumes/Myrtle/Code/04_Code/Hermes/doc-contract-kit/CHANGELOG.md"
+    ],
+    "waiver_allowed": false,
+    "notes": "This changes installed profile/template behavior in repo-contract-kit. Source docs updates are limited to research/backlog closeout."
+  },
+  "risk": {
+    "level": "high",
+    "known_risks": [
+      "Templates can normalize storing sensitive data in repos if warnings and ignore rules are weak.",
+      "Adding private context to default presets would unexpectedly expose the feature in target repos.",
+      "A .gitignore mistake could leave real user/private context files staged or committed.",
+      "Instruction lint or token-budget checks could accidentally read local private files if they are not excluded or example-only.",
+      "Runtime-specific memory semantics can be confused with repo-contract-kit managed instructions unless docs keep this as optional local context."
+    ],
+    "stop_conditions": [
+      "Any profile file contains realistic secrets, tokens, account identifiers, private URLs, or personal data.",
+      "Real private context files are tracked by default in the install smoke.",
+      "The implementation requires prompt-source, runner, or runtime-adapter changes.",
+      "The profile must be added to the agentic preset to work.",
+      "Kit validation fails or source/kit remotes diverge."
+    ]
+  },
+  "approval": {
+    "human_approval_required": false,
+    "state": "approved",
+    "approver": null,
+    "notes": "Active user goal is to add fully planned backlog packets and implement remaining workflow-stack items serially with one worker per backlog item."
+  },
+  "coordination": {
+    "active_task_count": 0,
+    "active_tasks": [],
+    "overlap_warnings": []
+  },
+  "harness_metrics": {
+    "context_file_count": 12,
+    "token_budget": {
+      "guidance": "Keep the source packet compact and hand the worker to repo-contract-kit. The implementation should avoid stuffing private context guidance into AGENTS.md."
+    }
+  },
+  "handoff": {
+    "recommended_prompt": "workflows/prompts/task-packet.md, then workflows/prompts/fix-implementer.md for the repo-contract-kit profile/template slice",
+    "owner": "one worker agent",
+    "dependencies": [
+      "repo-contract-kit local checkout at /Volumes/Myrtle/Code/04_Code/Hermes/doc-contract-kit must remain clean before launch.",
+      "Source backlog closeout happens after repo-contract-kit implementation validation and push.",
+      "Generated private context examples must remain example-only and real private files must be ignored."
+    ],
+    "next_packet_hint": "After AGW-035 closes, continue with the next open backlog item selected by make agent-next."
+  }
+}

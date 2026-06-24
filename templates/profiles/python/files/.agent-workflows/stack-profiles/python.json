@@ -1,0 +1,61 @@
+{
+  "schema_version": 1,
+  "stack": "python",
+  "profile": "repo-contract-kit-python",
+  "purpose": "Local-only Python repository hygiene hints for agents and maintainers.",
+  "detection": {
+    "primary_files": [
+      "pyproject.toml",
+      "setup.cfg",
+      "setup.py",
+      "requirements.txt"
+    ],
+    "lockfiles": [
+      "uv.lock",
+      "poetry.lock",
+      "Pipfile.lock",
+      "requirements.lock"
+    ],
+    "config_files": [
+      "tox.ini",
+      "noxfile.py",
+      "pytest.ini",
+      ".flake8",
+      "ruff.toml",
+      ".ruff.toml",
+      "mypy.ini",
+      "pyrightconfig.json"
+    ]
+  },
+  "safe_start": [
+    "Inspect pyproject.toml and committed config before choosing commands.",
+    "Prefer existing repo commands and wrappers over global Python tooling assumptions.",
+    "Do not create virtual environments, install dependencies, or rewrite lockfiles unless the human explicitly asks."
+  ],
+  "command_hints": [
+    {
+      "name": "pytest",
+      "when": "pytest is already configured and dependencies are already available",
+      "command": "python3 -m pytest",
+      "writes": "maybe"
+    },
+    {
+      "name": "unittest",
+      "when": "the repo uses stdlib unittest or has no pytest dependency evidence",
+      "command": "python3 -m unittest discover",
+      "writes": false
+    },
+    {
+      "name": "ruff-check",
+      "when": "ruff is already configured and available",
+      "command": "python3 -m ruff check .",
+      "writes": false
+    }
+  ],
+  "non_goals": [
+    "No dependency installation.",
+    "No virtual environment creation.",
+    "No lockfile generation.",
+    "No package publishing or build backend selection."
+  ]
+}

@@ -1,0 +1,26 @@
+{
+  "name": "private-context",
+  "description": "Optional local context templates with privacy warnings and ignore rules.",
+  "files": [
+    {
+      "source": "files/.agent-context/.gitignore",
+      "target": ".agent-context/.gitignore"
+    },
+    {
+      "source": "files/.agent-context/README.md",
+      "target": ".agent-context/README.md"
+    },
+    {
+      "source": "files/.agent-context/project-context.example.md",
+      "target": ".agent-context/project-context.example.md"
+    },
+    {
+      "source": "files/.agent-context/user-preferences.example.md",
+      "target": ".agent-context/user-preferences.example.md"
+    },
+    {
+      "source": "files/.agent-context/private-local-context.example.md",
+      "target": ".agent-context/private-local-context.example.md"
+    }
+  ]
+}

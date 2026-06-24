@@ -1,0 +1,319 @@
+{
+  "schema_version": 1,
+  "task": {
+    "id": "AGW-058",
+    "title": "Implement stack-aware Node and Python template profiles.",
+    "priority": "P2",
+    "status": "approved",
+    "source": {
+      "type": "backlog",
+      "reference": "research/agentic-workflow-review/backlog.csv:59"
+    }
+  },
+  "context": {
+    "repo_root": "/Volumes/Myrtle/Code/04_Code/repo-contract-kit",
+    "mode": "verification",
+    "problem_statement": "Placeholder Node and Python stack profiles should become useful opt-in defaults for common target repos without installing dependencies or taking over application scaffolding.",
+    "background": [
+      "AGW-058 is repo-contract-kit install-layer work, not agent-workflow-kit prompt-source work.",
+      "Current Codex_CodeReview backlog status is 3 open, 98 done, 0 partial; AGW-058 is the next open item.",
+      "Current Codex_CodeReview and repo-contract-kit checkouts are clean before this packet is written.",
+      "The previous AGW-055 source task is committed in Codex_CodeReview as 6d21797, and AGW-053/kit source work is committed in repo-contract-kit through be27b2f."
+    ],
+    "non_goals": [
+      "Do not install npm, pnpm, yarn, pip, uv, poetry, tox, pytest, or any project dependencies.",
+      "Do not create application source trees, package lockfiles, virtual environments, or language-specific CI that assumes a particular framework.",
+      "Do not make Node or Python profiles part of every install unless the existing preset explicitly selects them.",
+      "Do not change canonical workflow prompts in Codex_CodeReview except for dogfood closeout after the kit update."
+    ]
+  },
+  "previous_task_state": {
+    "report_sources": [
+      "git status --short in Codex_CodeReview",
+      "git status --short in repo-contract-kit",
+      "make backlog-status",
+      "make agent-next",
+      "make agent-task-status"
+    ],
+    "active_tasks": [],
+    "unresolved_blockers": [],
+    "dirty_or_stale_state": [],
+    "finalizer_receipt_paths": [
+      "Codex_CodeReview commit 6d21797 closes AGW-055",
+      "repo-contract-kit commit be27b2f is the current source baseline"
+    ],
+    "blocker_receipt_paths": [],
+    "allowed_to_start": true,
+    "notes": "AGW-058 may start after this packet commit; no active sibling tasks or dirty source files were reported before packet creation."
+  },
+  "closeout_required_before_start": {
+    "decision": "safe-start",
+    "reason": "The prior task is committed, both involved checkouts are clean, and task-status reports no active tasks or coordination warnings.",
+    "required_next_step": "Commit this AGW-058 packet, then implement only the scoped repo-contract-kit profile/template/docs/tests work.",
+    "evidence_paths": [
+      "research/agentic-workflow-review/backlog.csv:59",
+      "research/agentic-workflow-review/repo-contract-kit-backlog.csv:28",
+      "research/agentic-workflow-review/task-packets/agw-058-stack-aware-node-python-profiles.json",
+      "research/agentic-workflow-review/task-packets/agw-058-stack-aware-node-python-profiles.md"
+    ]
+  },
+  "goal_alignment": {
+    "repo_goal": "repo-contract-kit installs safe docs-as-code and agent workflow scaffolding into target repos while preserving target-owned work.",
+    "area_contracts": [
+      {
+        "path": "templates/profiles/node/",
+        "purpose": "Opt-in Node-oriented managed profile files for target repos.",
+        "source": "AGW-058 backlog row; repo-contract-kit templates/profiles",
+        "status": "aligned",
+        "notes": "The profile should provide useful repo hygiene defaults and documentation without framework lock-in."
+      },
+      {
+        "path": "templates/profiles/python/",
+        "purpose": "Opt-in Python-oriented managed profile files for target repos.",
+        "source": "AGW-058 backlog row; repo-contract-kit templates/profiles",
+        "status": "aligned",
+        "notes": "The profile should provide useful repo hygiene defaults and documentation without dependency installation."
+      },
+      {
+        "path": "scripts/install.py and tests/",
+        "purpose": "Install/update profile selection, manifest registration, and regression coverage.",
+        "source": "repo-contract-kit install tests",
+        "status": "aligned",
+        "notes": "Only change installer behavior if existing profile mechanics cannot express useful stack profiles."
+      },
+      {
+        "path": "README.md and docs/",
+        "purpose": "Operator-facing setup, profile, and update guidance.",
+        "source": "AGENTS.md docs-as-code contract",
+        "status": "aligned",
+        "notes": "Profile behavior is user-visible and needs documentation."
+      }
+    ],
+    "alignment_decision": "aligned",
+    "adaptation_needed": false,
+    "stop_conditions": [
+      "Stop if useful stack profiles require package installation, framework detection, or generated application code.",
+      "Stop if the existing profile system cannot support opt-in Node/Python profiles without changing unrelated presets.",
+      "Stop if target-owned files would be overwritten rather than preserved through the managed manifest/update flow."
+    ]
+  },
+  "scope": {
+    "inspect_first": [
+      "/Volumes/Myrtle/Code/04_Code/repo-contract-kit/AGENTS.md",
+      "/Volumes/Myrtle/Code/04_Code/repo-contract-kit/README.md",
+      "/Volumes/Myrtle/Code/04_Code/repo-contract-kit/docs/rollout-guide.md",
+      "/Volumes/Myrtle/Code/04_Code/repo-contract-kit/templates/profiles/",
+      "/Volumes/Myrtle/Code/04_Code/repo-contract-kit/scripts/install.py",
+      "/Volumes/Myrtle/Code/04_Code/repo-contract-kit/scripts/update.py",
+      "/Volumes/Myrtle/Code/04_Code/repo-contract-kit/tests/test_install.py",
+      "/Volumes/Myrtle/Code/04_Code/repo-contract-kit/tests/test_update.py"
+    ],
+    "allowed_files": [
+      "/Volumes/Myrtle/Code/04_Code/repo-contract-kit/templates/profiles/node/**",
+      "/Volumes/Myrtle/Code/04_Code/repo-contract-kit/templates/profiles/python/**",
+      "/Volumes/Myrtle/Code/04_Code/repo-contract-kit/scripts/install.py",
+      "/Volumes/Myrtle/Code/04_Code/repo-contract-kit/scripts/update.py",
+      "/Volumes/Myrtle/Code/04_Code/repo-contract-kit/tests/test_install.py",
+      "/Volumes/Myrtle/Code/04_Code/repo-contract-kit/tests/test_update.py",
+      "/Volumes/Myrtle/Code/04_Code/repo-contract-kit/README.md",
+      "/Volumes/Myrtle/Code/04_Code/repo-contract-kit/docs/rollout-guide.md",
+      "/Volumes/Myrtle/Code/04_Code/repo-contract-kit/templates/common/**",
+      "/Volumes/Myrtle/Code/04_Code/repo-contract-kit/VERSION",
+      "/Volumes/Myrtle/Code/04_Code/repo-contract-kit/CHANGELOG.md",
+      "/Volumes/Myrtle/Code/04_Code/Codex_CodeReview/research/agentic-workflow-review/**",
+      "/Volumes/Myrtle/Code/04_Code/Codex_CodeReview/.doc-contract-kit/**",
+      "/Volumes/Myrtle/Code/04_Code/Codex_CodeReview/scripts/repo_contract_kit.py",
+      "/Volumes/Myrtle/Code/04_Code/Codex_CodeReview/docs/ops/agent-workflow.md",
+      "/Volumes/Myrtle/Code/04_Code/Codex_CodeReview/VERSION",
+      "/Volumes/Myrtle/Code/04_Code/Codex_CodeReview/CHANGELOG.md"
+    ],
+    "protected_files": [
+      "Runtime credentials, global package manager state, virtual environments, node_modules, lockfiles, and package manager caches.",
+      "Application source files in dummy or target repos outside managed profile templates.",
+      "Codex_CodeReview canonical workflow prompt sources unless a separate agent-workflow-kit task is selected.",
+      "Existing target-owned files in migrated repos except through reviewed proposal artifacts."
+    ],
+    "expected_outputs": [
+      "Node profile templates with useful docs/config defaults and profile metadata.",
+      "Python profile templates with useful docs/config defaults and profile metadata.",
+      "Install/update tests proving each profile is opt-in, managed, and manifest-visible.",
+      "Operator docs explaining how to select the profiles and what they intentionally do not do.",
+      "Version/changelog updates in repo-contract-kit, followed by dogfood update and backlog closeout in Codex_CodeReview."
+    ]
+  },
+  "phase_files": {
+    "needed": false,
+    "reason": "The work is cross-repo but small enough to execute in one bounded implementation phase after this packet commit.",
+    "phases": [
+      {
+        "id": "AGW-058-P1",
+        "title": "Stack Profile Implementation",
+        "objective": "Implement and validate opt-in Node and Python repo-contract-kit profile templates, then dogfood and close AGW-058.",
+        "allowed_scope": [
+          "repo-contract-kit profile templates, installer/update tests, docs, version files",
+          "Codex_CodeReview dogfood install files and backlog closeout files"
+        ],
+        "completion_evidence": [
+          "repo-contract-kit tests/docs/version checks pass",
+          "Codex_CodeReview kit-status and backlog checks pass",
+          "AGW-058 is marked done in source and mirror backlog files"
+        ],
+        "handoff_notes": "If the work expands into package-manager detection or framework-specific scaffolding, stop and split a separate task."
+      }
+    ]
+  },
+  "acceptance_criteria": [
+    {
+      "description": "Node and Python profiles install useful stack-aware defaults instead of placeholders.",
+      "verification": "Install each profile into a dummy repo and inspect the resulting managed files and manifest entries."
+    },
+    {
+      "description": "Profiles remain opt-in and do not install dependencies, generate lockfiles, or assume a framework.",
+      "verification": "Review template contents and install tests; confirm no package-manager commands are executed."
+    },
+    {
+      "description": "Update safety is preserved for managed files and target-owned customizations.",
+      "verification": "Tests cover managed manifest registration and profile update behavior, or explicitly document unchanged existing coverage."
+    },
+    {
+      "description": "Operator docs describe profile selection and boundaries.",
+      "verification": "Review README/docs/template docs for Node/Python profile guidance and non-goals."
+    },
+    {
+      "description": "Dogfood install in Codex_CodeReview reflects the new kit version and source ref after repo-contract-kit validation.",
+      "verification": "Run make kit-status KIT=/Volumes/Myrtle/Code/04_Code/repo-contract-kit in Codex_CodeReview after update."
+    }
+  ],
+  "validation": {
+    "commands": [
+      {
+        "command": "PYTHONDONTWRITEBYTECODE=1 python3 -m unittest tests.test_install tests.test_update",
+        "required": true,
+        "expected_result": "focused profile install/update coverage passes in repo-contract-kit"
+      },
+      {
+        "command": "PYTHONDONTWRITEBYTECODE=1 make test",
+        "required": true,
+        "expected_result": "full repo-contract-kit test suite passes"
+      },
+      {
+        "command": "make docs-check",
+        "required": true,
+        "expected_result": "repo-contract-kit docs checks pass"
+      },
+      {
+        "command": "make version-check",
+        "required": true,
+        "expected_result": "repo-contract-kit VERSION and CHANGELOG are valid"
+      },
+      {
+        "command": "git diff --check",
+        "required": true,
+        "expected_result": "no whitespace errors in repo-contract-kit"
+      },
+      {
+        "command": "make kit-update KIT=/Volumes/Myrtle/Code/04_Code/repo-contract-kit",
+        "required": true,
+        "expected_result": "Codex_CodeReview dogfood install updates safely from the local kit checkout"
+      },
+      {
+        "command": "make backlog-check && make backlog-split-check && make backlog-status && make agent-next",
+        "required": true,
+        "expected_result": "Codex_CodeReview backlog mirrors remain valid and AGW-058 closeout advances the next item"
+      },
+      {
+        "command": "make kit-status KIT=/Volumes/Myrtle/Code/04_Code/repo-contract-kit",
+        "required": true,
+        "expected_result": "Codex_CodeReview reports the dogfooded kit version/source ref"
+      },
+      {
+        "command": "make docs-check && make version-check && git diff --check",
+        "required": true,
+        "expected_result": "Codex_CodeReview closeout checks pass"
+      }
+    ],
+    "evidence_to_capture": [
+      "Profile template file list before and after implementation",
+      "Focused install/update test output",
+      "Full repo-contract-kit test output",
+      "Dummy install evidence for node and python profiles",
+      "Dogfood kit-status output in Codex_CodeReview",
+      "Backlog closeout status and next open item"
+    ]
+  },
+  "closeout_requirements": {
+    "final_receipt_path": ".agent-workflows/tasks/AGW-058/receipt.json or sidecar equivalent",
+    "readiness_check": {
+      "command": "make agent-task-ready TASK=AGW-058 TASK_READY_JSON=1 or record why unavailable",
+      "expected_result": "readiness passes or a blocker is recorded before handoff"
+    },
+    "lifecycle_action": {
+      "action": "finish",
+      "command": "make agent-task-finalize TASK=AGW-058 TASK_RECEIPT=.agent-workflows/tasks/AGW-058/receipt.json TASK_FINALIZE_JSON=1 or durable fallback receipt",
+      "expected_result": "task metadata is terminal and final receipt is linked, or fallback receipt is documented"
+    },
+    "final_task_status": {
+      "command": "make agent-task-status TASK_STATUS_INCLUDE_CLOSED=1 TASK_STATUS_JSON=1",
+      "expected_result": "terminal task state, receipt path, and active overlaps are visible or unavailable state is explained"
+    },
+    "closeout_preview": {
+      "command": "make agent-task-closeout TASK_CLOSEOUT_JSON=1",
+      "expected_result": "closeout preview reports expected changes; applying closeout requires explicit approval",
+      "apply_requires_explicit_approval": true
+    },
+    "dirty_state_explanation": "Final handoff must classify any remaining dirty files in both repo-contract-kit and Codex_CodeReview."
+  },
+  "docs_impact": {
+    "expected": "yes",
+    "paths": [
+      "/Volumes/Myrtle/Code/04_Code/repo-contract-kit/README.md",
+      "/Volumes/Myrtle/Code/04_Code/repo-contract-kit/docs/rollout-guide.md",
+      "/Volumes/Myrtle/Code/04_Code/repo-contract-kit/CHANGELOG.md",
+      "/Volumes/Myrtle/Code/04_Code/Codex_CodeReview/research/agentic-workflow-review/summary.md",
+      "/Volumes/Myrtle/Code/04_Code/Codex_CodeReview/CHANGELOG.md"
+    ],
+    "waiver_allowed": false,
+    "notes": "Profile behavior is user-visible install behavior and must be documented."
+  },
+  "risk": {
+    "level": "medium",
+    "known_risks": [
+      "Stack profiles could overreach into framework scaffolding or dependency management.",
+      "New profile files could be added without managed manifest coverage.",
+      "Docs could imply package-manager behavior that the kit deliberately does not perform.",
+      "Dogfood update could preserve local managed-file conflicts that need review rather than force-overwrite."
+    ],
+    "stop_conditions": [
+      "Stop if profile implementation requires network access or package installation.",
+      "Stop if tests reveal existing profile update semantics are unsafe for stack profiles.",
+      "Stop if Codex_CodeReview dogfood update produces conflicts that cannot be safely classified."
+    ]
+  },
+  "approval": {
+    "human_approval_required": false,
+    "state": "approved",
+    "approver": "user",
+    "notes": "Approved by the user's request to task-packet and implement each open backlog item in series with commits between steps."
+  },
+  "coordination": {
+    "active_task_count": 0,
+    "active_tasks": [],
+    "overlap_warnings": []
+  },
+  "harness_metrics": {
+    "context_file_count": 8,
+    "token_budget": {
+      "required": false,
+      "notes": "No explicit token budget for the active goal."
+    }
+  },
+  "handoff": {
+    "recommended_prompt": "workflows/prompts/fix-implementer.md",
+    "owner": null,
+    "dependencies": [
+      "Commit this packet before editing repo-contract-kit.",
+      "Commit repo-contract-kit implementation before dogfood closeout in Codex_CodeReview."
+    ],
+    "next_packet_hint": "AGW-059 should remain a separate planning-adapter examples task after AGW-058 is closed."
+  }
+}

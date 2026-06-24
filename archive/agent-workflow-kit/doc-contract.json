@@ -1,0 +1,126 @@
+{
+  "required_files": [
+    "docs/documentation-contract.md",
+    "AGENTS.md",
+    "REVIEW.md"
+  ],
+  "doc_paths": [
+    "docs/",
+    "README.md",
+    "PROJECT_BRIEF.md",
+    "CHANGELOG.md",
+    "AGENTS.md",
+    "REVIEW.md",
+    ".agent-workflows/",
+    ".github/pull_request_template.md"
+  ],
+  "ignore_paths": [
+    "tests/"
+  ],
+  "no_docs_needed_markers": [
+    "No docs needed:"
+  ],
+  "impact_rules": {
+    "api": [
+      "api/",
+      "openapi/",
+      "schema/"
+    ],
+    "cli": [
+      "cli/"
+    ],
+    "config": [
+      "config/",
+      ".env",
+      "settings",
+      ".pre-commit-config.yaml"
+    ],
+    "ops": [
+      "deploy/",
+      ".github/workflows/",
+      "infra/",
+      "terraform/",
+      "helm/",
+      ".githooks/",
+      "Makefile"
+    ],
+    "prompt": [
+      "workflows/prompts/",
+      ".codex/prompts/"
+    ],
+    "workflow": [
+      "workflows/manifest.json",
+      ".agent-workflows/"
+    ],
+    "schema": [
+      "schemas/",
+      ".agent-workflows/schemas/"
+    ],
+    "tooling": [
+      "scripts/",
+      "Makefile",
+      ".githooks/",
+      ".pre-commit-config.yaml"
+    ],
+    "research": [
+      "research/agentic-workflow-review/",
+      "research/agentic-regression-research/"
+    ]
+  },
+  "category_doc_paths": {
+    "api": [
+      "README.md",
+      "docs/api/",
+      "docs/reference/",
+      "docs/openapi/"
+    ],
+    "cli": [
+      "README.md",
+      "docs/cli/",
+      "docs/commands/"
+    ],
+    "config": [
+      "README.md",
+      "docs/config/",
+      "docs/setup/",
+      ".env.example",
+      ".env.sample"
+    ],
+    "ops": [
+      "docs/working-rhythm.md",
+      "docs/ops/",
+      "docs/deploy/",
+      "docs/runbooks/"
+    ],
+    "prompt": [
+      "README.md",
+      "docs/using-the-prompt-kit.md",
+      "docs/runtime-adapters.md",
+      "workflows/prompts/README.md"
+    ],
+    "workflow": [
+      "README.md",
+      "docs/working-rhythm.md",
+      "docs/using-the-prompt-kit.md",
+      "docs/runtime-adapters.md",
+      ".agent-workflows/"
+    ],
+    "schema": [
+      "README.md",
+      "docs/runtime-adapters.md",
+      "docs/using-the-prompt-kit.md"
+    ],
+    "tooling": [
+      "README.md",
+      "docs/working-rhythm.md",
+      "docs/ops/",
+      "docs/versioning.md",
+      "docs/documentation-contract.md"
+    ],
+    "research": [
+      "research/agentic-workflow-review/summary.md",
+      "research/agentic-regression-research/README.md",
+      "README.md"
+    ]
+  }
+}

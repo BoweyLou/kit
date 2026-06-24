@@ -1,0 +1,190 @@
+{
+  "schema_version": 1,
+  "suite": {
+    "name": "docs-impact-benchmarks",
+    "purpose": "Small deterministic fixtures for checking docs-impact false positives, false negatives, coverage, waiver behavior, and source task-packet research handoffs.",
+    "source_backlog": "AGW-046; AGW-122"
+  },
+  "cases": [
+    {
+      "id": "DIB-001",
+      "title": "Tooling change without docs is reported",
+      "intent": "true-positive",
+      "changed_files": [
+        "scripts/agent_start.py"
+      ],
+      "expected": {
+        "status": "fail",
+        "result": "missing-docs",
+        "categories": [
+          "tooling"
+        ],
+        "missing_categories": [
+          "tooling"
+        ],
+        "docs_changed": [],
+        "covered_categories": [],
+        "no_docs_declaration": false
+      },
+      "rationale": "A source script change should require matching operator or tooling documentation unless waived."
+    },
+    {
+      "id": "DIB-002",
+      "title": "Tooling change with matching docs is covered",
+      "intent": "coverage-positive",
+      "changed_files": [
+        "scripts/agent_start.py",
+        "docs/working-rhythm.md"
+      ],
+      "expected": {
+        "status": "pass",
+        "result": "covered-or-no-impact",
+        "categories": [
+          "tooling"
+        ],
+        "missing_categories": [],
+        "docs_changed": [
+          "docs/working-rhythm.md"
+        ],
+        "covered_categories": [
+          "tooling"
+        ],
+        "no_docs_declaration": false
+      },
+      "rationale": "The docs contract should pass when a tooling change includes one of the configured tooling docs."
+    },
+    {
+      "id": "DIB-003",
+      "title": "Tests-only change does not require docs",
+      "intent": "false-positive-guard",
+      "changed_files": [
+        "tests/test_agent_start.py"
+      ],
+      "expected": {
+        "status": "pass",
+        "result": "covered-or-no-impact",
+        "categories": [],
+        "missing_categories": [],
+        "docs_changed": [],
+        "covered_categories": [],
+        "no_docs_declaration": false
+      },
+      "rationale": "The tests ignore path prevents docs-impact noise for test-only maintenance."
+    },
+    {
+      "id": "DIB-004",
+      "title": "Prompt source change is not missed",
+      "intent": "false-negative-guard",
+      "changed_files": [
+        "workflows/prompts/task-packet.md"
+      ],
+      "expected": {
+        "status": "fail",
+        "result": "missing-docs",
+        "categories": [
+          "prompt"
+        ],
+        "missing_categories": [
+          "prompt"
+        ],
+        "docs_changed": [],
+        "covered_categories": [],
+        "no_docs_declaration": false
+      },
+      "rationale": "Canonical prompt changes are user-visible workflow changes and should stay in the prompt docs-impact category."
+    },
+    {
+      "id": "DIB-005",
+      "title": "Explicit no-docs-needed reason waives a tooling miss",
+      "intent": "no-docs-needed-waiver",
+      "changed_files": [
+        "scripts/internal_cleanup.py"
+      ],
+      "no_docs_needed": "Internal cleanup only; no operator-facing behavior changes.",
+      "expected": {
+        "status": "pass",
+        "result": "covered-or-no-impact",
+        "categories": [
+          "tooling"
+        ],
+        "missing_categories": [
+          "tooling"
+        ],
+        "docs_changed": [],
+        "covered_categories": [],
+        "no_docs_declaration": true
+      },
+      "rationale": "Waivers should make an otherwise missing docs-impact result pass while still exposing the missing category."
+    },
+    {
+      "id": "DIB-006",
+      "title": "Source task packet without research summary is reported",
+      "intent": "true-positive",
+      "changed_files": [
+        "research/agentic-workflow-review/task-packets/agw-999-new-packet.md"
+      ],
+      "expected": {
+        "status": "fail",
+        "result": "missing-docs",
+        "categories": [
+          "research"
+        ],
+        "missing_categories": [
+          "research"
+        ],
+        "docs_changed": [],
+        "covered_categories": [],
+        "no_docs_declaration": false
+      },
+      "rationale": "New source task packets are research backlog state and should not pass docs-impact without a matching summary, backlog narrative, or explicit waiver."
+    },
+    {
+      "id": "DIB-007",
+      "title": "Source task packet with research summary is covered",
+      "intent": "coverage-positive",
+      "changed_files": [
+        "research/agentic-workflow-review/task-packets/agw-999-new-packet.md",
+        "research/agentic-workflow-review/summary.md"
+      ],
+      "expected": {
+        "status": "pass",
+        "result": "covered-or-no-impact",
+        "categories": [
+          "research"
+        ],
+        "missing_categories": [],
+        "docs_changed": [
+          "research/agentic-workflow-review/summary.md"
+        ],
+        "covered_categories": [
+          "research"
+        ],
+        "no_docs_declaration": false
+      },
+      "rationale": "The research summary is the durable handoff surface for new task-packet state, current backlog status, and closeout notes."
+    },
+    {
+      "id": "DIB-008",
+      "title": "Source task packet can be explicitly waived",
+      "intent": "no-docs-needed-waiver",
+      "changed_files": [
+        "research/agentic-workflow-review/task-packets/agw-999-archive-note.md"
+      ],
+      "no_docs_needed": "Packet is archival evidence only; no backlog state or research summary changed.",
+      "expected": {
+        "status": "pass",
+        "result": "covered-or-no-impact",
+        "categories": [
+          "research"
+        ],
+        "missing_categories": [
+          "research"
+        ],
+        "docs_changed": [],
+        "covered_categories": [],
+        "no_docs_declaration": true
+      },
+      "rationale": "A packet-only archival note can pass only with an explicit no-docs-needed reason that remains visible in docs-impact output."
+    }
+  ]
+}

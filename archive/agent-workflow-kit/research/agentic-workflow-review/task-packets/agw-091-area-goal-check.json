@@ -1,0 +1,271 @@
+{
+  "schema_version": 1,
+  "task": {
+    "id": "AGW-091",
+    "title": "Add deterministic area-contract discovery and goal-check reporting for changed paths.",
+    "priority": "P1",
+    "status": "approved",
+    "source": {
+      "type": "backlog",
+      "reference": "research/agentic-workflow-review/backlog.csv:92"
+    }
+  },
+  "context": {
+    "repo_root": "/Volumes/Myrtle/Code/04_Code/Hermes/doc-contract-kit",
+    "mode": "verification",
+    "problem_statement": "Installed target repos need a cheap deterministic report that maps changed files to declared area contracts and exposes aligned, extension, conflict, and unknown states for AGW-090 goal-alignment task packets.",
+    "background": [
+      "AGW-090 added required goal_alignment fields to source task packets.",
+      "repo-contract-kit owns installed commands, target-repo scripts, managed templates, and Make targets.",
+      "scripts/repo_contract_kit.py already has read-only CLI report patterns for status, doc-impact, agent-preflight, task-packet, and backlog operations.",
+      "scripts/agent_start.py and scripts/agent_task_ready.py already collect changed files for startup and handoff gates.",
+      "Installed prompt/schema snapshots under templates/profiles/review-prompts/ and templates/common/task-packet.schema.json may need refresh so generated task packets can carry the AGW-090 goal-alignment contract."
+    ],
+    "non_goals": [
+      "Do not build a planning app, hosted service, or semantic code ownership database.",
+      "Do not make AGENTS.md the place for detailed area rules; use a structured installed config/template.",
+      "Do not require target repos to have perfect area contracts on first run; report unknown explicitly.",
+      "Do not change source prompt wording in agent-workflow-kit beyond backlog closeout evidence for this implemented kit item."
+    ]
+  },
+  "goal_alignment": {
+    "repo_goal": "Keep repo-contract-kit responsible for installed target-repo execution surfaces that make agent-workflow-kit contracts usable without broad manual rereads.",
+    "area_contracts": [
+      {
+        "path": "/Volumes/Myrtle/Code/04_Code/Hermes/doc-contract-kit/scripts/",
+        "purpose": "Installed CLI and target-repo scripts that emit deterministic harness reports.",
+        "source": "docs/agent-workflow-stack.md; docs/harness-engineering.md",
+        "status": "aligned"
+      },
+      {
+        "path": "/Volumes/Myrtle/Code/04_Code/Hermes/doc-contract-kit/templates/common/",
+        "purpose": "Managed target-repo templates for Make targets, schemas, docs, and local agent workflow config.",
+        "source": "scripts/install.py; docs/repo-boundary.md",
+        "status": "aligned"
+      },
+      {
+        "path": "/Volumes/Myrtle/Code/04_Code/Hermes/doc-contract-kit/tests/",
+        "purpose": "Regression coverage for installed CLI, installer, startup, and readiness behavior.",
+        "source": "Makefile; existing test modules",
+        "status": "aligned"
+      },
+      {
+        "path": "/Volumes/Myrtle/Code/04_Code/Codex_CodeReview/research/agentic-workflow-review/",
+        "purpose": "Source-side backlog and packet records for cross-repo workflow stack work.",
+        "source": "docs/agent-workflow-stack.md",
+        "status": "aligned"
+      }
+    ],
+    "alignment_decision": "aligned",
+    "adaptation_needed": false,
+    "stop_conditions": [
+      "Stop if implementation requires changing canonical prompt source in agent-workflow-kit rather than vendored install snapshots.",
+      "Stop if the proposed report needs external services, hosted CI, or semantic LLM classification to work.",
+      "Stop if generated task-packet scaffolds cannot remain valid when area contracts are missing; missing contracts must report unknown."
+    ]
+  },
+  "scope": {
+    "allowed_files": [
+      "/Volumes/Myrtle/Code/04_Code/Hermes/doc-contract-kit/scripts/",
+      "/Volumes/Myrtle/Code/04_Code/Hermes/doc-contract-kit/templates/common/",
+      "/Volumes/Myrtle/Code/04_Code/Hermes/doc-contract-kit/templates/profiles/review-prompts/files/.codex/prompts/",
+      "/Volumes/Myrtle/Code/04_Code/Hermes/doc-contract-kit/tests/",
+      "/Volumes/Myrtle/Code/04_Code/Hermes/doc-contract-kit/docs/",
+      "/Volumes/Myrtle/Code/04_Code/Hermes/doc-contract-kit/README.md",
+      "/Volumes/Myrtle/Code/04_Code/Hermes/doc-contract-kit/VERSION",
+      "/Volumes/Myrtle/Code/04_Code/Hermes/doc-contract-kit/CHANGELOG.md",
+      "/Volumes/Myrtle/Code/04_Code/Codex_CodeReview/research/agentic-workflow-review/backlog.csv",
+      "/Volumes/Myrtle/Code/04_Code/Codex_CodeReview/research/agentic-workflow-review/repo-contract-kit-backlog.csv",
+      "/Volumes/Myrtle/Code/04_Code/Codex_CodeReview/research/agentic-workflow-review/summary.md"
+    ],
+    "protected_files": [
+      "/Volumes/Myrtle/Code/04_Code/Codex_CodeReview/workflows/prompts/",
+      "/Volumes/Myrtle/Code/04_Code/Codex_CodeReview/AGENTS.md",
+      "/Volumes/Myrtle/Code/04_Code/Codex_CodeReview/REVIEW.md",
+      "/Volumes/Myrtle/Code/04_Code/Codex_CodeReview/.agent-workflows/",
+      "hosted GitHub Actions behavior unless only docs mention the local report",
+      "unrelated backlog rows"
+    ],
+    "inspect_first": [
+      "/Volumes/Myrtle/Code/04_Code/Hermes/doc-contract-kit/scripts/repo_contract_kit.py",
+      "/Volumes/Myrtle/Code/04_Code/Hermes/doc-contract-kit/scripts/agent_start.py",
+      "/Volumes/Myrtle/Code/04_Code/Hermes/doc-contract-kit/scripts/agent_task_ready.py",
+      "/Volumes/Myrtle/Code/04_Code/Hermes/doc-contract-kit/scripts/install.py",
+      "/Volumes/Myrtle/Code/04_Code/Hermes/doc-contract-kit/templates/common/kit-makefile.mk",
+      "/Volumes/Myrtle/Code/04_Code/Hermes/doc-contract-kit/templates/common/task-packet.schema.json",
+      "/Volumes/Myrtle/Code/04_Code/Hermes/doc-contract-kit/templates/profiles/review-prompts/files/.codex/prompts/task-packet.md",
+      "/Volumes/Myrtle/Code/04_Code/Hermes/doc-contract-kit/templates/profiles/review-prompts/files/.codex/prompts/templates/task-packet.md",
+      "/Volumes/Myrtle/Code/04_Code/Hermes/doc-contract-kit/tests/",
+      "/Volumes/Myrtle/Code/04_Code/Hermes/doc-contract-kit/docs/harness-engineering.md",
+      "/Volumes/Myrtle/Code/04_Code/Hermes/doc-contract-kit/docs/rollout-guide.md"
+    ],
+    "expected_outputs": [
+      "Structured installed area-contract config/template with repo goal and path contracts.",
+      "CLI report that maps changed files to area contracts and emits text plus JSON.",
+      "Installed Make target for the report.",
+      "Report states distinguish aligned, extends, conflict, and unknown.",
+      "agent-start includes or references the current goal-check report for changed files.",
+      "Task-packet scaffolds include goal-alignment defaults from the report or explicit unknowns.",
+      "agent-task-ready reports goal-check status for actual changed files without replacing existing readiness gates.",
+      "Tests and docs cover the new installed behavior."
+    ]
+  },
+  "acceptance_criteria": [
+    {
+      "description": "Installed repos can define area contracts in a structured local file and the kit installs a useful default/example without making unknown target areas fail adoption.",
+      "verification": "Installer tests and file inspection."
+    },
+    {
+      "description": "repo_contract_kit.py goal-check or equivalent emits JSON and text mapping changed files to area contracts, including aligned, extends, conflict, and unknown states.",
+      "verification": "CLI tests."
+    },
+    {
+      "description": "The installed Make target exposes the report and is documented in workflow help/operator docs.",
+      "verification": "Install/Make tests and docs."
+    },
+    {
+      "description": "agent-start packets include a goal-check or area-goal summary for current changed files.",
+      "verification": "tests/test_agent_start.py or equivalent."
+    },
+    {
+      "description": "agent-task-ready includes goal-check status for the task worktree's actual changed files and warns/blocks according to the accepted design without weakening existing readiness blockers.",
+      "verification": "tests/test_agent_task_ready.py."
+    },
+    {
+      "description": "Task-packet scaffolds include valid goal_alignment fields that can be populated from the deterministic report or explicit unknowns.",
+      "verification": "CLI tests and installed task-packet schema/prompt snapshots."
+    },
+    {
+      "description": "VERSION and CHANGELOG.md in repo-contract-kit record the new installed behavior.",
+      "verification": "make version-check."
+    },
+    {
+      "description": "Source backlog rows and summary close AGW-091 only after kit validation passes.",
+      "verification": "source backlog checks and agent-verify."
+    }
+  ],
+  "validation": {
+    "commands": [
+      {
+        "command": "PYTHONDONTWRITEBYTECODE=1 python3 -m unittest tests.test_repo_contract_kit_cli",
+        "required": true,
+        "expected_result": "pass"
+      },
+      {
+        "command": "PYTHONDONTWRITEBYTECODE=1 python3 -m unittest tests.test_agent_start tests.test_agent_task_ready tests.test_install",
+        "required": true,
+        "expected_result": "pass"
+      },
+      {
+        "command": "PYTHONDONTWRITEBYTECODE=1 make test",
+        "required": true,
+        "expected_result": "pass"
+      },
+      {
+        "command": "make docs-check",
+        "required": true,
+        "expected_result": "pass"
+      },
+      {
+        "command": "make version-check",
+        "required": true,
+        "expected_result": "pass"
+      },
+      {
+        "command": "git diff --check",
+        "required": true,
+        "expected_result": "pass"
+      },
+      {
+        "command": "make backlog-check && make backlog-split-check && PYTHONDONTWRITEBYTECODE=1 make agent-verify && git diff --check",
+        "required": true,
+        "expected_result": "pass in source repo after backlog closeout"
+      }
+    ],
+    "evidence_to_capture": [
+      "focused CLI/start/readiness/install test output",
+      "full kit test/docs/version output",
+      "source backlog check and agent-verify output after closeout",
+      "diff summary for both repos",
+      "dirty-state explanation for both repos"
+    ]
+  },
+  "closeout_requirements": {
+    "final_receipt_path": ".agent-workflows/tasks/agw-091-area-goal-check/receipt.json or sidecar equivalent",
+    "readiness_check": {
+      "command": "make agent-task-ready TASK=AGW-091 TASK_READY_JSON=1 or record why unavailable for this non-worktree parent-run packet",
+      "expected_result": "ready report passes or blocker is recorded"
+    },
+    "lifecycle_action": {
+      "action": "finish",
+      "command": "make agent-task-finish TASK=AGW-091 TASK_RECEIPT=<path> TASK_LIFECYCLE_JSON=1 or lifecycle fallback",
+      "expected_result": "metadata is closed and final receipt is linked, or fallback receipt is durable"
+    },
+    "final_task_status": {
+      "command": "make agent-task-status TASK_STATUS_INCLUDE_CLOSED=1 TASK_STATUS_JSON=1",
+      "expected_result": "task is terminal or no local metadata was created and the reason is recorded"
+    },
+    "closeout_preview": {
+      "command": "make agent-task-closeout TASK_CLOSEOUT_JSON=1",
+      "expected_result": "eligible, retained, or blocked cleanup state is recorded",
+      "apply_requires_explicit_approval": true
+    },
+    "dirty_state_explanation": "Final handoff must say whether each checkout is clean, only expected files are dirty, cleanup is blocked, or unrelated dirt was preserved."
+  },
+  "docs_impact": {
+    "expected": "yes",
+    "paths": [
+      "/Volumes/Myrtle/Code/04_Code/Hermes/doc-contract-kit/README.md",
+      "/Volumes/Myrtle/Code/04_Code/Hermes/doc-contract-kit/docs/harness-engineering.md",
+      "/Volumes/Myrtle/Code/04_Code/Hermes/doc-contract-kit/docs/rollout-guide.md",
+      "/Volumes/Myrtle/Code/04_Code/Hermes/doc-contract-kit/templates/common/working-rhythm.md",
+      "/Volumes/Myrtle/Code/04_Code/Hermes/doc-contract-kit/templates/common/ops-agent-workflow.md",
+      "/Volumes/Myrtle/Code/04_Code/Hermes/doc-contract-kit/CHANGELOG.md",
+      "source backlog summary files"
+    ],
+    "waiver_allowed": false,
+    "notes": "This adds installed CLI/Make behavior and a managed target-repo contract file."
+  },
+  "risk": {
+    "level": "medium",
+    "known_risks": [
+      "Path matching can give false confidence if broad globs shadow specific area contracts.",
+      "Blocking unknown areas too early could stop useful adoption in repos without area contracts; unknowns should be visible and configurable.",
+      "Task-packet schema/prompt snapshots in the kit can drift from the source AGW-090 contract if only the CLI is updated.",
+      "Integrating with readiness must not weaken existing scope drift, receipt, docs-impact, freshness, or overlap gates."
+    ],
+    "stop_conditions": [
+      "The implementation requires semantic LLM classification instead of deterministic path/config matching.",
+      "The work expands into AGW-092 compact context bundles or AGW-095 dirty-primary baselines.",
+      "Updating installed task-packet prompt/schema snapshots requires unreviewed source prompt changes rather than consuming the already-published AGW-090 state."
+    ]
+  },
+  "approval": {
+    "human_approval_required": false,
+    "state": "approved",
+    "approver": null,
+    "notes": "Active user goal is to implement remaining backlog items serially with one task agent per item."
+  },
+  "coordination": {
+    "active_task_count": 0,
+    "active_tasks": [],
+    "overlap_warnings": [
+      "This task edits the companion kit checkout plus source backlog records; keep commits separate by repo."
+    ]
+  },
+  "harness_metrics": {
+    "context_file_count": 11,
+    "token_budget": {
+      "guidance": "Prefer a compact deterministic report over copying broad docs into every startup or task packet."
+    }
+  },
+  "handoff": {
+    "recommended_prompt": "workflows/prompts/task-packet.md, then workflows/prompts/verification-sentinel.md",
+    "owner": "one worker agent",
+    "dependencies": [
+      "AGW-090 source-side task-packet goal-alignment contract.",
+      "Existing kit path classification and changed-file helpers in check_doc_impact.py, repo_contract_kit.py, agent_start.py, and agent_task_ready.py."
+    ],
+    "next_packet_hint": "AGW-092 should compose this report into a compact context bundle with other deterministic startup and handoff signals."
+  }
+}

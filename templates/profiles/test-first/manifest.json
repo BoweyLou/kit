@@ -1,0 +1,59 @@
+{
+  "name": "test-first",
+  "description": "Executable-spec profile with TDD prompts, testing strategy docs, and PR test-evidence checklist.",
+  "files": [
+    {
+      "source": "files/.codex/prompts/tdd/README.md",
+      "target": ".codex/prompts/tdd/README.md"
+    },
+    {
+      "source": "files/.codex/prompts/tdd/test-first-feature.md",
+      "target": ".codex/prompts/tdd/test-first-feature.md"
+    },
+    {
+      "source": "files/.codex/prompts/tdd/regression-first-bugfix.md",
+      "target": ".codex/prompts/tdd/regression-first-bugfix.md"
+    },
+    {
+      "source": "files/.codex/prompts/tdd/characterization-before-refactor.md",
+      "target": ".codex/prompts/tdd/characterization-before-refactor.md"
+    },
+    {
+      "source": "files/.codex/prompts/tdd/outside-in-acceptance-tdd.md",
+      "target": ".codex/prompts/tdd/outside-in-acceptance-tdd.md"
+    },
+    {
+      "source": "files/.codex/prompts/tdd/property-and-invariant-tests.md",
+      "target": ".codex/prompts/tdd/property-and-invariant-tests.md"
+    },
+    {
+      "source": "files/.codex/prompts/tdd/contract-test-design.md",
+      "target": ".codex/prompts/tdd/contract-test-design.md"
+    },
+    {
+      "source": "files/.codex/prompts/tdd/refactor-under-tests.md",
+      "target": ".codex/prompts/tdd/refactor-under-tests.md"
+    },
+    {
+      "source": "files/.codex/prompts/tdd/test-quality-sentinel.md",
+      "target": ".codex/prompts/tdd/test-quality-sentinel.md"
+    },
+    {
+      "source": "files/.codex/prompts/tdd/tcr-micro-loop.md",
+      "target": ".codex/prompts/tdd/tcr-micro-loop.md"
+    },
+    {
+      "source": "files/docs/testing-strategy.md",
+      "target": "docs/testing-strategy.md"
+    },
+    {
+      "source": "files/docs/adr/0001-testing-philosophy.md",
+      "target": "docs/adr/0001-testing-philosophy.md"
+    },
+    {
+      "source": "files/.github/pull_request_template.md",
+      "target": ".github/pull_request_template.md"
+    }
+  ]
+}
+

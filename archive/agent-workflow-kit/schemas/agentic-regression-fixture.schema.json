@@ -1,0 +1,158 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://example.local/codex-codereview/agentic-regression-fixture.schema.json",
+  "title": "Agentic Regression Fixture Suite",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema_version", "suite", "fixtures"],
+  "properties": {
+    "schema_version": {
+      "type": "integer",
+      "const": 1
+    },
+    "suite": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["name", "purpose", "source_reports"],
+      "properties": {
+        "name": {
+          "type": "string",
+          "minLength": 1
+        },
+        "purpose": {
+          "type": "string",
+          "minLength": 1
+        },
+        "source_reports": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    "fixtures": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "$ref": "#/$defs/fixture"
+      }
+    }
+  },
+  "$defs": {
+    "fixture": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "title",
+        "failure_mode",
+        "source_examples",
+        "scenario",
+        "expected_controls",
+        "expected_outputs",
+        "target_backlog"
+      ],
+      "properties": {
+        "id": {
+          "type": "string",
+          "pattern": "^ARF-[0-9]{3}$"
+        },
+        "title": {
+          "type": "string",
+          "minLength": 1
+        },
+        "failure_mode": {
+          "type": "string",
+          "enum": [
+            "context-drift",
+            "instruction-drift",
+            "false-positive-review",
+            "missing-red-green-evidence",
+            "unsafe-tool-use",
+            "duplicate-multi-agent-findings",
+            "docs-impact-miss"
+          ]
+        },
+        "source_examples": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "scenario": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["request", "repo_state", "inputs"],
+          "properties": {
+            "request": {
+              "type": "string",
+              "minLength": 1
+            },
+            "repo_state": {
+              "type": "string",
+              "minLength": 1
+            },
+            "inputs": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            }
+          }
+        },
+        "expected_controls": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "type": "string",
+            "enum": [
+              "context-packet",
+              "deterministic-report-routing",
+              "instruction-lint",
+              "permission-policy",
+              "receipt-validation",
+              "review-synthesis-schema",
+              "tdd-red-green",
+              "finding-budget",
+              "read-only-policy",
+              "docs-impact-localizer"
+            ]
+          }
+        },
+        "expected_outputs": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["must_include", "must_reject", "required_receipt_fields"],
+          "properties": {
+            "must_include": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            },
+            "must_reject": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            },
+            "required_receipt_fields": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            }
+          }
+        },
+        "target_backlog": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "pattern": "^AGW-[0-9]{3}$"
+          }
+        }
+      }
+    }
+  }
+}

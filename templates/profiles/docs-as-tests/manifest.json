@@ -1,0 +1,14 @@
+{
+  "name": "docs-as-tests",
+  "description": "Experimental local docs-as-tests profile for explicitly declared API documentation assertions.",
+  "files": [
+    {
+      "source": "files/.agent-workflows/docs-as-tests.json",
+      "target": ".agent-workflows/docs-as-tests.json"
+    },
+    {
+      "source": "files/docs/ops/docs-as-tests.md",
+      "target": "docs/ops/docs-as-tests.md"
+    }
+  ]
+}

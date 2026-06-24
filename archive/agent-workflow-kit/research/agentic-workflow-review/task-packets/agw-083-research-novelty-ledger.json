@@ -1,0 +1,222 @@
+{
+  "schema_version": 1,
+  "task": {
+    "id": "AGW-083",
+    "title": "Add a research novelty ledger and candidate-idea scoring to recurring backlog loops.",
+    "priority": "P1",
+    "status": "approved",
+    "source": {
+      "type": "backlog",
+      "reference": "research/agentic-workflow-review/backlog.csv:84"
+    }
+  },
+  "context": {
+    "repo_root": "/Volumes/Myrtle/Code/04_Code/Codex_CodeReview",
+    "mode": "verification",
+    "problem_statement": "Recurring research/backlog loops can repeat prior questions and rediscover the same runtime-export or meta-cleanup topics because research briefs and syntheses do not carry prior-question fingerprints, candidate scoring, novelty thresholds, or rejected/deferred carry-forward state.",
+    "background": [
+      "AGW-062 added the targeted research workflow with research briefs, source reports, synthesis, and handoff prompts.",
+      "AGW-082 added automation-safe branch-or-patch handoff in repo-contract-kit; this packet is the source-side prompt/schema layer for deciding what is novel enough to propose before a handoff exists.",
+      "schemas/research-brief.schema.json and schemas/research-synthesis.schema.json define the current artifact contracts.",
+      "scripts/agent_research.py emits template artifacts used by local research runs.",
+      "Canonical prompt edits start under workflows/prompts/research/; .codex/prompts/research/ is generated and must be refreshed through make prompt-adapters-export."
+    ],
+    "non_goals": [
+      "Do not implement automation scheduling, GitHub posting, or hosted CI behavior.",
+      "Do not mutate recurring automation configuration or outside-repo memory stores.",
+      "Do not make source agents write backlog rows directly; research still produces proposals until a human or approved handoff accepts writes.",
+      "Do not create a generalized ranking engine beyond deterministic artifact fields, prompts, and template/test coverage."
+    ]
+  },
+  "scope": {
+    "allowed_files": [
+      "workflows/prompts/research/",
+      ".codex/prompts/research/",
+      "schemas/research-brief.schema.json",
+      "schemas/research-synthesis.schema.json",
+      "schemas/research-source-report.schema.json",
+      "scripts/agent_research.py",
+      "tests/test_research_workflow_artifacts.py",
+      "README.md",
+      "docs/harness-engineering.md",
+      "docs/working-rhythm.md",
+      "VERSION",
+      "CHANGELOG.md",
+      "research/agentic-workflow-review/backlog.csv",
+      "research/agentic-workflow-review/agent-workflow-kit-backlog.csv",
+      "research/agentic-workflow-review/summary.md"
+    ],
+    "protected_files": [
+      "/Volumes/Myrtle/Code/04_Code/Hermes/doc-contract-kit",
+      "recurring automation config outside this repo",
+      "research/agentic-workflow-review/repo-contract-kit-backlog.csv",
+      "workflows/prompts/personas/",
+      "workflows/prompts/tdd/",
+      "workflows/prompts/templates/"
+    ],
+    "inspect_first": [
+      "workflows/prompts/research/README.md",
+      "workflows/prompts/research/research-brief.md",
+      "workflows/prompts/research/research-synthesis.md",
+      "workflows/prompts/research/research-to-backlog.md",
+      "schemas/research-brief.schema.json",
+      "schemas/research-synthesis.schema.json",
+      "schemas/research-source-report.schema.json",
+      "scripts/agent_research.py",
+      "tests/test_research_workflow_artifacts.py",
+      "docs/harness-engineering.md",
+      "docs/working-rhythm.md"
+    ],
+    "expected_outputs": [
+      "Research brief artifacts can declare prior-question fingerprints, known recent topics, novelty threshold, and carry-forward rejected/deferred leads.",
+      "Research synthesis artifacts can score candidate ideas for novelty, evidence strength, fit, effort, risk, and recommendation state.",
+      "Prompts instruct recurring research loops to compare against the ledger, score several candidates, reject low-novelty repeats, and carry forward rejected/deferred leads before proposing backlog edits.",
+      "scripts/agent_research.py templates include the new fields.",
+      "Focused tests prove the schemas, prompts, and generated templates include the new contract."
+    ]
+  },
+  "acceptance_criteria": [
+    {
+      "description": "schemas/research-brief.schema.json includes a bounded novelty/carry-forward object with prior-question fingerprints or recent-topic summaries, a novelty threshold, and rejected/deferred lead carry-forward fields.",
+      "verification": "Read the schema and focused tests."
+    },
+    {
+      "description": "schemas/research-synthesis.schema.json includes candidate scoring fields for novelty, evidence strength, fit, effort, risk, recommendation state, and rationale.",
+      "verification": "Read the schema and focused tests."
+    },
+    {
+      "description": "scripts/agent_research.py plan and synthesize templates emit valid default novelty ledger and candidate-score structures.",
+      "verification": "Run focused tests or inspect generated templates."
+    },
+    {
+      "description": "Research prompts require recurring loops to review the novelty ledger before proposing backlog changes, score multiple candidate ideas, reject low-novelty repeats, and carry forward rejected/deferred leads.",
+      "verification": "Read prompt sources and generated adapters."
+    },
+    {
+      "description": "make prompt-adapters-export is run after prompt edits and make prompt-adapters-check passes.",
+      "verification": "Run adapter check."
+    },
+    {
+      "description": "Docs mention the novelty/carry-forward contract where operators understand recurring research behavior.",
+      "verification": "Read changed docs."
+    },
+    {
+      "description": "The backlog row can be closed with evidence from focused tests, adapter checks, and make agent-verify.",
+      "verification": "Run required validation commands."
+    }
+  ],
+  "validation": {
+    "commands": [
+      {
+        "command": "PYTHONDONTWRITEBYTECODE=1 python3 -m unittest tests.test_research_workflow_artifacts",
+        "required": true,
+        "expected_result": "pass"
+      },
+      {
+        "command": "PYTHONDONTWRITEBYTECODE=1 make prompt-adapters-check",
+        "required": true,
+        "expected_result": "pass"
+      },
+      {
+        "command": "PYTHONDONTWRITEBYTECODE=1 make agent-verify",
+        "required": true,
+        "expected_result": "pass"
+      },
+      {
+        "command": "make backlog-check",
+        "required": true,
+        "expected_result": "pass"
+      },
+      {
+        "command": "make backlog-split-check",
+        "required": true,
+        "expected_result": "pass"
+      },
+      {
+        "command": "git diff --check",
+        "required": true,
+        "expected_result": "pass"
+      }
+    ],
+    "evidence_to_capture": [
+      "focused research workflow test output",
+      "prompt adapter export/check output",
+      "agent verification output",
+      "backlog status after closeout",
+      "diff summary",
+      "dirty-state explanation"
+    ]
+  },
+  "closeout_requirements": {
+    "final_receipt_path": ".agent-workflows/tasks/agw-083-research-novelty-ledger/receipt.json or sidecar equivalent",
+    "readiness_check": {
+      "command": "make agent-task-ready TASK=AGW-083 TASK_READY_JSON=1 or record why unavailable for this non-worktree parent-run packet",
+      "expected_result": "ready report passes or blocker is recorded"
+    },
+    "lifecycle_action": {
+      "action": "finish",
+      "command": "make agent-task-finish TASK=AGW-083 TASK_RECEIPT=<path> TASK_LIFECYCLE_JSON=1 or lifecycle fallback",
+      "expected_result": "metadata is closed and final receipt is linked, or fallback receipt is durable"
+    },
+    "final_task_status": {
+      "command": "make agent-task-status TASK_STATUS_INCLUDE_CLOSED=1 TASK_STATUS_JSON=1",
+      "expected_result": "task is terminal or no local metadata was created and the reason is recorded"
+    },
+    "closeout_preview": {
+      "command": "make agent-task-closeout TASK_CLOSEOUT_JSON=1",
+      "expected_result": "eligible, retained, or blocked cleanup state is recorded",
+      "apply_requires_explicit_approval": true
+    },
+    "dirty_state_explanation": "Final handoff must say whether the checkout is clean, only expected files are dirty, cleanup is blocked, or unrelated dirt was preserved."
+  },
+  "docs_impact": {
+    "expected": "yes",
+    "paths": [
+      "workflows/prompts/research/README.md",
+      "docs/harness-engineering.md",
+      "docs/working-rhythm.md",
+      "CHANGELOG.md"
+    ],
+    "waiver_allowed": false,
+    "notes": "This changes research artifact contracts, prompt behavior, and template output."
+  },
+  "risk": {
+    "level": "medium",
+    "known_risks": [
+      "Overly rigid scoring can suppress genuinely useful follow-up work.",
+      "Schema changes affect downstream generated adapters and installed prompt consumers.",
+      "Novelty fields can become performative if prompts do not force low-novelty rejection and carry-forward."
+    ],
+    "stop_conditions": [
+      "The implementation requires writing to Obsidian/Keryx memory or recurring automation config.",
+      "The task expands into automation scheduling or backlog mutation authority.",
+      "Prompt adapter generation produces unexpected changes outside the research prompt family."
+    ]
+  },
+  "approval": {
+    "human_approval_required": false,
+    "state": "approved",
+    "approver": null,
+    "notes": "Active user goal is to implement remaining backlog items serially with one task agent per item."
+  },
+  "coordination": {
+    "active_task_count": 0,
+    "active_tasks": [],
+    "overlap_warnings": []
+  },
+  "harness_metrics": {
+    "context_file_count": 10,
+    "token_budget": {
+      "guidance": "Reference prior fingerprints and carry-forward summaries instead of copying full prior transcripts into prompts."
+    }
+  },
+  "handoff": {
+    "recommended_prompt": "workflows/prompts/task-packet.md, then workflows/prompts/verification-sentinel.md",
+    "owner": "one worker agent",
+    "dependencies": [
+      "Existing targeted research prompt/schema stack from AGW-062.",
+      "Existing automation-safe handoff boundary from AGW-082."
+    ],
+    "next_packet_hint": "AGW-048 can separately add review-yield, false-positive, cost/latency, and human-burden metrics."
+  }
+}

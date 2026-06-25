@@ -1,6 +1,6 @@
 # Lite Mode
 
-Lite mode is the smallest repo-contract-kit harness for small repositories, local-only maintenance, and low-risk documentation or implementation tasks. It keeps the operator path short while preserving deterministic escalation into standard or release-gated review when the work touches public contracts.
+Lite mode is the smallest kit harness for small repositories, local-only maintenance, and low-risk documentation or implementation tasks. It keeps the operator path short while preserving deterministic escalation into standard or release-gated review when the work touches public contracts.
 
 ## Mode Matrix
 

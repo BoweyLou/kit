@@ -1,6 +1,6 @@
 # Planning Adapter Examples
 
-`repo-contract-kit` does not try to be a planning app. It provides local
+`kit` does not try to be a planning app. It provides local
 contracts that let a selected planning item become one reviewable task packet.
 
 Use this page when work starts in Keryx, Obsidian, GitHub Issues, Linear, Jira,

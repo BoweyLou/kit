@@ -37,7 +37,7 @@ this installed surface shape and how do we verify it?"
 | Layer | Location | Owns | Handoff |
 | --- | --- | --- | --- |
 | Workflow source | `kit/workflows/` | Canonical prompts, personas, schemas, task-packet guidance, research workflows, generated adapter source, and source-side docs. | Run `make workflow-source-export`, `make workflow-source-check`, then ship through a normal kit update. |
-| Install layer | `repo-contract-kit` | Installer profiles, managed templates, optional runtime adapters, update/conflict behavior, the kit-owned make fragment, docs-contract scripts, linting, startup packets, receipts, and installed provenance. | Install or update target repos with `kit setup/status/update`. |
+| Install layer | `kit` | Installer profiles, managed templates, optional runtime adapters, update/conflict behavior, the kit-owned make fragment, docs-contract scripts, linting, startup packets, receipts, and installed provenance. | Install or update target repos with `kit setup/status/update`. |
 | Installed target repo | Any repo with this kit installed | Day-to-day local workflow commands and repository-specific docs/version decisions. | Report drift with `make kit-status` or `kit status`; apply explicit updates with `kit update`. |
 
 Keep target-facing behavior simple. The link between source and install is a
@@ -49,9 +49,9 @@ runtime dependency on another repo.
 | Change | Start in | Also check | Done when |
 | --- | --- | --- | --- |
 | Prompt, persona, TDD, research, synthesis, or schema source changes | `workflows/` | Whether generated target templates and target-facing docs need refresh. | `make workflow-source-export`, `make workflow-source-check`, install/update tests, `CHANGELOG.md`, and `VERSION` are current. |
-| Installed Make targets, scripts, templates, profiles, manifests, or update behavior | `repo-contract-kit` | Whether `workflows/` source or target docs also need a clarification. | Install/update tests pass, `CHANGELOG.md` and `VERSION` are current, and target docs explain the command. |
-| Target-repo operator confusion | `repo-contract-kit` CLI/docs/templates | Whether the target repo has local overrides that should stay target-owned. | The global CLI, `docs/working-rhythm.md`, `.agent-workflows/README.md`, or `make workflow-help` points to the next command without requiring knowledge of two source repos. |
-| Release or provenance pairing | `repo-contract-kit` | `kit status` in targets and `make workflow-source-check` in this repo. | The target records the installed kit version/ref and `workflow-source` prompt snapshot. |
+| Installed Make targets, scripts, templates, profiles, manifests, or update behavior | `kit` | Whether `workflows/` source or target docs also need a clarification. | Install/update tests pass, `CHANGELOG.md` and `VERSION` are current, and target docs explain the command. |
+| Target-repo operator confusion | `kit` CLI/docs/templates | Whether the target repo has local overrides that should stay target-owned. | The global CLI, `docs/working-rhythm.md`, `.agent-workflows/README.md`, or `make workflow-help` points to the next command without requiring knowledge of old source repos. |
+| Release or provenance pairing | `kit` | `kit status` in targets and `make workflow-source-check` in this repo. | The target records the installed kit version/ref and `workflow-source` prompt snapshot. |
 
 ## Installed Target Guidance
 
@@ -112,9 +112,9 @@ updates.
 
 Keep releases single-product:
 
-- `repo-contract-kit` version means either the installer, installed target-repo
+- kit version means either the installer, installed target-repo
   surface, or in-repo workflow source changed.
-- each installed target records the `repo-contract-kit` version/ref and the
+- each installed target records the kit version/ref and the
   computed `workflow-source` prompt snapshot.
 - legacy receipts that mention `agent-workflow-kit` remain readable for status
   and update migration, but new installs should not require that repo.

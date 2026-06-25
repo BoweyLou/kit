@@ -1,6 +1,6 @@
 # Sidecar Retention
 
-repo-contract-kit sidecar state is local operator evidence. It is outside the target repository and is never deleted by default.
+Kit sidecar state is local operator evidence. It is outside the target repository and is never deleted by default.
 
 ## Default Policy
 

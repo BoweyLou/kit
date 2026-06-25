@@ -1,7 +1,6 @@
 # Guided Upgrade Flow
 
-Use this flow when moving an enrolled target repo to a newer
-`repo-contract-kit` version. It keeps updates explicit, preserves target-owned
+Use this flow when moving an enrolled target repo to a newer kit version. It keeps updates explicit, preserves target-owned
 work, and treats conflict proposals as review artifacts rather than automatic
 instructions.
 
@@ -139,5 +138,5 @@ works.
 
 This flow does not migrate application code, dependency managers, CI services,
 hosted project settings, external issue trackers, or private memory systems. It
-only updates local repo-contract-kit guardrails, prompt snapshots, metadata, and
+only updates local kit guardrails, prompt snapshots, metadata, and
 operator docs inside the target repo.

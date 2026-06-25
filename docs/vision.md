@@ -1,6 +1,6 @@
 # Vision
 
-repo-contract-kit exists to make repository operating expectations explicit,
+Kit exists to make repository operating expectations explicit,
 local, and enforceable.
 
 Documentation freshness is still the first contract, but the project now covers

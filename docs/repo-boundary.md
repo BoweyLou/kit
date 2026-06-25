@@ -1,6 +1,6 @@
 # Repo Boundary
 
-`repo-contract-kit` is the install and target-repo governance layer. Its public
+`kit` is the install and target-repo governance layer. Its public
 CLI command is `kit`. Target-repo operators should use `kit` only; they should
 not need to understand or clone a separate workflow-source checkout.
 
@@ -9,7 +9,7 @@ For the operator-facing stack map and change-routing table, read
 
 ## Ownership
 
-`repo-contract-kit` owns:
+`kit` owns:
 
 - the global cURL installer and `kit` CLI
 - setup/status/update/doctor flows
@@ -38,7 +38,7 @@ Use this routing rule:
 - prompt, persona, schema, synthesis, TDD, research, or adapter-source changes
   start in `workflows/`
 - installer, managed-template, target command, update, manifest, or docs-contract
-  changes start in `repo-contract-kit`
+  changes start in `kit`
 - target-repo operator confusion usually starts in this repo's CLI, docs, and
   templates, then checks whether `workflows/` source also needs clarification
 - release pairing stays explicit through install receipts and
@@ -51,7 +51,7 @@ make workflow-source-export
 make workflow-source-check
 ```
 
-The target repo owns the root `Makefile`. `repo-contract-kit` owns the installed
+The target repo owns the root `Makefile`. `kit` owns the installed
 `.doc-contract-kit/make/repo-contract.mk` fragment. Updates may migrate a clean
 old kit-managed root `Makefile` to a bridge, but customized target Makefiles are
 preserved and receive merge guidance under `.doc-contract-kit/updates/`.

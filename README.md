@@ -20,6 +20,7 @@ Then enroll a target repo:
 
 ```bash
 cd /path/to/repo
+kit start
 kit setup --preset lite
 kit status
 ```
@@ -45,6 +46,7 @@ script.
 Let the tool choose when unsure:
 
 ```bash
+kit start
 kit mode-check --json
 ```
 
@@ -55,6 +57,7 @@ Read [docs/lite-mode.md](docs/lite-mode.md) for the full mode contract.
 For a target repo with kit installed:
 
 ```bash
+kit start
 kit status
 kit mode-check
 kit update --dry-run
@@ -79,6 +82,7 @@ Agents should not scrape this README for command semantics. Use structured
 entrypoints:
 
 ```bash
+kit start --json
 kit agent-context --json
 kit command-map --json
 kit agent-tool-manifest --json

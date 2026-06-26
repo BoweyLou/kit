@@ -9,6 +9,7 @@ workflow-help:
 		"Global install surface:" \
 		"   sh install.sh" \
 		"   kit" \
+		"   kit start" \
 		"   kit options" \
 		"   kit update --global" \
 		"   kit setup" \
@@ -20,6 +21,7 @@ workflow-help:
 		"" \
 		"AI-first CLI:" \
 		"   ./scripts/repo_contract_kit.py version --json" \
+		"   ./scripts/repo_contract_kit.py start --repo /path/to/repo --json" \
 		"   ./scripts/repo_contract_kit.py command-map --json" \
 		"   ./scripts/repo_contract_kit.py agent-context --json" \
 		"   ./scripts/repo_contract_kit.py orient --repo /path/to/repo --json" \

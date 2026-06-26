@@ -352,7 +352,8 @@ class RepoContractKitCliTests(unittest.TestCase):
 
         self.assertEqual(result.returncode, 0, result.stderr)
         self.assertIn("Common scenarios:", result.stdout)
-        self.assertIn("New repo:", result.stdout)
+        self.assertIn("New or uncertain repo:", result.stdout)
+        self.assertIn("kit start", result.stdout)
         self.assertIn("Existing enrolled repo:", result.stdout)
         self.assertIn("Agent and automation:", result.stdout)
         self.assertNotIn("Advanced commands remain available", result.stdout)
@@ -618,6 +619,7 @@ class RepoContractKitCliTests(unittest.TestCase):
             "retention",
             "agent-context-bundle",
             "command-map",
+            "start",
         ):
             self.assertIn(expected, commands)
 
@@ -641,6 +643,16 @@ class RepoContractKitCliTests(unittest.TestCase):
         self.assertEqual(command_map["output_schema"], "command_map_payload")
         self.assertEqual(command_map["aliases"], ["agent-context"])
         self.assertIn("kit command-map --json", command_map["examples"])
+
+        start = commands["start"]
+        self.assertEqual(start["audience"], ["human", "agent"])
+        self.assertEqual(start["mutation"], "read-only")
+        self.assertEqual(start["sidecar_write"], "never")
+        self.assertEqual(start["output_schema"], "start_payload")
+        self.assertIn("kit start --repo /path/to/repo --json", start["examples"])
+        self.assertIn("mode", start["json_contract"]["stable_payload_fields"])
+        self.assertIn("recommended_setup_preset", start["json_contract"]["stable_payload_fields"])
+        self.assertIn("mode_next_commands", start["json_contract"]["stable_payload_fields"])
 
         mode_check = commands["mode-check"]
         self.assertEqual(mode_check["mutation"], "read-only")
@@ -1308,6 +1320,7 @@ class RepoContractKitCliTests(unittest.TestCase):
             env = {**os.environ, "XDG_STATE_HOME": str(state_home)}
 
             commands = [
+                [str(CLI), "start", "--repo", str(target), "--json"],
                 [str(CLI), "orient", "--repo", str(target), "--json"],
                 [str(CLI), "mode-check", "--repo", str(target), "--json"],
                 [str(CLI), "review-plan", "--repo", str(target), "--json"],
@@ -1391,6 +1404,125 @@ class RepoContractKitCliTests(unittest.TestCase):
             self.assertFalse((target / ".doc-contract-kit").exists())
             self.assertFalse((target / ".agent-workflows").exists())
             self.assertFalse((state_home / "repo-contract-kit").exists())
+
+    def test_start_json_guides_unenrolled_repo_to_lite_setup(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            target = Path(tmp) / "target"
+            target.mkdir()
+            init_git_repo(target)
+            state_home = Path(tmp) / "state"
+
+            result = subprocess.run(
+                [str(CLI), "start", "--repo", str(target), "--json"],
+                cwd=ROOT,
+                env={**os.environ, "XDG_STATE_HOME": str(state_home)},
+                capture_output=True,
+                text=True,
+                check=False,
+            )
+
+            self.assertEqual(result.returncode, 0, result.stderr)
+            payload = json.loads(result.stdout)
+            self.assertEqual(payload["command"], "start")
+            self.assertEqual(payload["repo"], str(target.resolve()))
+            self.assertEqual(payload["journey"]["id"], "new-repo")
+            self.assertEqual(payload["mode"]["selected"], "lite")
+            self.assertEqual(payload["recommended_setup_preset"], "lite")
+            self.assertFalse(payload["repo_status"]["installed"])
+            self.assertFalse(payload["target_repo_writes"]["performed"])
+            self.assertFalse(payload["sidecar_writes"]["performed"])
+            self.assertIn(f"kit setup --preset lite --repo {target.resolve()}", payload["next_commands"])
+            self.assertIn(f"kit start --repo {target.resolve()} --json", payload["next_commands"])
+            self.assertEqual(payload["agent_next_commands"], [f"kit start --repo {target.resolve()} --json"])
+            self.assertIn(f"kit mode-check --repo {target.resolve()} --json", payload["mode_next_commands"])
+            self.assertFalse((target / ".doc-contract-kit").exists())
+            self.assertFalse((target / ".agent-workflows").exists())
+            self.assertFalse((state_home / "repo-contract-kit").exists())
+
+    def test_start_text_prints_journey_mode_and_next_steps(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            target = Path(tmp) / "target"
+            target.mkdir()
+            init_git_repo(target)
+
+            result = subprocess.run(
+                [str(CLI), "start", "--repo", str(target)],
+                cwd=ROOT,
+                capture_output=True,
+                text=True,
+                check=False,
+            )
+
+            self.assertEqual(result.returncode, 0, result.stderr)
+            self.assertIn("kit start", result.stdout)
+            self.assertIn("journey: new-repo", result.stdout)
+            self.assertIn("mode: lite", result.stdout)
+            self.assertIn("kit setup --preset lite", result.stdout)
+            self.assertIn(f"json: kit start --repo {target.resolve()} --json", result.stdout)
+
+    def test_start_json_recommends_agentic_setup_for_unenrolled_public_contract_change(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            target = Path(tmp) / "target"
+            target.mkdir()
+            init_git_repo(target)
+            (target / "scripts").mkdir()
+            (target / "scripts" / "repo_contract_kit.py").write_text("# initial\n", encoding="utf-8")
+            commit_all(target, "Add CLI script")
+            (target / "scripts" / "repo_contract_kit.py").write_text("# public cli change\n", encoding="utf-8")
+
+            result = subprocess.run(
+                [str(CLI), "start", "--repo", str(target), "--json"],
+                cwd=ROOT,
+                capture_output=True,
+                text=True,
+                check=False,
+            )
+
+            self.assertEqual(result.returncode, 0, result.stderr)
+            payload = json.loads(result.stdout)
+            self.assertEqual(payload["journey"]["id"], "new-repo")
+            self.assertEqual(payload["mode"]["selected"], "release-gated")
+            self.assertEqual(payload["recommended_setup_preset"], "agentic")
+            self.assertIn(f"kit setup --preset agentic --repo {target.resolve()}", payload["next_commands"])
+
+    def test_start_json_escalates_public_contract_change_to_release_gated(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            target = Path(tmp) / "target"
+            target.mkdir()
+            init_git_repo(target)
+            (target / "scripts").mkdir()
+            (target / "scripts" / "repo_contract_kit.py").write_text("# initial\n", encoding="utf-8")
+            commit_all(target, "Add CLI script")
+            (target / ".doc-contract-kit").mkdir()
+            (target / ".doc-contract-kit" / "install.json").write_text(
+                json.dumps({"kit_version": "0.6.25", "preset": "agentic"}) + "\n",
+                encoding="utf-8",
+            )
+            (target / "scripts" / "repo_contract_kit.py").write_text("# public cli change\n", encoding="utf-8")
+
+            result = subprocess.run(
+                [str(CLI), "start", "--repo", str(target), "--mode", "lite", "--json"],
+                cwd=ROOT,
+                capture_output=True,
+                text=True,
+                check=False,
+            )
+
+            self.assertEqual(result.returncode, 0, result.stderr)
+            payload = json.loads(result.stdout)
+            self.assertEqual(payload["journey"]["id"], "work-in-progress")
+            self.assertEqual(payload["mode"]["requested"], "lite")
+            self.assertEqual(payload["mode"]["selected"], "release-gated")
+            self.assertIn("release-gated", payload["mode"]["trigger_reasons"])
+            self.assertIn("make version-check", payload["mode_next_commands"])
+            self.assertIn(
+                f"kit task-packet --harness-mode release-gated --repo {target.resolve()} --json",
+                payload["next_commands"],
+            )
+            self.assertIn(
+                f"kit verify --harness-mode release-gated --repo {target.resolve()} --json",
+                payload["agent_next_commands"],
+            )
 
     def test_mode_check_selects_lite_for_clean_low_risk_repo(self):
         with tempfile.TemporaryDirectory() as tmp:

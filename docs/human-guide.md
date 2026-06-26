@@ -14,6 +14,7 @@ Then enroll a target repo:
 
 ```bash
 cd /path/to/repo
+kit start
 kit setup --preset lite
 kit status
 ```
@@ -38,11 +39,17 @@ docs-as-tests.
 ## Daily Commands
 
 ```bash
+kit start
 kit status
 kit mode-check
 kit update --dry-run
 kit doctor
 ```
+
+Use `kit start` when you are unsure whether this is a fresh setup, normal
+maintenance, dirty work in progress, or a release-sensitive change. It reports
+the selected journey, the suggested mode, and the next human and agent commands
+without writing to the repo.
 
 If the update plan is clear and expected:
 

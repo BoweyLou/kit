@@ -9,6 +9,7 @@ Do not scrape README prose to infer command safety.
 Use structured commands:
 
 ```bash
+kit start --json
 kit command-map --json
 kit agent-context --json
 kit agent-tool-manifest --json
@@ -23,6 +24,7 @@ names.
 From the target repo:
 
 ```bash
+kit start --json
 kit agent-context --json
 kit status --json
 kit mode-check --json
@@ -31,8 +33,15 @@ kit mode-check --json
 If `kit` is not available but this checkout is local, use:
 
 ```bash
-python3 /path/to/kit/scripts/repo_contract_kit.py agent-context --repo /path/to/repo --json
+python3 /path/to/kit/scripts/repo_contract_kit.py start --repo /path/to/repo --json
+python3 /path/to/kit/scripts/repo_contract_kit.py command-map --json
 ```
+
+Treat `kit start --json` as the first startup payload when the current repo
+state is unknown. It returns a `journey`, selected `mode`, write metadata,
+human-readable `next_steps`, audience-specific `human_next_commands` and
+`agent_next_commands`, plus `mode_next_commands` for the selected harness
+validation path.
 
 ## Choose Work Weight
 

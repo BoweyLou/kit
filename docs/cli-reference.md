@@ -4,7 +4,7 @@ Generated from `kit command-map --json`.
 Do not edit command sections by hand; run `kit cli-reference --write docs/cli-reference.md`.
 
 - Schema version: `1`
-- Command count: `54`
+- Command count: `55`
 
 ## Commands
 
@@ -1126,6 +1126,32 @@ Flags:
 
 - `--repo` - Target git repository. Defaults to the current directory.
 - `--json` - Emit machine-readable JSON.
+
+### kit start
+
+Choose the next human or agent journey from repo state.
+
+- Audience: `human, agent`
+- Mutation: `read-only`
+- Target writes: `never`
+- Sidecar writes: `never`
+- JSON: `yes`
+- Output schema: `start_payload`
+- Route role: `canonical`
+- Canonical command: `start`
+- Docs: `README.md#start-here, docs/human-guide.md, docs/agent-guide.md`
+
+Examples:
+
+- `kit start`
+- `kit start --json`
+- `kit start --repo /path/to/repo --json`
+
+Flags:
+
+- `--repo` - Target git repository. Defaults to the current directory.
+- `--json` - Emit machine-readable JSON.
+- `--mode` - Requested harness mode. auto lets kit choose.
 
 ### kit status
 

@@ -66,6 +66,7 @@ Put detail here instead:
 - human operation: [human-guide.md](human-guide.md)
 - agent operation: [agent-guide.md](agent-guide.md)
 - command flags and JSON contracts: [cli-reference.md](cli-reference.md)
+- CLI/function refinement review: [cli-function-review.md](cli-function-review.md)
 - update procedure: [upgrade-flow.md](upgrade-flow.md)
 - source ownership: [agent-workflow-stack.md](agent-workflow-stack.md)
 - v1/archive/rollback policy: [version-1-consolidation.md](version-1-consolidation.md)

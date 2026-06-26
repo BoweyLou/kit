@@ -1,5 +1,16 @@
 # Changelog
 
+## 0.6.26 - 2026-06-26
+
+- Add `kit start` as a read-only human and agent entrypoint that inspects the
+  current repo, reports the selected journey and harness mode, and returns next
+  commands for fresh setup, dirty work-in-progress, or ready maintenance flows.
+- Promote `kit start` in the README, human guide, agent guide, generated CLI
+  reference, and regression tests so users and agents have one obvious first
+  command before choosing setup, update, task-packet, or verify routes.
+- Add a maintainer CLI/function review with prioritized follow-up refactors for
+  the command router, journey policy, JSON schemas, aliases, and UX fixtures.
+
 ## 0.6.25 - 2026-06-24
 
 - Add the `lite` install preset plus managed lite-mode and sidecar-retention

@@ -851,6 +851,33 @@ def command_map_annotations() -> dict[tuple[str, ...], dict[str, Any]]:
             "output_schema": "guide_payload",
             "docs": ["README.md#getting-started"],
         },
+        ("start",): {
+            "audience": ["human", "agent"],
+            "mutation": "read-only",
+            "sidecar_write": "never",
+            "examples": [
+                public_command("start"),
+                public_command("start", "--json"),
+                public_command("start", "--repo", "/path/to/repo", "--json"),
+            ],
+            "output_schema": "start_payload",
+            "docs": ["README.md#start-here", "docs/human-guide.md", "docs/agent-guide.md"],
+            "stable_payload_fields": [
+                "schema_version",
+                "command",
+                "journey",
+                "mode",
+                "recommended_setup_preset",
+                "next_steps",
+                "next_commands",
+                "human_next_commands",
+                "agent_next_commands",
+                "mode_next_commands",
+                "target_repo_writes",
+                "sidecar_writes",
+                "exit_code",
+            ],
+        },
         ("options",): {
             "audience": ["human"],
             "mutation": "read-only",
@@ -5863,6 +5890,289 @@ def guide_payload(cwd: Path | None = None) -> dict[str, Any]:
     return payload
 
 
+def command_for_repo(repo: Path, *parts: object) -> str:
+    return public_command(*parts, "--repo", str(repo))
+
+
+def command_for_repo_json(repo: Path, *parts: object) -> str:
+    return public_command(*parts, "--repo", str(repo), "--json")
+
+
+def start_mode_why(selection: dict[str, Any], dirty: bool) -> list[str]:
+    triggers = selection.get("triggers") or []
+    if triggers:
+        return [f"{trigger['mode']}: {trigger['reason']}" for trigger in triggers]
+    if selection.get("selected_mode") == "lite" and not dirty:
+        return ["Clean repo with no public contract, implementation, task-state, or release triggers."]
+    if selection.get("selected_mode") == "lite":
+        return ["Changed files did not match standard or release-gated escalation triggers."]
+    return ["Harness mode selected from repository state."]
+
+
+def start_confidence(selection: dict[str, Any] | None, dirty: bool, installed: bool) -> str:
+    if not installed:
+        return "high"
+    if selection is None:
+        return "low"
+    if selection.get("triggers"):
+        return "high"
+    if dirty:
+        return "medium"
+    return "high"
+
+
+def start_setup_preset(selected_mode: str) -> str:
+    return "lite" if selected_mode == "lite" else "agentic"
+
+
+def start_step(
+    *,
+    audience: str,
+    label: str,
+    command: str,
+    reason: str,
+    mutating: bool = False,
+) -> dict[str, Any]:
+    return {
+        "audience": audience,
+        "label": label,
+        "command": command,
+        "reason": reason,
+        "mutating": mutating,
+    }
+
+
+def start_payload(args: argparse.Namespace | None = None, cwd: Path | None = None) -> dict[str, Any]:
+    current = (cwd or Path.cwd()).expanduser().resolve()
+    requested_mode = getattr(args, "mode", "auto") if args is not None else "auto"
+    repo_arg = getattr(args, "repo", ".") if args is not None else "."
+    tool = self_status_payload()["tool"]
+    base_payload: dict[str, Any] = {
+        "schema_version": 1,
+        "command": "start",
+        "cwd": str(current),
+        "tool": {
+            "name": PUBLIC_COMMAND,
+            "version": tool.get("version"),
+            "root": tool.get("root"),
+            "dirty": tool.get("dirty"),
+            "ref": tool.get("short_ref"),
+        },
+        "repo": None,
+        "journey": {
+            "id": "outside-git",
+            "label": "Move into or initialize a git repo.",
+            "confidence": "high",
+            "reason": "kit target workflows operate on git repositories.",
+        },
+        "mode": None,
+        "why": ["Current directory is not inside a git repository."],
+        "blockers": ["not-inside-git-repo"],
+        "next_steps": [
+            start_step(
+                audience="human",
+                label="Create or enter a repo",
+                command="git init",
+                reason="kit setup needs a git repository.",
+                mutating=True,
+            ),
+            start_step(
+                audience="human",
+                label="Show command guide",
+                command=public_command("options"),
+                reason="Review available kit commands.",
+            ),
+        ],
+        "next_commands": ["git init", public_command("options")],
+        "human_next_commands": ["git init", public_command("options")],
+        "agent_next_commands": [public_command("start", "--json")],
+        "mode_next_commands": [],
+        "escalate_if": LITE_ESCALATION_TRIGGERS,
+        "target_repo_writes": target_repo_writes(False, reason="start is read-only"),
+        "sidecar_writes": sidecar_writes(False, reason="start is read-only"),
+        "sidecar_state": sidecar_state(),
+        "exit_code": 0,
+    }
+    try:
+        repo = require_git_repo(str((current / repo_arg).resolve()) if repo_arg not in {"", "."} and not Path(repo_arg).is_absolute() else repo_arg)
+    except CliError:
+        if repo_arg not in {"", "."}:
+            base_payload["why"] = [f"Could not resolve target repo: {repo_arg}"]
+        return base_payload
+
+    status = status_payload(repo)
+    installed = bool(status["install"]["installed"])
+    dirty = bool(status["git"]["dirty"])
+    selection = harness_mode_selection(repo, requested_mode)
+    selected_mode = selection["selected_mode"]
+    concrete_mode_commands = [
+        command.replace("--repo <repo>", f"--repo {shlex.quote(str(repo))}") for command in selection["next_commands"]
+    ]
+
+    if not installed:
+        setup_preset = start_setup_preset(selected_mode)
+        journey_id = "new-repo"
+        label = f"Set up this repo with the {setup_preset} preset."
+        why = ["Repo is not enrolled with kit yet.", *start_mode_why(selection, dirty)]
+        setup_reason = (
+            "Lite is the default starting point for small or uncertain repos."
+            if setup_preset == "lite"
+            else f"Agentic installs the task, review, and verification guardrails expected for {selected_mode} work."
+        )
+        next_steps = [
+            start_step(
+                audience="human",
+                label=f"Install {setup_preset} preset",
+                command=command_for_repo(repo, "setup", "--preset", setup_preset),
+                reason=setup_reason,
+                mutating=True,
+            ),
+            start_step(
+                audience="human",
+                label="Inspect after setup",
+                command=command_for_repo(repo, "status"),
+                reason="Confirm installed files and managed metadata.",
+            ),
+            start_step(
+                audience="agent",
+                label="Use structured startup after setup",
+                command=command_for_repo_json(repo, "start"),
+                reason="Agents should consume the selected journey and mode after setup.",
+            ),
+        ]
+    elif dirty:
+        journey_id = "work-in-progress"
+        label = f"Continue in {selected_mode} mode with dirty-state evidence."
+        why = start_mode_why(selection, dirty)
+        next_steps = [
+            start_step(
+                audience="human",
+                label="Inspect local changes",
+                command="git status --short",
+                reason="Understand existing dirt before applying updates or handing off work.",
+            ),
+            start_step(
+                audience="human",
+                label="Run diagnostics",
+                command=command_for_repo(repo, "doctor"),
+                reason="Check blockers, task state, and recovery guidance.",
+            ),
+            start_step(
+                audience="agent",
+                label=f"Prepare {selected_mode} packet",
+                command=command_for_repo_json(repo, "task-packet", "--harness-mode", selected_mode),
+                reason="Scope the work at the selected harness strictness.",
+            ),
+            start_step(
+                audience="agent",
+                label=f"Verify {selected_mode} work",
+                command=command_for_repo_json(repo, "verify", "--harness-mode", selected_mode),
+                reason="Collect validation evidence before final summary.",
+            ),
+        ]
+    else:
+        journey_id = "ready"
+        label = f"Start in {selected_mode} mode."
+        why = start_mode_why(selection, dirty)
+        next_steps = [
+            start_step(
+                audience="human",
+                label="Check repo status",
+                command=command_for_repo(repo, "status"),
+                reason="Confirm install and drift state.",
+            ),
+            start_step(
+                audience="human",
+                label="Preview managed updates",
+                command=command_for_repo(repo, "update", "--dry-run"),
+                reason="See whether kit-managed files are stale before applying changes.",
+            ),
+            start_step(
+                audience="agent",
+                label=f"Prepare {selected_mode} packet",
+                command=command_for_repo_json(repo, "task-packet", "--harness-mode", selected_mode),
+                reason="Scope the work at the selected harness strictness.",
+            ),
+            start_step(
+                audience="agent",
+                label=f"Verify {selected_mode} work",
+                command=command_for_repo_json(repo, "verify", "--harness-mode", selected_mode),
+                reason="Collect validation evidence before final summary.",
+            ),
+        ]
+
+    next_commands = [step["command"] for step in next_steps]
+    human_next_commands = [step["command"] for step in next_steps if step["audience"] == "human"]
+    agent_next_commands = [step["command"] for step in next_steps if step["audience"] == "agent"]
+
+    return {
+        **base_payload,
+        "repo": str(repo),
+        "repo_status": {
+            "installed": installed,
+            "dirty": dirty,
+            "changed_file_count": len(status["git"]["changed_files"]),
+            "changed_files": status["git"]["changed_files"],
+            "kit_version": status["install"].get("kit_version"),
+            "managed_file_count": status["install"].get("managed_file_count"),
+            "runtime_adapters": status["install"].get("runtime_adapters") or [],
+        },
+        "journey": {
+            "id": journey_id,
+            "label": label,
+            "confidence": start_confidence(selection, dirty, installed),
+            "reason": why[0] if why else "Selected from repository state.",
+        },
+        "mode": {
+            "requested": selection["requested_mode"],
+            "detected": selection["detected_mode"],
+            "selected": selected_mode,
+            "confidence": start_confidence(selection, dirty, installed),
+            "triggers": selection["triggers"],
+            "trigger_reasons": selection["trigger_reasons"],
+            "human_override": selection["human_override"],
+        },
+        "recommended_setup_preset": start_setup_preset(selected_mode) if not installed else None,
+        "why": why,
+        "blockers": [] if installed or journey_id == "new-repo" else ["target-not-installed"],
+        "next_steps": next_steps,
+        "next_commands": next_commands,
+        "human_next_commands": human_next_commands,
+        "agent_next_commands": agent_next_commands,
+        "mode_next_commands": concrete_mode_commands,
+        "status": status,
+        "sidecar_state": status["sidecar_state"],
+    }
+
+
+def render_start(payload: dict[str, Any]) -> None:
+    print(f"{PUBLIC_COMMAND} start")
+    print(f" - current path: {payload['cwd']}")
+    print(f" - repo: {payload.get('repo') or 'not a git repo'}")
+    print(f" - journey: {payload['journey']['id']} ({payload['journey']['confidence']} confidence)")
+    if payload.get("repo_status"):
+        repo_status = payload["repo_status"]
+        print(f" - installed: {str(repo_status['installed']).lower()}")
+        print(f" - dirty: {str(repo_status['dirty']).lower()} ({repo_status['changed_file_count']} changed)")
+    if payload.get("mode"):
+        print(f" - mode: {payload['mode']['selected']}")
+    print(" - why:")
+    for reason in payload.get("why", []):
+        print(f"   - {reason}")
+    blockers = payload.get("blockers") or []
+    if blockers:
+        print(" - blockers:")
+        for blocker in blockers:
+            print(f"   - {blocker}")
+    print(" - next steps:")
+    for index, step in enumerate(payload.get("next_steps", []), start=1):
+        marker = "writes" if step.get("mutating") else "read-only"
+        print(f"   {index}. {step['command']} ({step['audience']}, {marker})")
+        print(f"      {step['reason']}")
+    json_command = command_for_repo_json(Path(payload["repo"]), "start") if payload.get("repo") else public_command("start", "--json")
+    print(f" - json: {json_command}")
+
+
 def json_safe(value: Any) -> Any:
     if value is None or isinstance(value, (str, int, float, bool)):
         return value
@@ -6859,9 +7169,10 @@ def render_options(include_advanced: bool = False) -> None:
     print(f"{PUBLIC_COMMAND} command guide")
     print("")
     print("Common scenarios:")
-    print(f"  New repo:                  {PUBLIC_COMMAND} setup --preset lite, then {PUBLIC_COMMAND} status")
-    print(f"  Existing enrolled repo:    {PUBLIC_COMMAND} status, {PUBLIC_COMMAND} mode-check --json, {PUBLIC_COMMAND} verify --harness-mode auto --json")
-    print(f"  Old or uncertain install:  {PUBLIC_COMMAND} status, then {PUBLIC_COMMAND} update --dry-run")
+    print(f"  New or uncertain repo:     {PUBLIC_COMMAND} start")
+    print(f"  New repo setup:            {PUBLIC_COMMAND} setup --preset lite, then {PUBLIC_COMMAND} status")
+    print(f"  Existing enrolled repo:    {PUBLIC_COMMAND} start, then {PUBLIC_COMMAND} verify --harness-mode auto --json")
+    print(f"  Old or uncertain install:  {PUBLIC_COMMAND} start, then {PUBLIC_COMMAND} update --dry-run")
     print("")
     print("Five-command happy path:")
     print(f"  {PUBLIC_COMMAND} status --json                    Inspect repo install and git state")
@@ -6871,6 +7182,7 @@ def render_options(include_advanced: bool = False) -> None:
     print(f"  {PUBLIC_COMMAND} update --dry-run --json          Preview managed-file updates")
     print("")
     print("Daily commands:")
+    print(f"  {PUBLIC_COMMAND} start                   Choose the next human/agent journey")
     print(f"  {PUBLIC_COMMAND}                         Show the guided dashboard")
     print(f"  {PUBLIC_COMMAND} setup                   Enroll the current repo")
     print(f"  {PUBLIC_COMMAND} status                  Show repo install and git state")
@@ -6882,6 +7194,7 @@ def render_options(include_advanced: bool = False) -> None:
     print(f"  {PUBLIC_COMMAND} completion zsh          Print shell completion code")
     print("")
     print("Agent and automation:")
+    print(f"  {PUBLIC_COMMAND} start --json            Choose mode and next commands from repo state")
     print(f"  {PUBLIC_COMMAND} command-map --json      Discover commands, flags, write behavior, and schemas")
     print(f"  {PUBLIC_COMMAND} status --json           Inspect repo state without target writes")
     print(f"  KIT_AGENT=1 {PUBLIC_COMMAND} <command>   Return parse errors as JSON envelopes")
@@ -6899,7 +7212,7 @@ def render_options(include_advanced: bool = False) -> None:
     print("")
     print("Setup scenarios:")
     print(f"  Existing old target repo: install the new launcher, read docs/upgrade-flow.md, then run {PUBLIC_COMMAND} status and {PUBLIC_COMMAND} update --dry-run")
-    print(f"  New repo before Codex or Amp: run {PUBLIC_COMMAND} setup, then make agent-start")
+    print(f"  New repo before Codex or Amp: run {PUBLIC_COMMAND} start, then {PUBLIC_COMMAND} setup --preset agentic")
     print(f"  Old repo with no kit setup: run {PUBLIC_COMMAND} setup, then {PUBLIC_COMMAND} status")
     if not include_advanced:
         return
@@ -7332,6 +7645,10 @@ def build_parser() -> argparse.ArgumentParser:
 
     guide = subparsers.add_parser("guide", help="Show the guided dashboard.")
     guide.add_argument("--json", action="store_true", help="Emit machine-readable JSON.")
+
+    start = subparsers.add_parser("start", help="Choose the next human or agent journey from repo state.")
+    add_common_repo_args(start)
+    start.add_argument("--mode", choices=HARNESS_MODE_CHOICES, default="auto", help="Requested harness mode. auto lets kit choose.")
 
     command_map = subparsers.add_parser("command-map", help="Emit structured command metadata for humans and agents.")
     command_map.add_argument("--json", action="store_true", help="Emit machine-readable JSON.")
@@ -7842,6 +8159,11 @@ def main(argv: list[str] | None = None) -> int:
 
     if args.command in {"options", "help"}:
         render_options(include_advanced=getattr(args, "all", False))
+        return 0
+
+    if args.command == "start":
+        payload = apply_runtime_mode(start_payload(args), raw_argv, args)
+        render_json(payload) if args.json else render_start(payload)
         return 0
 
     if args.command == "completion":

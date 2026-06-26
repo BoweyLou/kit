@@ -56,6 +56,17 @@ Update `CHANGELOG.md` and `VERSION` when the change is part of a release scope.
 For docs-only reshaping, a version bump is not required unless the published
 operator contract changes.
 
+## Codex Thread Mining
+
+Mine local Codex thread history into a redacted aggregate CLI journey report:
+
+```bash
+python3 scripts/mine_codex_threads.py --report docs/cli-journey-research.md
+```
+
+Raw and intermediate artifacts stay under local state:
+`${XDG_STATE_HOME:-~/.local/state}/repo-contract-kit/thread-mining/`.
+
 ## Documentation Shape
 
 Keep `README.md` as the short front door.
@@ -67,6 +78,7 @@ Put detail here instead:
 - agent operation: [agent-guide.md](agent-guide.md)
 - command flags and JSON contracts: [cli-reference.md](cli-reference.md)
 - CLI/function refinement review: [cli-function-review.md](cli-function-review.md)
+- Codex thread journey research: [cli-journey-research.md](cli-journey-research.md)
 - update procedure: [upgrade-flow.md](upgrade-flow.md)
 - source ownership: [agent-workflow-stack.md](agent-workflow-stack.md)
 - v1/archive/rollback policy: [version-1-consolidation.md](version-1-consolidation.md)

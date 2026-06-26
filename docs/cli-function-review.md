@@ -14,6 +14,8 @@ next.
 - `kit start` is now the first read-only journey selector for humans and
   agents.
 - The main CLI implementation still lives in one 8,462-line Python file.
+- Codex thread mining research is tracked in
+  [cli-journey-research.md](cli-journey-research.md).
 
 Largest functions in `scripts/repo_contract_kit.py`:
 

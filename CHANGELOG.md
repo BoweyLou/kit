@@ -1,5 +1,16 @@
 # Changelog
 
+## 0.6.27 - 2026-06-26
+
+- Add `scripts/mine_codex_threads.py`, a local maintainer mining pipeline for
+  classifying Codex thread history into CLI routes, journeys, friction markers,
+  outcomes, and recommended follow-up actions without committing raw thread
+  text.
+- Add fixture coverage for session/history/archive parsing, route and journey
+  classification, blocked/error detection, and redaction guarantees.
+- Add the generated aggregate `docs/cli-journey-research.md` report and link it
+  from maintainer-facing review docs.
+
 ## 0.6.26 - 2026-06-26
 
 - Add `kit start` as a read-only human and agent entrypoint that inspects the

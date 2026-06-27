@@ -34,6 +34,8 @@ need to fetch or understand the workflow-source checkout at runtime.
 Use this when returning to the repo or starting a new agent session.
 
 ```bash
+kit start --json
+kit start --no-update --json
 make agent-start
 make goal-check
 make kit-status
@@ -43,7 +45,11 @@ make agent-state-ledger
 make agent-branch-readiness
 ```
 
-`agent-start` writes an ignored local packet with changed files, docs impact,
+`kit start --json` chooses the route from repo state and reports
+`local_update`; in installed target repos it may apply already-local,
+local-safe managed-file updates. Use `kit start --no-update --json` when
+startup must be guaranteed no-write. `agent-start` writes an ignored local
+packet with changed files, docs impact,
 latest ADR context, kit/version state, review risk, goal-check summary,
 recommended prompts, and a receipt template. `goal-check` maps changed files to
 `.agent-workflows/area-contracts.json` and leaves unmatched paths as explicit
@@ -234,10 +240,11 @@ kit doctor
 make kit-explain
 ```
 
-Use `kit update --dry-run` before applying managed-file updates. Keep kit
-updates explicit; normal validation should not update installed guardrails
-automatically. Update plans and reports include a `read_next` list; read those
-docs before merging proposed replacements from `.doc-contract-kit/updates/`.
+Use `kit start` for opportunistic local-safe kit maintenance and
+`kit update --dry-run` before explicit managed-file updates. Remote/global
+updates stay explicit through `kit update --global`. Update plans and reports
+include a `read_next` list; read those docs before merging proposed replacements
+from `.doc-contract-kit/updates/`.
 Use `docs/upgrade-flow.md` for the full safe update sequence, including
 metadata-only migration and conflict review. Kit updates keep root `AGENTS.md`
 in place and preserve customized managed files.

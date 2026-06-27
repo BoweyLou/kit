@@ -1132,8 +1132,8 @@ Flags:
 Choose the next human or agent journey from repo state.
 
 - Audience: `human, agent`
-- Mutation: `read-only`
-- Target writes: `never`
+- Mutation: `writes-target-conditionally`
+- Target writes: `local-safe managed-file update by default for installed target repos; never with --no-update`
 - Sidecar writes: `never`
 - JSON: `yes`
 - Output schema: `start_payload`
@@ -1144,6 +1144,8 @@ Choose the next human or agent journey from repo state.
 Examples:
 
 - `kit start`
+- `kit start --no-update`
+- `kit start --lite`
 - `kit start --json`
 - `kit start --repo /path/to/repo --json`
 
@@ -1152,6 +1154,9 @@ Flags:
 - `--repo` - Target git repository. Defaults to the current directory.
 - `--json` - Emit machine-readable JSON.
 - `--mode` - Requested harness mode. auto lets kit choose.
+- `--lite` - Shortcut for --mode lite.
+- `--update-policy` - Local update behavior for installed target repos: local-safe applies managed-file updates; check-only only reports.
+- `--no-update` - Skip the local update check and apply step.
 
 ### kit status
 

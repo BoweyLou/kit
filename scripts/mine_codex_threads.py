@@ -27,6 +27,7 @@ DEFAULT_CODEX_HOME = Path.home() / ".codex"
 DEFAULT_REPORT = Path("docs/cli-journey-research.md")
 DEFAULT_SAMPLE_LIMIT = 75
 MAX_TEXT_CHARS_PER_THREAD = 200_000
+CURRENT_KIT_ERA_START = "2026-06-25T00:00:00Z"
 
 SECRET_PATTERNS = [
     re.compile(r"sk-proj-[A-Za-z0-9_-]{12,}"),
@@ -39,6 +40,38 @@ SECRET_PATTERNS = [
 ]
 UUID_RE = re.compile(r"\b[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}\b")
 HOME_RE = re.compile(re.escape(str(Path.home())))
+URL_RE = re.compile(r"https?://[^\s'\"<>]+")
+EMAIL_RE = re.compile(r"\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}\b")
+IP_RE = re.compile(r"\b(?:\d{1,3}\.){3}\d{1,3}\b")
+ABSOLUTE_PATH_RE = re.compile(r"(?<![\w.-])/(?:[^\s'\"<>:]+/)+[^\s'\"<>:]*")
+TILDE_PATH_RE = re.compile(r"(?<![\w.-])~/(?:[^\s'\"<>:]+/)*[^\s'\"<>:]*")
+HIGH_ENTROPY_RE = re.compile(r"\b(?=[A-Za-z0-9_=-]{32,}\b)(?=.*[A-Za-z])(?=.*\d)[A-Za-z0-9_=-]{32,}\b")
+SAFE_COMMAND_VERBS = {
+    "apply_patch",
+    "cat",
+    "find",
+    "git",
+    "grep",
+    "ls",
+    "make",
+    "nl",
+    "node",
+    "npm",
+    "pwd",
+    "python",
+    "python3",
+    "rg",
+    "sed",
+    "update_plan",
+    "wc",
+    "write_stdin",
+}
+AGENT_TOOL_COMMANDS = {
+    "apply_patch",
+    "patch_apply_end",
+    "update_plan",
+    "write_stdin",
+}
 
 COMMAND_NORMALIZERS: list[tuple[str, re.Pattern[str]]] = [
     ("kit start", re.compile(r"(?<![\w.-])kit\s+start\b")),
@@ -430,9 +463,15 @@ def thread_hash(thread_id: str) -> str:
 
 def redact_text(text: str) -> str:
     result = HOME_RE.sub("~", text)
+    result = URL_RE.sub("<redacted-url>", result)
+    result = EMAIL_RE.sub("<redacted-email>", result)
+    result = IP_RE.sub("<redacted-ip>", result)
+    result = TILDE_PATH_RE.sub("<redacted-path>", result)
+    result = ABSOLUTE_PATH_RE.sub("<redacted-path>", result)
     result = UUID_RE.sub("<uuid>", result)
     for pattern in SECRET_PATTERNS:
         result = pattern.sub("<redacted-secret>", result)
+    result = HIGH_ENTROPY_RE.sub("<redacted-token>", result)
     return result
 
 
@@ -447,7 +486,22 @@ def normalize_command(command: str) -> str:
         parts = redacted.split()
     if not parts:
         return ""
-    return " ".join(parts[:2]) if len(parts) > 1 else parts[0]
+    verb = parts[0]
+    if verb not in SAFE_COMMAND_VERBS:
+        return verb.split(".")[-1] if "." in verb else verb
+    if verb in AGENT_TOOL_COMMANDS:
+        return verb
+    if verb == "git" and len(parts) > 1:
+        return f"git {parts[1]}"
+    if verb == "make" and len(parts) > 1 and re.match(r"^[A-Za-z0-9_.:-]+$", parts[1]):
+        return f"make {parts[1]}"
+    if verb in {"rg", "sed", "nl", "python3"} and len(parts) > 1 and not parts[1].startswith("<redacted-"):
+        if verb == "python3" and parts[1] not in {"-", "-m"}:
+            return "python3"
+        if verb == "python3" and parts[1] == "-m" and len(parts) > 2 and re.match(r"^[A-Za-z0-9_.-]+$", parts[2]):
+            return f"python3 -m {parts[2]}"
+        return f"{verb} {parts[1]}"
+    return verb
 
 
 def unique_in_order(values: Iterable[str], limit: int = 20) -> list[str]:
@@ -475,6 +529,49 @@ def is_dev_thread(record: ThreadRecord) -> bool:
     if "/code/" in record.cwd.lower() or "/codex/" in record.cwd.lower() or "/worktrees/" in record.cwd.lower():
         return True
     return any(term in blob for term in DEV_TERMS)
+
+
+def is_kit_related(record: ThreadRecord) -> bool:
+    blob = combined_text(record).lower()
+    return any(
+        term in blob
+        for term in (
+            "kit start",
+            "repo-contract-kit",
+            "repo_contract_kit.py",
+            "agent-workflow-kit",
+            "make agent-",
+            "make kit-",
+            "/04_code/kit",
+        )
+    )
+
+
+def record_date_end(record: ThreadRecord) -> str | None:
+    timestamps = sorted(set(record.timestamps))
+    return timestamps[-1] if timestamps else None
+
+
+def record_matches_since(record: ThreadRecord, since: str | None) -> bool:
+    if not since:
+        return True
+    end = record_date_end(record)
+    if not end:
+        return False
+    return end >= since
+
+
+def record_matches_cwd_prefix(record: ThreadRecord, prefixes: list[str] | None) -> bool:
+    if not prefixes:
+        return True
+    cwd = record.cwd
+    if not cwd:
+        return False
+    try:
+        resolved = str(Path(cwd).expanduser().resolve())
+    except OSError:
+        resolved = cwd
+    return any(resolved.startswith(prefix) for prefix in prefixes)
 
 
 def classify_intent(blob: str) -> str:
@@ -542,21 +639,22 @@ def classify_friction(record: ThreadRecord, blob: str, categories: set[str]) -> 
     markers: list[str] = []
     if any(term in blob for term in ("clarify", "clarification", "need to ask", "ask the user", "which repo")):
         markers.append("clarification-needed")
-    if any(term in blob for term in ("wrong repo", "wrong cwd", "source repo", "target repo", "companion repo")):
+    if any(term in blob for term in ("wrong repo", "wrong cwd", "which repo", "source repo vs target repo", "source-repo vs target-repo", "companion repo confusion")):
         markers.append("wrong-repo-risk")
     if any(term in blob for term in ("docs freshness", "stale docs", "missing-script-reference", "docs drift")):
         markers.append("stale-docs")
-    if any(term in blob for term in ("command not found", "unknown command", "unrecognized arguments", "parse error", "usage:")):
+    failed_command = any(code != 0 for code in record.exit_codes)
+    if any(term in blob for term in ("command not found", "unknown command", "unrecognized arguments", "parse error")) or ("usage:" in blob and failed_command):
         markers.append("command-confusion")
-    if "direct-script" in categories:
+    if "direct-script" in categories and not any(term in blob for term in ("source-checkout fallback", "source checkout fallback", "maintainer direct script")):
         markers.append("direct-script-fallback")
-    if any(term in blob for term in ("keyerror", "missing json", "missing field", "stable_payload_fields")):
+    if any(term in blob for term in ("keyerror", "missing json", "missing field")):
         markers.append("missing-json-field")
-    if any(term in blob for term in ("unexpected write", "mutation risk", "dirty target", "target_repo_writes")):
+    if any(term in blob for term in ("unexpected write", "mutation risk", "dirty target")):
         markers.append("unexpected-mutation-risk")
-    if any(code != 0 for code in record.exit_codes):
+    if failed_command:
         markers.append("failed-command")
-    if any(term in blob for term in ("retry", "rerun", "run again", "try again")):
+    if failed_command and any(term in blob for term in ("retry", "rerun", "run again", "try again")):
         markers.append("retry-loop")
     return unique_in_order(markers)
 
@@ -628,15 +726,69 @@ def cwd_hint(cwd: str) -> str:
     return path.name
 
 
-def build_summary(records: dict[str, ThreadRecord], include_non_dev: bool = False) -> dict[str, Any]:
+def command_family(command: str) -> str:
+    if command.startswith("kit "):
+        return "kit_commands"
+    if command.startswith("make "):
+        return "make_commands"
+    if command in AGENT_TOOL_COMMANDS or command.startswith(("functions.", "multi_agent_v1.", "codex_app.", "tool_search.")):
+        return "agent_tool_calls"
+    return "shell_commands"
+
+
+def normalize_cwd_prefixes(prefixes: list[str] | None) -> list[str]:
+    result: list[str] = []
+    for prefix in prefixes or []:
+        for item in str(prefix).split(","):
+            item = item.strip()
+            if not item:
+                continue
+            try:
+                result.append(str(Path(item).expanduser().resolve()))
+            except OSError:
+                result.append(item)
+    return result
+
+
+def observation_passes_filters(
+    record: ThreadRecord,
+    *,
+    kit_related: bool = False,
+    since: str | None = None,
+    cwd_prefixes: list[str] | None = None,
+) -> bool:
+    if kit_related and not is_kit_related(record):
+        return False
+    if not record_matches_since(record, since):
+        return False
+    if not record_matches_cwd_prefix(record, cwd_prefixes):
+        return False
+    return True
+
+
+def build_summary(
+    records: dict[str, ThreadRecord],
+    include_non_dev: bool = False,
+    *,
+    kit_related: bool = False,
+    since: str | None = None,
+    cwd_prefixes: list[str] | None = None,
+    label: str = "all-dev",
+) -> dict[str, Any]:
     observations = []
     skipped_non_dev = 0
+    skipped_by_filter = 0
+    normalized_prefixes = normalize_cwd_prefixes(cwd_prefixes)
     for record in records.values():
         if not include_non_dev and not is_dev_thread(record):
             skipped_non_dev += 1
             continue
+        if not observation_passes_filters(record, kit_related=kit_related, since=since, cwd_prefixes=normalized_prefixes):
+            skipped_by_filter += 1
+            continue
         observations.append(observation_for(record))
     observations.sort(key=lambda item: (item.get("date_end") or "", item["thread_id_hash"]))
+    commands = [command for item in observations for command in item["commands_run"]]
 
     aggregate = {
         "intent": counter_dict(item["intent"] for item in observations),
@@ -645,22 +797,38 @@ def build_summary(records: dict[str, ThreadRecord], include_non_dev: bool = Fals
         "friction_markers": counter_dict(marker for item in observations for marker in item["friction_markers"]),
         "outcome": counter_dict(item["outcome"] for item in observations),
         "recommended_action": counter_dict(item["recommended_action"] for item in observations),
-        "commands_run": counter_dict(command for item in observations for command in item["commands_run"]),
+        "commands_run": counter_dict(commands),
+        "kit_commands": counter_dict(command for command in commands if command_family(command) == "kit_commands"),
+        "make_commands": counter_dict(command for command in commands if command_family(command) == "make_commands"),
+        "shell_commands": counter_dict(command for command in commands if command_family(command) == "shell_commands"),
+        "agent_tool_calls": counter_dict(command for command in commands if command_family(command) == "agent_tool_calls"),
     }
     all_dates = sorted(date for item in observations for date in (item.get("date_start"), item.get("date_end")) if date)
     return {
         "schema_version": SCHEMA_VERSION,
         "generated_at": utc_now(),
+        "label": label,
+        "filters": {
+            "include_non_dev": include_non_dev,
+            "kit_related": kit_related,
+            "since": since,
+            "cwd_prefixes": normalized_prefixes,
+        },
         "corpus": {
             "threads_seen": len(records),
             "dev_threads": len(observations),
             "skipped_non_dev_threads": skipped_non_dev,
+            "skipped_by_filter_threads": skipped_by_filter,
             "date_start": all_dates[0] if all_dates else None,
             "date_end": all_dates[-1] if all_dates else None,
         },
         "aggregate": aggregate,
         "observations": observations,
     }
+
+
+def summary_without_observations(summary: dict[str, Any]) -> dict[str, Any]:
+    return {key: value for key, value in summary.items() if key != "observations"}
 
 
 def counter_dict(values: Iterable[str]) -> dict[str, int]:
@@ -701,9 +869,75 @@ def render_backlog(summary: dict[str, Any]) -> list[str]:
     return recommendations
 
 
-def render_report(summary: dict[str, Any]) -> str:
+def render_signal_section(summary: dict[str, Any], title: str, note: str) -> list[str]:
     corpus = summary["corpus"]
     aggregate = summary["aggregate"]
+    filters = summary.get("filters") or {}
+    lines = [
+        f"## {title}",
+        "",
+        note,
+        "",
+        f"- Threads scanned: {corpus['threads_seen']}",
+        f"- Developer threads classified: {corpus['dev_threads']}",
+        f"- Skipped as non-dev: {corpus['skipped_non_dev_threads']}",
+        f"- Skipped by filter: {corpus.get('skipped_by_filter_threads', 0)}",
+        f"- Date range: {corpus['date_start'] or 'unknown'} to {corpus['date_end'] or 'unknown'}",
+    ]
+    if filters.get("since"):
+        lines.append(f"- Since filter: latest thread timestamp at or after {filters['since']}")
+    if filters.get("kit_related"):
+        lines.append("- Kit-related filter: enabled")
+    if filters.get("cwd_prefixes"):
+        lines.append(f"- CWD prefix filters: {', '.join(filters['cwd_prefixes'])}")
+    lines.extend(
+        [
+            "",
+            "### Route Signals",
+            "",
+            render_table(aggregate["route_used"]).rstrip(),
+            "",
+            "### Journey Signals",
+            "",
+            render_table(aggregate["journey"]).rstrip(),
+            "",
+            "### Intent Signals",
+            "",
+            render_table(aggregate["intent"]).rstrip(),
+            "",
+            "### Friction Signals",
+            "",
+            render_table(aggregate["friction_markers"]).rstrip(),
+            "",
+            "### Kit Commands",
+            "",
+            render_table(aggregate.get("kit_commands", {})).rstrip(),
+            "",
+            "### Make Commands",
+            "",
+            render_table(aggregate.get("make_commands", {})).rstrip(),
+            "",
+            "### Shell Commands",
+            "",
+            render_table(aggregate.get("shell_commands", {})).rstrip(),
+            "",
+            "### Agent Tool Calls",
+            "",
+            render_table(aggregate.get("agent_tool_calls", {})).rstrip(),
+            "",
+        ]
+    )
+    return lines
+
+
+def render_report(summary: dict[str, Any]) -> str:
+    sections = summary.get("report_sections") or [
+        {
+            "title": "Corpus",
+            "note": "This section reflects the selected mining filters.",
+            "summary": summary_without_observations(summary),
+        }
+    ]
     lines = [
         "# CLI Journey Research",
         "",
@@ -713,36 +947,17 @@ def render_report(summary: dict[str, Any]) -> str:
         "journeys. Raw thread text stays in local Codex storage and local mining",
         "artifacts; this tracked report contains aggregate, redacted findings only.",
         "",
-        "## Corpus",
-        "",
-        f"- Threads scanned: {corpus['threads_seen']}",
-        f"- Developer threads classified: {corpus['dev_threads']}",
-        f"- Skipped as non-dev: {corpus['skipped_non_dev_threads']}",
-        f"- Date range: {corpus['date_start'] or 'unknown'} to {corpus['date_end'] or 'unknown'}",
-        "",
-        "## Route Signals",
-        "",
-        render_table(aggregate["route_used"]).rstrip(),
-        "",
-        "## Journey Signals",
-        "",
-        render_table(aggregate["journey"]).rstrip(),
-        "",
-        "## Intent Signals",
-        "",
-        render_table(aggregate["intent"]).rstrip(),
-        "",
-        "## Friction Signals",
-        "",
-        render_table(aggregate["friction_markers"]).rstrip(),
-        "",
-        "## Top Commands",
-        "",
-        render_table(aggregate["commands_run"]).rstrip(),
-        "",
-        "## Recommended Backlog",
+        "The baseline section covers all local development-looking threads. The",
+        "kit/current-era section narrows the view to kit-related evidence since",
+        f"{CURRENT_KIT_ERA_START}.",
         "",
     ]
+    for section in sections:
+        lines.extend(render_signal_section(section["summary"], section["title"], section["note"]))
+    lines.extend([
+        "## Recommended Backlog",
+        "",
+    ])
     for item in render_backlog(summary):
         lines.append(f"- {item}")
     lines.extend(
@@ -767,6 +982,19 @@ def sample_excerpt(record: ThreadRecord) -> str:
     return ""
 
 
+def ensure_private_dir(path: Path) -> None:
+    path.mkdir(parents=True, exist_ok=True)
+    path.chmod(0o700)
+
+
+def write_private_text(path: Path, text: str) -> None:
+    path.parent.mkdir(parents=True, exist_ok=True)
+    fd = os.open(path, os.O_WRONLY | os.O_CREAT | os.O_TRUNC, 0o600)
+    with os.fdopen(fd, "w", encoding="utf-8") as handle:
+        handle.write(text)
+    path.chmod(0o600)
+
+
 def write_outputs(
     summary: dict[str, Any],
     records: dict[str, ThreadRecord],
@@ -774,44 +1002,49 @@ def write_outputs(
     report_path: Path,
     sample_limit: int = DEFAULT_SAMPLE_LIMIT,
 ) -> dict[str, str]:
-    state_dir.mkdir(parents=True, exist_ok=True)
+    ensure_private_dir(state_dir)
     summary_path = state_dir / "thread-mining-summary.json"
     samples_path = state_dir / "thread-mining-samples.jsonl"
-    summary_path.write_text(json.dumps(summary, indent=2, sort_keys=True) + "\n", encoding="utf-8")
-
-    records_by_hash = {thread_hash(record.thread_id): record for record in records.values()}
-    samples_written = 0
-    with samples_path.open("w", encoding="utf-8") as handle:
-        for observation in summary["observations"]:
-            if samples_written >= sample_limit:
-                break
-            if not observation["friction_markers"]:
-                continue
-            record = records_by_hash.get(observation["thread_id_hash"])
-            if not record:
-                continue
-            handle.write(
-                json.dumps(
-                    {
-                        "thread_id_hash": observation["thread_id_hash"],
-                        "friction_markers": observation["friction_markers"],
-                        "route_used": observation["route_used"],
-                        "journey": observation["journey"],
-                        "excerpt_redacted": sample_excerpt(record),
-                    },
-                    sort_keys=True,
-                )
-                + "\n"
-            )
-            samples_written += 1
-
-    report_path.parent.mkdir(parents=True, exist_ok=True)
-    report_path.write_text(render_report(summary), encoding="utf-8")
-    return {
+    outputs = {
         "summary_json": str(summary_path),
         "samples_jsonl": str(samples_path),
         "report": str(report_path),
     }
+    summary["outputs"] = outputs
+    write_private_text(summary_path, json.dumps(summary, indent=2, sort_keys=True) + "\n")
+
+    records_by_hash = {thread_hash(record.thread_id): record for record in records.values()}
+    samples_written = 0
+    sample_lines: list[str] = []
+    for observation in summary["observations"]:
+        if samples_written >= sample_limit:
+            break
+        if not observation["friction_markers"]:
+            continue
+        record = records_by_hash.get(observation["thread_id_hash"])
+        if not record:
+            continue
+        sample_lines.append(
+            json.dumps(
+                {
+                    "thread_id_hash": observation["thread_id_hash"],
+                    "date_end": observation["date_end"],
+                    "friction_markers": observation["friction_markers"],
+                    "route_used": observation["route_used"],
+                    "journey": observation["journey"],
+                    "commands_run": observation["commands_run"],
+                    "failed_command_count": observation["failed_command_count"],
+                    "excerpt_redacted": sample_excerpt(record),
+                },
+                sort_keys=True,
+            )
+        )
+        samples_written += 1
+    write_private_text(samples_path, "\n".join(sample_lines) + ("\n" if sample_lines else ""))
+
+    report_path.parent.mkdir(parents=True, exist_ok=True)
+    report_path.write_text(render_report(summary), encoding="utf-8")
+    return outputs
 
 
 def mine_codex_threads(
@@ -821,13 +1054,59 @@ def mine_codex_threads(
     include_non_dev: bool = False,
     sample_limit: int = DEFAULT_SAMPLE_LIMIT,
     write: bool = True,
+    kit_related: bool = False,
+    since: str | None = None,
+    cwd_prefixes: list[str] | None = None,
+    current_kit_era: bool = False,
 ) -> dict[str, Any]:
     records, source_counts = collect_threads(codex_home)
-    summary = build_summary(records, include_non_dev=include_non_dev)
+    effective_since = since or (CURRENT_KIT_ERA_START if current_kit_era else None)
+    summary = build_summary(
+        records,
+        include_non_dev=include_non_dev,
+        kit_related=kit_related,
+        since=effective_since,
+        cwd_prefixes=cwd_prefixes,
+        label="selected",
+    )
     summary["sources"] = source_counts
+    baseline = build_summary(records, include_non_dev=include_non_dev, label="baseline-all-dev")
+    kit_current = build_summary(
+        records,
+        include_non_dev=include_non_dev,
+        kit_related=True,
+        since=CURRENT_KIT_ERA_START,
+        label="kit-current-era",
+    )
+    summary["report_sections"] = [
+        {
+            "title": "Baseline All-Dev Corpus",
+            "note": "All local development-looking Codex threads, including non-kit work. Use this as agent workflow telemetry rather than pure kit telemetry.",
+            "summary": summary_without_observations(baseline),
+        },
+        {
+            "title": "Kit-Related Current-Era Corpus",
+            "note": "Kit-related threads since the unified public kit repo work began. Use this narrower slice for current CLI journey decisions.",
+            "summary": summary_without_observations(kit_current),
+        },
+    ]
     if write:
-        summary["outputs"] = write_outputs(summary, records, state_dir or default_state_dir(), report_path, sample_limit)
+        write_outputs(summary, records, state_dir or default_state_dir(), report_path, sample_limit)
     return summary
+
+
+def public_summary(summary: dict[str, Any], include_observations: bool = False) -> dict[str, Any]:
+    if include_observations:
+        return summary
+    result = summary_without_observations(summary)
+    result["report_sections"] = [
+        {
+            **section,
+            "summary": summary_without_observations(section["summary"]),
+        }
+        for section in summary.get("report_sections", [])
+    ]
+    return result
 
 
 def build_parser() -> argparse.ArgumentParser:
@@ -836,8 +1115,13 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--state-dir", default=str(default_state_dir()), help="Local output directory for JSON artifacts.")
     parser.add_argument("--report", default=str(DEFAULT_REPORT), help="Tracked aggregate Markdown report path.")
     parser.add_argument("--include-non-dev", action="store_true", help="Include threads that do not look development-related.")
+    parser.add_argument("--kit-related", action="store_true", help="Only include threads with kit/repo-contract command or repo evidence.")
+    parser.add_argument("--since", help="Only include threads whose latest timestamp is at or after this ISO timestamp.")
+    parser.add_argument("--cwd-prefix", action="append", help="Only include threads whose cwd starts with this path. Can be repeated or comma-separated.")
+    parser.add_argument("--current-kit-era", action="store_true", help=f"Shortcut for --since {CURRENT_KIT_ERA_START}.")
     parser.add_argument("--sample-limit", type=int, default=DEFAULT_SAMPLE_LIMIT, help="Maximum redacted sample rows to write.")
     parser.add_argument("--no-write", action="store_true", help="Compute and print a summary without writing files.")
+    parser.add_argument("--include-observations", action="store_true", help="Include hashed per-thread observations in --json stdout.")
     parser.add_argument("--json", action="store_true", help="Print machine-readable summary to stdout.")
     return parser
 
@@ -851,9 +1135,13 @@ def main(argv: list[str] | None = None) -> int:
         include_non_dev=args.include_non_dev,
         sample_limit=max(args.sample_limit, 0),
         write=not args.no_write,
+        kit_related=args.kit_related,
+        since=args.since,
+        cwd_prefixes=args.cwd_prefix,
+        current_kit_era=args.current_kit_era,
     )
     if args.json:
-        print(json.dumps(summary, indent=2, sort_keys=True))
+        print(json.dumps(public_summary(summary, include_observations=args.include_observations), indent=2, sort_keys=True))
     else:
         corpus = summary["corpus"]
         print("Codex thread mining complete")

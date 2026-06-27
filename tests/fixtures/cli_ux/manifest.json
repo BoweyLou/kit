@@ -67,6 +67,78 @@
       ]
     },
     {
+      "id": "start-json-unenrolled-journey",
+      "fixture": "git_repo",
+      "args": ["start", "--repo", "{repo}", "--json"],
+      "returncode": 0,
+      "stdout_json_equals": [
+        {"path": "command", "value": "start"},
+        {"path": "repo_role", "value": "target-unenrolled"},
+        {"path": "journey.id", "value": "new-repo"},
+        {"path": "mode.selected", "value": "lite"},
+        {"path": "target_repo_writes.performed", "value": false},
+        {"path": "sidecar_writes.performed", "value": false}
+      ]
+    },
+    {
+      "id": "start-json-source-maintainer-journey",
+      "fixture": "source_repo",
+      "args": ["start", "--repo", "{repo}", "--json"],
+      "returncode": 0,
+      "stdout_json_equals": [
+        {"path": "repo_role", "value": "kit-source"},
+        {"path": "journey.id", "value": "maintainer-source"},
+        {"path": "recommended_setup_preset", "value": null}
+      ]
+    },
+    {
+      "id": "start-lite-alias-json",
+      "fixture": "git_repo",
+      "args": ["start", "--repo", "{repo}", "--lite", "--json"],
+      "returncode": 0,
+      "stdout_json_equals": [
+        {"path": "mode.requested", "value": "lite"},
+        {"path": "mode.selected", "value": "lite"}
+      ]
+    },
+    {
+      "id": "start-no-update-json-disables-local-update",
+      "fixture": "installed_target",
+      "args": ["start", "--repo", "{repo}", "--no-update", "--json"],
+      "returncode": 0,
+      "stdout_json_equals": [
+        {"path": "repo_role", "value": "target-installed"},
+        {"path": "local_update.mode", "value": "disabled"},
+        {"path": "local_update.checked", "value": false},
+        {"path": "local_update.applied", "value": false},
+        {"path": "target_repo_writes.performed", "value": false}
+      ]
+    },
+    {
+      "id": "guide-json-includes-start-summary",
+      "fixture": "git_repo",
+      "args": ["guide", "--json"],
+      "returncode": 0,
+      "stdout_json_equals": [
+        {"path": "command", "value": "guide"},
+        {"path": "start.repo_role", "value": "target-unenrolled"},
+        {"path": "start.journey.id", "value": "new-repo"},
+        {"path": "start.mode.selected", "value": "lite"}
+      ]
+    },
+    {
+      "id": "start-lite-typo-suggests-lite",
+      "args": ["start", "--liite", "--json"],
+      "returncode": 2,
+      "stdout_json_equals": [
+        {"path": "command", "value": "parse-error"},
+        {"path": "error.kind", "value": "invalid-option"},
+        {"path": "error.command_path", "value": ["start"]},
+        {"path": "suggestions.0.command", "value": "kit start --lite"}
+      ],
+      "stderr_not_contains": ["Invalid option"]
+    },
+    {
       "id": "doctor-human-summary-leads-with-counts",
       "fixture": "git_repo",
       "args": ["doctor", "--repo", "{repo}"],

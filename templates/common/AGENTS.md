@@ -11,29 +11,36 @@ If you change code, you must consider whether documentation also needs to change
 If asked to review, understand, clean up, or formalize this repo, start here:
 
 1. Read `AGENTS.md`, `REVIEW.md`, and `.agent-workflows/README.md`.
-2. Run `make agent-start` to create a local startup packet under
+2. Run `kit start --json` to choose the route from current repo state and apply
+   any already-local, local-safe kit update. Use `kit start --no-update --json`
+   when a no-write startup payload is required.
+3. Run `make agent-start` to create a local startup packet under
    `.agent-workflows/runs/`.
-3. Run `make goal-check` to map changed files to declared area contracts before
+4. Run `make goal-check` to map changed files to declared area contracts before
    inferring scope from broad docs.
-4. Inspect `make kit-status` and `make version-status` output when available so
+5. Inspect `make kit-status` and `make version-status` output when available so
    you know the installed kit version, workflow prompt snapshot, and target repo
    version.
-5. Inspect `docs/ops/agent-tool-network-allowlist.md` and the selected trust
+6. Inspect `docs/ops/agent-tool-network-allowlist.md` and the selected trust
    profile in `.agent-workflows/agent-permission-policy.json` before running
    review agents, browser research, or CI adapters.
-6. Inspect `docs/ops/agent-instruction-hygiene.md` before adding new
+7. Inspect `docs/ops/agent-instruction-hygiene.md` before adding new
    agent-facing rules so `AGENTS.md` stays an index instead of a context dump.
-7. Follow `.agent-workflows/repo-review.md` in the requested mode. Use
+8. Follow `.agent-workflows/repo-review.md` in the requested mode. Use
    `bootstrap` for the first review of an inherited or newly instrumented repo.
-8. Use the installed personas and prompts under `.codex/prompts/` where useful.
-9. Run `make agent-verify` and `make agent-docs-localize` before proposing code
+9. Use the installed personas and prompts under `.codex/prompts/` where useful.
+10. Run `make agent-verify` and `make agent-docs-localize` before proposing code
    changes.
-10. Produce a findings backlog before editing code.
-11. If work starts from a backlog item, issue, accepted finding, or broad human
+11. Produce a findings backlog before editing code.
+12. If work starts from a backlog item, issue, accepted finding, or broad human
    request, run `make agent-task-packet` and convert one selected item into
    scoped executable work before implementation.
-12. For write-capable implementation, run
+13. For write-capable implementation, run
     `make agent-task-prepare TASK=<id> SCOPE=<paths>` before editing.
+
+`kit start --json` decides the route and reports `local_update` status.
+`make agent-start` is the installed target-repo packet lane, and
+`make agent-context-bundle` is the compact handoff context lane.
 
 The prompts under `.codex/prompts/` are local copies installed by
 `repo-contract-kit`. Do not fetch prompts from another repo during normal work
@@ -78,7 +85,9 @@ kit templates during updates.
 ## Kit updates
 
 Use `make kit-status` to inspect installed kit, prompt snapshot, profiles,
-manifest cleanliness, and target repo version. Prefer the global CLI for update
+manifest cleanliness, and target repo version. `kit start` may apply only
+local-safe managed-file updates from the already-local tool checkout; it does
+not fetch remote/global updates. Prefer the global CLI for explicit update
 management:
 
 ```bash

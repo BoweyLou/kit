@@ -19,7 +19,7 @@ workflow-help:
 		"   kit update" \
 		"   kit doctor" \
 		"" \
-		"AI-first CLI:" \
+		"Source-checkout fallback CLI:" \
 		"   ./scripts/repo_contract_kit.py version --json" \
 		"   ./scripts/repo_contract_kit.py start --repo /path/to/repo --json" \
 		"   ./scripts/repo_contract_kit.py command-map --json" \

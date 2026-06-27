@@ -140,12 +140,16 @@ class ThreadMiningTests(unittest.TestCase):
             report_path = Path(tmp) / "report.md"
             raw_thread_id = "123e4567-e89b-12d3-a456-426614174000"
             secret = "sk-proj-abc123456789SECRETSECRET"
+            url = "https://example.invalid/private/path?token=abc"
+            email = "person@example.invalid"
+            ip = "192.168.1.55"
+            high_entropy = "abc123DEF456ghi789JKL012mno345PQR678"
             write_jsonl(
                 codex_home / "sessions/2026/06/thread.jsonl",
                 [
                     {"type": "session_meta", "timestamp": "2026-06-26T00:00:01Z", "payload": {"type": "session_meta", "id": raw_thread_id, "cwd": "/Users/example/private/repo"}},
-                    {"type": "event_msg", "timestamp": "2026-06-26T00:00:02Z", "payload": {"type": "user_message", "message": f"Fix kit command not found with token {secret}"}},
-                    {"type": "response_item", "timestamp": "2026-06-26T00:00:03Z", "payload": {"type": "function_call", "name": "exec_command", "arguments": json.dumps({"cmd": "kit unknown", "workdir": "/Users/example/private/repo"})}},
+                    {"type": "event_msg", "timestamp": "2026-06-26T00:00:02Z", "payload": {"type": "user_message", "message": f"Fix kit command not found with token {secret} at {url} for {email} from {ip} using {high_entropy}"}},
+                    {"type": "response_item", "timestamp": "2026-06-26T00:00:03Z", "payload": {"type": "function_call", "name": "exec_command", "arguments": json.dumps({"cmd": "python3 /Users/example/private/repo/tool.py --token abc123DEF456ghi789JKL012mno345PQR678", "workdir": "/Users/example/private/repo"})}},
                     {"type": "response_item", "timestamp": "2026-06-26T00:00:04Z", "payload": {"type": "exec_command_end", "command": ["kit", "unknown"], "exit_code": 2, "aggregated_output": "unknown command"}},
                 ],
             )
@@ -159,11 +163,112 @@ class ThreadMiningTests(unittest.TestCase):
 
             report = report_path.read_text(encoding="utf-8")
             samples = (state_dir / "thread-mining-samples.jsonl").read_text(encoding="utf-8")
+            summary_json = (state_dir / "thread-mining-summary.json").read_text(encoding="utf-8")
             self.assertNotIn(raw_thread_id, report)
             self.assertNotIn(secret, report)
-            self.assertNotIn(secret, samples)
+            for sensitive in (secret, url, email, ip, high_entropy, "/Users/example/private/repo"):
+                self.assertNotIn(sensitive, samples)
+                self.assertNotIn(sensitive, summary_json)
             self.assertIn("<redacted-secret>", samples)
+            self.assertIn("<redacted-url>", samples)
+            self.assertIn("<redacted-email>", samples)
+            self.assertIn("<redacted-ip>", samples)
+            self.assertIn("<redacted-token>", samples)
+            self.assertEqual(oct(state_dir.stat().st_mode & 0o777), "0o700")
+            self.assertEqual(oct((state_dir / "thread-mining-summary.json").stat().st_mode & 0o777), "0o600")
+            self.assertEqual(oct((state_dir / "thread-mining-samples.jsonl").stat().st_mode & 0o777), "0o600")
             self.assertEqual(summary["corpus"]["dev_threads"], 1)
+            self.assertIn("outputs", json.loads(summary_json))
+
+    def test_public_summary_omits_observations_by_default(self):
+        record = self.module.ThreadRecord(thread_id="thread-kit", title="kit start", cwd="/repo/kit")
+        record.add_command("kit start --json")
+        summary = self.module.build_summary({"thread-kit": record})
+
+        aggregate_only = self.module.public_summary(summary)
+        with_observations = self.module.public_summary(summary, include_observations=True)
+
+        self.assertNotIn("observations", aggregate_only)
+        self.assertIn("observations", with_observations)
+
+    def test_filters_kit_related_since_cwd_prefix_and_current_kit_era(self):
+        old = self.module.ThreadRecord(thread_id="old", title="kit old", cwd="/repo/kit")
+        old.timestamps.append("2026-06-24T23:59:00Z")
+        old.add_command("kit status --json")
+        current = self.module.ThreadRecord(thread_id="current", title="kit current", cwd="/repo/kit")
+        current.timestamps.append("2026-06-25T00:01:00Z")
+        current.add_command("kit start --json")
+        other = self.module.ThreadRecord(thread_id="other", title="plain dev", cwd="/repo/other")
+        other.timestamps.append("2026-06-26T00:01:00Z")
+        other.add_command("git status")
+
+        summary = self.module.build_summary(
+            {"old": old, "current": current, "other": other},
+            kit_related=True,
+            since=self.module.CURRENT_KIT_ERA_START,
+            cwd_prefixes=["/repo/kit"],
+        )
+
+        self.assertEqual(summary["corpus"]["dev_threads"], 1)
+        self.assertEqual(summary["observations"][0]["thread_id_hash"], self.module.thread_hash("current"))
+        self.assertEqual(summary["filters"]["kit_related"], True)
+        self.assertEqual(summary["filters"]["since"], self.module.CURRENT_KIT_ERA_START)
+
+    def test_command_buckets_split_kit_make_shell_and_agent_tools(self):
+        record = self.module.ThreadRecord(thread_id="commands", title="command buckets", cwd="/repo/kit")
+        record.add_command("kit start --json")
+        record.add_command("make agent-start")
+        record.add_command("git status --short")
+        record.add_command("write_stdin")
+
+        summary = self.module.build_summary({"commands": record})
+
+        self.assertEqual(summary["aggregate"]["kit_commands"]["kit start"], 1)
+        self.assertEqual(summary["aggregate"]["make_commands"]["make agent-start"], 1)
+        self.assertEqual(summary["aggregate"]["shell_commands"]["git status"], 1)
+        self.assertEqual(summary["aggregate"]["agent_tool_calls"]["write_stdin"], 1)
+
+    def test_redaction_and_command_normalization_collapse_private_arguments(self):
+        text = (
+            "token=sk-proj-abc123456789SECRETSECRET "
+            "https://example.invalid/a person@example.invalid 10.0.0.5 "
+            "/Volumes/Myrtle/private/repo/tool.py "
+            "abc123DEF456ghi789JKL012mno345PQR678"
+        )
+
+        redacted = self.module.redact_text(text)
+
+        self.assertIn("<redacted-secret>", redacted)
+        self.assertIn("<redacted-url>", redacted)
+        self.assertIn("<redacted-email>", redacted)
+        self.assertIn("<redacted-ip>", redacted)
+        self.assertIn("<redacted-path>", redacted)
+        self.assertIn("<redacted-token>", redacted)
+        self.assertEqual(
+            self.module.normalize_command("python3 /Volumes/Myrtle/private/repo/tool.py --token abc123DEF456ghi789JKL012mno345PQR678"),
+            "python3",
+        )
+
+    def test_false_positive_friction_patterns_are_not_marked(self):
+        record = self.module.ThreadRecord(thread_id="false-positive", title="normal verification", cwd="/repo/kit")
+        record.add_text("target_repo_writes=false. Rerun checks after successful usage: kit start --help.")
+        record.add_command("kit start --help")
+
+        observation = self.module.observation_for(record)
+
+        self.assertNotIn("unexpected-mutation-risk", observation["friction_markers"])
+        self.assertNotIn("retry-loop", observation["friction_markers"])
+        self.assertNotIn("command-confusion", observation["friction_markers"])
+
+    def test_direct_script_maintainer_usage_is_not_fallback_friction(self):
+        record = self.module.ThreadRecord(thread_id="maintainer-script", title="source checkout", cwd="/repo/kit")
+        record.add_text("Use the source-checkout fallback from maintainer direct script docs.")
+        record.add_command("python3 scripts/repo_contract_kit.py status --json")
+
+        observation = self.module.observation_for(record)
+
+        self.assertEqual(observation["route_used"], "direct-script")
+        self.assertNotIn("direct-script-fallback", observation["friction_markers"])
 
 
 if __name__ == "__main__":

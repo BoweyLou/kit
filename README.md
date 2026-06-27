@@ -20,7 +20,7 @@ Then enroll a target repo:
 
 ```bash
 cd /path/to/repo
-kit start
+kit start              # choose the route and apply any local-safe kit update
 kit setup --preset lite
 kit status
 ```
@@ -47,6 +47,8 @@ Let the tool choose when unsure:
 
 ```bash
 kit start
+kit start --lite
+kit start --no-update
 kit mode-check --json
 ```
 
@@ -64,14 +66,23 @@ kit update --dry-run
 kit doctor
 ```
 
+`kit start` is the front door. In an installed target repo it first checks the
+already-local kit checkout and applies only safe managed-file or kit-metadata
+updates when there are no blockers or customized-file conflicts. Use
+`kit start --no-update` to skip that check or
+`kit start --update-policy check-only` to report the local update plan without
+writing.
+
 When an update plan looks right:
 
 ```bash
 kit update
 ```
 
-Kit updates preserve target-owned files and customized managed files. Proposed
-replacements are written under `.doc-contract-kit/updates/` for review.
+Remote/global updates remain explicit: run `kit update --global` to refresh the
+tool checkout, and `kit update` to apply a target update yourself. Kit updates
+preserve target-owned files and customized managed files. Proposed replacements
+are written under `.doc-contract-kit/updates/` for review.
 
 Read [docs/human-guide.md](docs/human-guide.md) for install, daily use, update,
 and troubleshooting flows.
@@ -82,12 +93,16 @@ Agents should not scrape this README for command semantics. Use structured
 entrypoints:
 
 ```bash
-kit start --json
-kit agent-context --json
-kit command-map --json
+kit start --json              # first route selector; may local-safe update
+kit start --no-update --json  # no-write startup payload
+kit command-map --json        # command safety and schemas
 kit agent-tool-manifest --json
+kit agent-context --json      # compatibility alias for command-map metadata
 kit mode-check --json
 ```
+
+In an installed target repo, `make agent-start` remains the local startup packet
+lane. Use `make agent-context-bundle` when a handoff needs compact repo context.
 
 For normal scoped work:
 

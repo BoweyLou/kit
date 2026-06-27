@@ -1,5 +1,6 @@
 import json
 import contextlib
+import hashlib
 import importlib.util
 import io
 import os
@@ -53,6 +54,32 @@ def commit_all(path: Path, message: str = "Commit changes"):
     )
 
 
+def sha256_text(value: str):
+    return hashlib.sha256(value.encode("utf-8")).hexdigest()
+
+
+def read_json_file(path: Path):
+    return json.loads(path.read_text(encoding="utf-8"))
+
+
+def write_json_file(path: Path, payload: dict):
+    path.write_text(json.dumps(payload, indent=2, sort_keys=True) + "\n", encoding="utf-8")
+
+
+def mark_managed_baseline(repo: Path, rel_path: str, content: str):
+    target = repo / rel_path
+    target.write_text(content, encoding="utf-8")
+    manifest_path = repo / ".doc-contract-kit" / "manifest.json"
+    manifest = read_json_file(manifest_path)
+    for item in manifest["files"]:
+        if item["path"] == rel_path:
+            item["installed_sha256"] = sha256_text(content)
+            item["managed"] = True
+            item["owner"] = "kit"
+            break
+    write_json_file(manifest_path, manifest)
+
+
 def init_repo_contract_source(path: Path):
     subprocess.run(["git", "init", "-q"], cwd=path, check=True)
     (path / "scripts").mkdir(parents=True)
@@ -101,6 +128,7 @@ class RepoContractKitCliTests(unittest.TestCase):
                 "agent-self-heal --apply",
                 "install",
                 "setup",
+                "start",
                 "self update",
                 "target add",
                 "target repair-source-clone --apply",
@@ -214,6 +242,8 @@ class RepoContractKitCliTests(unittest.TestCase):
 
         self.assertEqual(exit_code, 0)
         self.assertIn("kit guide", output.getvalue())
+        self.assertIn("repo role:", output.getvalue())
+        self.assertIn("journey:", output.getvalue())
         self.assertIn("Run `kit options`", output.getvalue())
         self.assertNotIn("Choose an action:", output.getvalue())
 
@@ -634,6 +664,12 @@ class RepoContractKitCliTests(unittest.TestCase):
         self.assertEqual(status["output_schema"], "status_payload")
         self.assertIn("README.md#installed-commands", status["docs"])
 
+        start = commands["start"]
+        self.assertEqual(start["mutation"], "writes-target-conditionally")
+        self.assertIn("local-safe", start["target_repo_write"])
+        self.assertIn("local_update", start["json_contract"]["stable_payload_fields"])
+        self.assertIn("kit start --no-update", start["examples"])
+
         update = commands["update"]
         self.assertEqual(update["mutation"], "writes-target-by-default")
         self.assertEqual(update["sidecar_write"], "never")
@@ -646,13 +682,15 @@ class RepoContractKitCliTests(unittest.TestCase):
 
         start = commands["start"]
         self.assertEqual(start["audience"], ["human", "agent"])
-        self.assertEqual(start["mutation"], "read-only")
+        self.assertEqual(start["mutation"], "writes-target-conditionally")
+        self.assertIn("local-safe", start["target_repo_write"])
         self.assertEqual(start["sidecar_write"], "never")
         self.assertEqual(start["output_schema"], "start_payload")
         self.assertIn("kit start --repo /path/to/repo --json", start["examples"])
         self.assertIn("mode", start["json_contract"]["stable_payload_fields"])
         self.assertIn("recommended_setup_preset", start["json_contract"]["stable_payload_fields"])
         self.assertIn("mode_next_commands", start["json_contract"]["stable_payload_fields"])
+        self.assertIn("local_update", start["json_contract"]["stable_payload_fields"])
 
         mode_check = commands["mode-check"]
         self.assertEqual(mode_check["mutation"], "read-only")
@@ -1425,6 +1463,7 @@ class RepoContractKitCliTests(unittest.TestCase):
             payload = json.loads(result.stdout)
             self.assertEqual(payload["command"], "start")
             self.assertEqual(payload["repo"], str(target.resolve()))
+            self.assertEqual(payload["repo_role"], "target-unenrolled")
             self.assertEqual(payload["journey"]["id"], "new-repo")
             self.assertEqual(payload["mode"]["selected"], "lite")
             self.assertEqual(payload["recommended_setup_preset"], "lite")
@@ -1438,6 +1477,212 @@ class RepoContractKitCliTests(unittest.TestCase):
             self.assertFalse((target / ".doc-contract-kit").exists())
             self.assertFalse((target / ".agent-workflows").exists())
             self.assertFalse((state_home / "repo-contract-kit").exists())
+
+    def test_start_lite_alias_matches_mode_lite(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            target = Path(tmp) / "target"
+            target.mkdir()
+            init_git_repo(target)
+
+            mode_result = subprocess.run(
+                [str(CLI), "start", "--repo", str(target), "--mode", "lite", "--json"],
+                cwd=ROOT,
+                capture_output=True,
+                text=True,
+                check=False,
+            )
+            alias_result = subprocess.run(
+                [str(CLI), "start", "--repo", str(target), "--lite", "--json"],
+                cwd=ROOT,
+                capture_output=True,
+                text=True,
+                check=False,
+            )
+
+            self.assertEqual(mode_result.returncode, 0, mode_result.stderr)
+            self.assertEqual(alias_result.returncode, 0, alias_result.stderr)
+            mode_payload = json.loads(mode_result.stdout)
+            alias_payload = json.loads(alias_result.stdout)
+            self.assertEqual(alias_payload["mode"], mode_payload["mode"])
+            self.assertEqual(alias_payload["next_commands"], mode_payload["next_commands"])
+            self.assertEqual(alias_payload["mode"]["requested"], "lite")
+
+    def test_start_applies_local_safe_update_for_installed_target(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            target = Path(tmp) / "target"
+            target.mkdir()
+            init_git_repo(target)
+            install = subprocess.run(
+                [sys.executable, str(CLI), "install", "--repo", str(target), "--preset", "agentic", "--json"],
+                cwd=ROOT,
+                capture_output=True,
+                text=True,
+                check=False,
+            )
+            self.assertEqual(install.returncode, 0, install.stderr)
+            mark_managed_baseline(target, "AGENTS.md", "# Old managed agents\n")
+            commit_all(target, "Commit old managed baseline")
+
+            result = subprocess.run(
+                [str(CLI), "start", "--repo", str(target), "--json"],
+                cwd=ROOT,
+                capture_output=True,
+                text=True,
+                check=False,
+            )
+
+            self.assertEqual(result.returncode, 0, result.stderr)
+            payload = json.loads(result.stdout)
+            local_update = payload["local_update"]
+            self.assertTrue(local_update["checked"])
+            self.assertTrue(local_update["available"])
+            self.assertTrue(local_update["applied"])
+            self.assertEqual(local_update["mode"], "local-safe")
+            self.assertTrue(payload["target_repo_writes"]["performed"])
+            self.assertIn("AGENTS.md", payload["target_repo_writes"]["paths"])
+            self.assertIn(".doc-contract-kit/install.json", payload["target_repo_writes"]["paths"])
+            self.assertIn(".doc-contract-kit/manifest.json", payload["target_repo_writes"]["paths"])
+            self.assertNotEqual((target / "AGENTS.md").read_text(encoding="utf-8"), "# Old managed agents\n")
+            self.assertIn("# AGENTS.md", (target / "AGENTS.md").read_text(encoding="utf-8"))
+
+    def test_start_no_update_skips_local_update_check(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            target = Path(tmp) / "target"
+            target.mkdir()
+            init_git_repo(target)
+            install = subprocess.run(
+                [sys.executable, str(CLI), "install", "--repo", str(target), "--preset", "agentic", "--json"],
+                cwd=ROOT,
+                capture_output=True,
+                text=True,
+                check=False,
+            )
+            self.assertEqual(install.returncode, 0, install.stderr)
+            mark_managed_baseline(target, "AGENTS.md", "# Old managed agents\n")
+            commit_all(target, "Commit old managed baseline")
+
+            result = subprocess.run(
+                [str(CLI), "start", "--repo", str(target), "--no-update", "--json"],
+                cwd=ROOT,
+                capture_output=True,
+                text=True,
+                check=False,
+            )
+
+            self.assertEqual(result.returncode, 0, result.stderr)
+            payload = json.loads(result.stdout)
+            self.assertFalse(payload["local_update"]["checked"])
+            self.assertFalse(payload["local_update"]["available"])
+            self.assertFalse(payload["local_update"]["applied"])
+            self.assertEqual(payload["local_update"]["mode"], "disabled")
+            self.assertFalse(payload["target_repo_writes"]["performed"])
+            self.assertEqual((target / "AGENTS.md").read_text(encoding="utf-8"), "# Old managed agents\n")
+
+    def test_start_check_only_reports_local_update_without_apply(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            target = Path(tmp) / "target"
+            target.mkdir()
+            init_git_repo(target)
+            install = subprocess.run(
+                [sys.executable, str(CLI), "install", "--repo", str(target), "--preset", "agentic", "--json"],
+                cwd=ROOT,
+                capture_output=True,
+                text=True,
+                check=False,
+            )
+            self.assertEqual(install.returncode, 0, install.stderr)
+            mark_managed_baseline(target, "AGENTS.md", "# Old managed agents\n")
+            commit_all(target, "Commit old managed baseline")
+
+            result = subprocess.run(
+                [str(CLI), "start", "--repo", str(target), "--update-policy", "check-only", "--json"],
+                cwd=ROOT,
+                capture_output=True,
+                text=True,
+                check=False,
+            )
+
+            self.assertEqual(result.returncode, 0, result.stderr)
+            payload = json.loads(result.stdout)
+            self.assertTrue(payload["local_update"]["checked"])
+            self.assertTrue(payload["local_update"]["available"])
+            self.assertFalse(payload["local_update"]["applied"])
+            self.assertEqual(payload["local_update"]["mode"], "check-only")
+            self.assertFalse(payload["target_repo_writes"]["performed"])
+            self.assertEqual((target / "AGENTS.md").read_text(encoding="utf-8"), "# Old managed agents\n")
+
+    def test_start_blocks_customized_update_conflict_without_apply(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            target = Path(tmp) / "target"
+            target.mkdir()
+            init_git_repo(target)
+            install = subprocess.run(
+                [sys.executable, str(CLI), "install", "--repo", str(target), "--preset", "agentic", "--json"],
+                cwd=ROOT,
+                capture_output=True,
+                text=True,
+                check=False,
+            )
+            self.assertEqual(install.returncode, 0, install.stderr)
+            commit_all(target, "Commit kit install")
+            customized = (target / "AGENTS.md").read_text(encoding="utf-8") + "\nTarget-specific instruction.\n"
+            (target / "AGENTS.md").write_text(customized, encoding="utf-8")
+
+            result = subprocess.run(
+                [str(CLI), "start", "--repo", str(target), "--json"],
+                cwd=ROOT,
+                capture_output=True,
+                text=True,
+                check=False,
+            )
+
+            self.assertEqual(result.returncode, 0, result.stderr)
+            payload = json.loads(result.stdout)
+            self.assertTrue(payload["local_update"]["checked"])
+            self.assertTrue(payload["local_update"]["available"])
+            self.assertFalse(payload["local_update"]["applied"])
+            self.assertIn("customized-managed-file:AGENTS.md", payload["local_update"]["blocked_by"])
+            self.assertFalse(payload["target_repo_writes"]["performed"])
+            self.assertEqual((target / "AGENTS.md").read_text(encoding="utf-8"), customized)
+
+    def test_start_json_detects_running_source_checkout(self):
+        result = subprocess.run(
+            [str(CLI), "start", "--repo", str(ROOT), "--json"],
+            cwd=ROOT,
+            capture_output=True,
+            text=True,
+            check=False,
+        )
+
+        self.assertEqual(result.returncode, 0, result.stderr)
+        payload = json.loads(result.stdout)
+        self.assertEqual(payload["repo_role"], "kit-source")
+        self.assertEqual(payload["journey"]["id"], "maintainer-source")
+        self.assertIsNone(payload["recommended_setup_preset"])
+        self.assertIn("make docs-check", payload["human_next_commands"])
+        self.assertIn("kit command-map --json", payload["agent_next_commands"])
+
+    def test_guide_json_includes_start_summary(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            target = Path(tmp) / "target"
+            target.mkdir()
+            init_git_repo(target)
+
+            result = subprocess.run(
+                [str(CLI), "guide", "--json"],
+                cwd=target,
+                capture_output=True,
+                text=True,
+                check=False,
+            )
+
+            self.assertEqual(result.returncode, 0, result.stderr)
+            payload = json.loads(result.stdout)
+            self.assertEqual(payload["command"], "guide")
+            self.assertEqual(payload["start"]["repo_role"], "target-unenrolled")
+            self.assertEqual(payload["start"]["journey"]["id"], "new-repo")
+            self.assertEqual(payload["start"]["mode"]["selected"], "lite")
+            self.assertIn(f"kit start --repo {target.resolve()} --json", payload["start"]["agent_next_commands"])
 
     def test_start_text_prints_journey_mode_and_next_steps(self):
         with tempfile.TemporaryDirectory() as tmp:
@@ -1455,6 +1700,7 @@ class RepoContractKitCliTests(unittest.TestCase):
 
             self.assertEqual(result.returncode, 0, result.stderr)
             self.assertIn("kit start", result.stdout)
+            self.assertIn("repo role: target-unenrolled", result.stdout)
             self.assertIn("journey: new-repo", result.stdout)
             self.assertIn("mode: lite", result.stdout)
             self.assertIn("kit setup --preset lite", result.stdout)
@@ -2304,12 +2550,22 @@ class RepoContractKitCliTests(unittest.TestCase):
         self.assertEqual(payload["no_input_contract"]["agent_env"], "KIT_AGENT=1")
         self.assertIn("status", payload["safe_commands"])
         self.assertIn("command-map", payload["safe_commands"])
+        self.assertIn("start", payload["target_write_commands"])
         self.assertIn("setup", payload["target_write_commands"])
         self.assertIn("update", payload["target_write_commands"])
         self.assertIn("feedback", payload["sidecar_write_commands"])
         schema_names = {schema["name"] for schema in payload["schemas"]}
         self.assertIn("command_map_payload", schema_names)
         self.assertIn("feedback_payload", schema_names)
+        self.assertEqual(payload["journey_contract"]["front_door_command"], "kit start --json")
+        self.assertIn("repo_role", payload["journey_contract"]["stable_start_fields"])
+        self.assertIn("local_update", payload["journey_contract"]["stable_start_fields"])
+        route_rules = {rule["route"]: rule["use_when"] for rule in payload["journey_contract"]["route_rules"]}
+        self.assertIn("kit start --no-update --json", route_rules)
+        self.assertIn("make agent-start", route_rules)
+        self.assertIn("startup packet", route_rules["make agent-start"])
+        self.assertIn("kit agent-context --json", route_rules)
+        self.assertIn("command-map metadata", route_rules["kit agent-context --json"])
         self.assertEqual(payload["parser_consistency"]["status"], "passed")
 
     def test_agent_tool_manifest_text_points_to_json_contract(self):
@@ -2326,6 +2582,7 @@ class RepoContractKitCliTests(unittest.TestCase):
         self.assertIn(" - source: kit command-map --json", result.stdout)
         self.assertIn(" - safe commands:", result.stdout)
         self.assertIn(" - target-write commands:", result.stdout)
+        self.assertIn(" - journey front door: kit start --json", result.stdout)
         self.assertIn(" - json: kit agent-tool-manifest --json", result.stdout)
 
     def test_sidecar_init_creates_external_state_without_target_writes(self):

@@ -1,5 +1,29 @@
 # Changelog
 
+## 0.6.29 - 2026-06-28
+
+- Let `kit start` opportunistically apply already-local, local-safe managed-file
+  and kit-metadata updates for installed target repos, while keeping
+  remote/global updates explicit through `kit update --global`.
+- Add `kit start --no-update` and `--update-policy check-only|local-safe`, plus
+  a structured `local_update` payload that reports checked/applied state,
+  planned and written paths, blockers, versions, and next commands.
+- Update agent/human docs, installed templates, generated CLI reference, UX
+  fixtures, and regression coverage for no-write startup, check-only planning,
+  local-safe apply, and customized-file conflict blocking.
+
+## 0.6.28 - 2026-06-27
+
+- Make `kit start` the canonical journey front door with a `--lite` shorthand,
+  additive `repo_role` payload field, and a maintainer-source journey for the
+  running kit source checkout.
+- Add guide and agent manifest journey metadata so agents can distinguish
+  `kit start --json`, installed `make agent-*` packet/context lanes, command-map
+  metadata, and direct source-checkout fallbacks.
+- Harden Codex thread mining with private local artifact permissions, broader
+  redaction, aggregate-only JSON stdout by default, current-era/kit filters, and
+  split command counts for kit, make, shell, and agent tool calls.
+
 ## 0.6.27 - 2026-06-26
 
 - Add `scripts/mine_codex_threads.py`, a local maintainer mining pipeline for

@@ -28,6 +28,8 @@ PUBLIC_COMMAND = "kit"
 INTERNAL_PRODUCT_NAME = "repo-contract-kit"
 COMPLETION_SHELLS = ("bash", "zsh", "fish")
 STYLE_CHOICES = ("auto", "plain", "pretty")
+START_UPDATE_POLICIES = ("local-safe", "check-only")
+START_LOCAL_SAFE_METADATA_PATHS = {".doc-contract-kit/install.json", ".doc-contract-kit/manifest.json"}
 FEEDBACK_LEDGER_FILENAME = "feedback.jsonl"
 FEEDBACK_SOURCES = ("human", "agent", "automation", "unknown")
 DEFAULT_WORKFLOW_SOURCE = Path(os.environ.get("XDG_DATA_HOME") or Path.home() / ".local" / "share") / "agent-workflow-kit" / "source"
@@ -581,6 +583,7 @@ def cli_metadata() -> dict[str, Any]:
             "agent-self-heal --apply",
             "install",
             "setup",
+            "start",
             "self update",
             "target add",
             "target repair-source-clone --apply",
@@ -853,10 +856,14 @@ def command_map_annotations() -> dict[tuple[str, ...], dict[str, Any]]:
         },
         ("start",): {
             "audience": ["human", "agent"],
-            "mutation": "read-only",
+            "mutation": "writes-target-conditionally",
+            "target_repo_write": "local-safe managed-file update by default for installed target repos; never with --no-update",
             "sidecar_write": "never",
+            "route_note": "`kit start` is the canonical first command for choosing human, agent, setup, maintenance, and release-gated journeys; installed targets may receive local-safe managed-file updates.",
             "examples": [
                 public_command("start"),
+                public_command("start", "--no-update"),
+                public_command("start", "--lite"),
                 public_command("start", "--json"),
                 public_command("start", "--repo", "/path/to/repo", "--json"),
             ],
@@ -865,6 +872,7 @@ def command_map_annotations() -> dict[tuple[str, ...], dict[str, Any]]:
             "stable_payload_fields": [
                 "schema_version",
                 "command",
+                "repo_role",
                 "journey",
                 "mode",
                 "recommended_setup_preset",
@@ -873,6 +881,7 @@ def command_map_annotations() -> dict[tuple[str, ...], dict[str, Any]]:
                 "human_next_commands",
                 "agent_next_commands",
                 "mode_next_commands",
+                "local_update",
                 "target_repo_writes",
                 "sidecar_writes",
                 "exit_code",
@@ -5222,6 +5231,221 @@ def update_plan_payload(args: argparse.Namespace, repo: Path) -> tuple[dict[str,
     return payload, result.returncode
 
 
+def start_update_policy(args: argparse.Namespace | None) -> str:
+    if getattr(args, "no_update", False):
+        return "disabled"
+    policy = getattr(args, "update_policy", None) or "local-safe"
+    return policy if policy in START_UPDATE_POLICIES else "local-safe"
+
+
+def start_local_update_base(
+    *,
+    mode: str,
+    checked: bool = False,
+    reason: str = "not checked",
+    before_version: str | None = None,
+    after_version: str | None = None,
+    next_commands: list[str] | None = None,
+) -> dict[str, Any]:
+    return {
+        "checked": checked,
+        "available": False,
+        "applied": False,
+        "mode": mode,
+        "reason": reason,
+        "before_version": before_version,
+        "after_version": after_version or before_version,
+        "written_paths": [],
+        "blocked_by": [],
+        "next_commands": next_commands or [],
+        "plan_summary": {
+            "actions": 0,
+            "write_actions": 0,
+            "conflicts": 0,
+            "blockers": 0,
+            "warnings": 0,
+        },
+    }
+
+
+def start_update_plan_for_repo(repo: Path) -> tuple[dict[str, Any] | None, int]:
+    command = [sys.executable, str(ROOT / "scripts" / "update.py"), str(repo), "--plan-json"]
+    result = subprocess.run(command, cwd=ROOT, capture_output=True, text=True, check=False)
+    try:
+        payload = json.loads(result.stdout) if result.stdout.strip() else None
+    except json.JSONDecodeError:
+        payload = None
+    return (payload if isinstance(payload, dict) else None), result.returncode
+
+
+def start_plan_write_actions(plan: dict[str, Any]) -> list[dict[str, Any]]:
+    write_actions = []
+    for action in plan.get("actions") or []:
+        if action.get("action") == "current":
+            continue
+        if action.get("writes_on_apply"):
+            write_actions.append(action)
+    return write_actions
+
+
+def start_local_update_safety(plan: dict[str, Any]) -> tuple[bool, list[str], list[str], list[dict[str, Any]]]:
+    blocked_by: list[str] = []
+    written_paths: set[str] = set()
+    unsafe_actions: list[dict[str, Any]] = []
+
+    for blocker in plan.get("blockers") or []:
+        if isinstance(blocker, dict):
+            blocked_by.append(str(blocker.get("code") or "update-plan-blocker"))
+        else:
+            blocked_by.append("update-plan-blocker")
+
+    for conflict in plan.get("conflicts") or []:
+        path = conflict.get("path") if isinstance(conflict, dict) else None
+        blocked_by.append(f"customized-managed-file:{path}" if path else "customized-managed-file")
+
+    for action in start_plan_write_actions(plan):
+        action_name = str(action.get("action") or "unknown")
+        writes = [str(path) for path in action.get("writes_on_apply") or []]
+        written_paths.update(writes)
+        metadata_only = action_name == "migrate-profile-config" and set(writes).issubset(START_LOCAL_SAFE_METADATA_PATHS)
+        managed_update = action_name in {"restore", "update"} and bool(action.get("managed"))
+        legacy_adoption = action_name == "adopt-legacy" and bool(action.get("managed"))
+        if not (metadata_only or managed_update or legacy_adoption):
+            unsafe_actions.append(action)
+            blocked_by.append(f"unsafe-action:{action_name}")
+
+    return not blocked_by and bool(written_paths), sorted(set(blocked_by)), sorted(written_paths), unsafe_actions
+
+
+def start_apply_local_update(repo: Path) -> tuple[int, list[str], dict[str, Any] | None]:
+    before_status = git_status_entries(repo)
+    previous_report = latest_update_report(repo)
+    previous_report_path = previous_report.get("path") if previous_report else None
+    command = [sys.executable, str(ROOT / "scripts" / "update.py"), str(repo), "--apply"]
+    result = subprocess.run(command, cwd=ROOT, capture_output=True, text=True, check=False)
+    report = latest_update_report(repo)
+    if report and report.get("path") == previous_report_path:
+        report = None
+    after_status = git_status_entries(repo)
+    before_by_path = {entry["path"]: entry for entry in before_status}
+    changed_paths = sorted(
+        entry["path"]
+        for entry in after_status
+        if before_by_path.get(entry["path"]) != entry
+    )
+    report_paths = update_report_write_paths(report) if report else []
+    return result.returncode, sorted(set(report_paths or changed_paths)), report
+
+
+def start_local_update_payload(repo: Path, status: dict[str, Any], args: argparse.Namespace | None) -> dict[str, Any]:
+    mode = start_update_policy(args)
+    before_version = status.get("install", {}).get("kit_version")
+    if mode == "disabled":
+        return start_local_update_base(
+            mode=mode,
+            reason="disabled by --no-update",
+            before_version=before_version,
+            next_commands=[command_for_repo(repo, "update", "--dry-run")],
+        )
+
+    plan, plan_returncode = start_update_plan_for_repo(repo)
+    local_update = start_local_update_base(
+        mode=mode,
+        checked=True,
+        reason="update plan checked",
+        before_version=before_version,
+    )
+    local_update["plan_returncode"] = plan_returncode
+    if not plan:
+        local_update.update(
+            {
+                "reason": "unable to parse local update plan",
+                "blocked_by": ["update-plan-failed"],
+                "next_commands": [command_for_repo(repo, "update", "--dry-run")],
+            }
+        )
+        return local_update
+
+    write_actions = start_plan_write_actions(plan)
+    local_update["plan_summary"] = {
+        "actions": len(plan.get("actions") or []),
+        "write_actions": len(write_actions),
+        "conflicts": len(plan.get("conflicts") or []),
+        "blockers": len(plan.get("blockers") or []),
+        "warnings": len(plan.get("warnings") or []),
+        "direct_updates": count_update_actions(list(plan.get("actions") or [])).get("direct_updates", 0),
+        "target_owned": count_update_actions(list(plan.get("actions") or [])).get("target_owned", 0),
+    }
+    safe_to_apply, blocked_by, planned_written_paths, unsafe_actions = start_local_update_safety(plan)
+    local_update["available"] = bool(write_actions)
+    local_update["blocked_by"] = blocked_by
+    local_update["planned_written_paths"] = planned_written_paths
+    local_update["unsafe_actions"] = [
+        {
+            "action": item.get("action"),
+            "path": item.get("path"),
+            "managed": item.get("managed"),
+        }
+        for item in unsafe_actions
+    ]
+
+    if not write_actions:
+        local_update.update(
+            {
+                "reason": "target install already matches local kit",
+                "next_commands": [command_for_repo(repo, "status")],
+            }
+        )
+        return local_update
+    if blocked_by:
+        local_update.update(
+            {
+                "reason": "local update is available but not safe for automatic start",
+                "next_commands": [command_for_repo(repo, "update", "--dry-run"), command_for_repo(repo, "doctor")],
+            }
+        )
+        return local_update
+    if mode == "check-only":
+        local_update.update(
+            {
+                "reason": "local update is available; check-only policy skipped apply",
+                "next_commands": [command_for_repo(repo, "update"), command_for_repo(repo, "doctor")],
+            }
+        )
+        return local_update
+    if not safe_to_apply:
+        local_update.update(
+            {
+                "reason": "local update is not eligible for automatic start",
+                "next_commands": [command_for_repo(repo, "update", "--dry-run"), command_for_repo(repo, "doctor")],
+            }
+        )
+        return local_update
+
+    apply_returncode, written_paths, report = start_apply_local_update(repo)
+    after_status = status_payload(repo)
+    after_version = after_status.get("install", {}).get("kit_version")
+    local_update.update(
+        {
+            "applied": apply_returncode == 0 and bool(written_paths),
+            "apply_returncode": apply_returncode,
+            "after_version": after_version,
+            "written_paths": written_paths,
+            "reason": "applied local-safe update" if apply_returncode == 0 else "local-safe update command failed",
+            "next_commands": [command_for_repo(repo, "status"), command_for_repo(repo, "doctor")]
+            if apply_returncode == 0
+            else [command_for_repo(repo, "update", "--dry-run"), command_for_repo(repo, "doctor")],
+        }
+    )
+    if report:
+        local_update["update_report"] = {
+            "path": report.get("path"),
+            "actions": len(report.get("actions") or []),
+            "conflicts": len(report.get("conflicts") or []),
+        }
+    return local_update
+
+
 def render_json(payload: Any) -> None:
     print(json.dumps(payload, indent=2, sort_keys=True))
 
@@ -5797,6 +6021,12 @@ def render_source_clone_repair(payload: dict[str, Any]) -> None:
 def guide_payload(cwd: Path | None = None) -> dict[str, Any]:
     current = (cwd or Path.cwd()).expanduser().resolve()
     tool = self_status_payload()["tool"]
+    start = start_summary(
+        start_payload(
+            argparse.Namespace(mode="auto", repo=".", lite=False, no_update=True, update_policy="check-only"),
+            cwd=current,
+        )
+    )
     payload: dict[str, Any] = {
         "schema_version": 1,
         "command": "guide",
@@ -5810,6 +6040,7 @@ def guide_payload(cwd: Path | None = None) -> dict[str, Any]:
         },
         "cwd": str(current),
         "repo": None,
+        "start": start,
         "status": "outside-git",
         "summary": "Not inside a git repository.",
         "recommended_commands": [
@@ -5835,6 +6066,7 @@ def guide_payload(cwd: Path | None = None) -> dict[str, Any]:
     status = status_payload(repo)
     installed = bool(status["install"]["installed"])
     dirty = bool(status["git"]["dirty"])
+    source_repo = is_kit_source_repo(repo)
     payload["repo"] = status["repo"]
     payload["sidecar_state"] = status["sidecar_state"]
     payload["repo_status"] = {
@@ -5845,6 +6077,24 @@ def guide_payload(cwd: Path | None = None) -> dict[str, Any]:
         "managed_file_count": status["install"].get("managed_file_count"),
         "runtime_adapters": status["install"].get("runtime_adapters") or [],
     }
+    if source_repo:
+        payload["status"] = "kit-source"
+        payload["summary"] = "This is the running kit source checkout."
+        payload["recommended_commands"] = start.get("next_commands") or [
+            "make docs-check",
+            "make docs-freshness",
+            "make workflow-source-check",
+            "make version-check",
+            "make test",
+        ]
+        payload["actions"] = [
+            {"key": "1", "label": "Run docs check", "command": ["make", "docs-check"], "mutating": False},
+            {"key": "2", "label": "Check generated docs", "command": ["make", "docs-freshness"], "mutating": False},
+            {"key": "3", "label": "Run tests", "command": ["make", "test"], "mutating": False},
+            {"key": "4", "label": "Show options", "command": [PUBLIC_COMMAND, "options"], "mutating": False},
+            {"key": "q", "label": "Quit", "command": [], "mutating": False},
+        ]
+        return payload
     if not installed:
         payload["status"] = "target-not-installed"
         payload["summary"] = "This git repo is not enrolled yet."
@@ -5925,6 +6175,13 @@ def start_setup_preset(selected_mode: str) -> str:
     return "lite" if selected_mode == "lite" else "agentic"
 
 
+def is_kit_source_repo(repo: Path) -> bool:
+    try:
+        return repo.expanduser().resolve() == ROOT.expanduser().resolve()
+    except OSError:
+        return False
+
+
 def start_step(
     *,
     audience: str,
@@ -5944,13 +6201,14 @@ def start_step(
 
 def start_payload(args: argparse.Namespace | None = None, cwd: Path | None = None) -> dict[str, Any]:
     current = (cwd or Path.cwd()).expanduser().resolve()
-    requested_mode = getattr(args, "mode", "auto") if args is not None else "auto"
+    requested_mode = "lite" if getattr(args, "lite", False) else (getattr(args, "mode", "auto") if args is not None else "auto")
     repo_arg = getattr(args, "repo", ".") if args is not None else "."
     tool = self_status_payload()["tool"]
     base_payload: dict[str, Any] = {
         "schema_version": 1,
         "command": "start",
         "cwd": str(current),
+        "repo_role": "outside-git",
         "tool": {
             "name": PUBLIC_COMMAND,
             "version": tool.get("version"),
@@ -5988,8 +6246,13 @@ def start_payload(args: argparse.Namespace | None = None, cwd: Path | None = Non
         "agent_next_commands": [public_command("start", "--json")],
         "mode_next_commands": [],
         "escalate_if": LITE_ESCALATION_TRIGGERS,
-        "target_repo_writes": target_repo_writes(False, reason="start is read-only"),
-        "sidecar_writes": sidecar_writes(False, reason="start is read-only"),
+        "local_update": start_local_update_base(
+            mode=start_update_policy(args),
+            reason="not inside a git repository",
+            next_commands=[public_command("start", "--json")],
+        ),
+        "target_repo_writes": target_repo_writes(False, reason="start did not resolve a target repo"),
+        "sidecar_writes": sidecar_writes(False, reason="start does not write sidecar state"),
         "sidecar_state": sidecar_state(),
         "exit_code": 0,
     }
@@ -6003,13 +6266,98 @@ def start_payload(args: argparse.Namespace | None = None, cwd: Path | None = Non
     status = status_payload(repo)
     installed = bool(status["install"]["installed"])
     dirty = bool(status["git"]["dirty"])
+    source_repo = is_kit_source_repo(repo)
+    repo_role = "kit-source" if source_repo else ("target-installed" if installed else "target-unenrolled")
+    if installed and not source_repo:
+        local_update = start_local_update_payload(repo, status, args)
+        if local_update.get("applied"):
+            status = status_payload(repo)
+            installed = bool(status["install"]["installed"])
+            dirty = bool(status["git"]["dirty"])
+    else:
+        reason = "source checkout maintenance uses explicit release checks" if source_repo else "repo is not enrolled with kit"
+        local_update = start_local_update_base(
+            mode=start_update_policy(args),
+            reason=reason,
+            before_version=status["install"].get("kit_version"),
+            next_commands=[command_for_repo(repo, "update", "--dry-run")] if installed else [command_for_repo(repo, "setup")],
+        )
     selection = harness_mode_selection(repo, requested_mode)
     selected_mode = selection["selected_mode"]
     concrete_mode_commands = [
         command.replace("--repo <repo>", f"--repo {shlex.quote(str(repo))}") for command in selection["next_commands"]
     ]
 
-    if not installed:
+    if source_repo:
+        if selected_mode == "release-gated":
+            concrete_mode_commands = [
+                "make docs-check",
+                "make docs-freshness",
+                "make workflow-source-check",
+                "make version-check",
+                "make test",
+            ]
+        elif selected_mode == "standard":
+            concrete_mode_commands = [
+                "make docs-check",
+                "make docs-freshness",
+                "make workflow-source-check",
+                "make test",
+            ]
+        else:
+            concrete_mode_commands = [
+                "make docs-check",
+                "make docs-freshness",
+                "make workflow-source-check",
+            ]
+        journey_id = "maintainer-source"
+        label = f"Maintain the kit source checkout in {selected_mode} mode."
+        why = ["This repo is the running kit source checkout.", *start_mode_why(selection, dirty)]
+        next_steps = [
+            start_step(
+                audience="human",
+                label="Run docs contract checks",
+                command="make docs-check",
+                reason="Validate documentation impact before changing the source checkout.",
+            ),
+            start_step(
+                audience="human",
+                label="Check generated docs",
+                command="make docs-freshness",
+                reason="Keep generated CLI and docs surfaces current.",
+            ),
+            start_step(
+                audience="agent",
+                label="Read command metadata",
+                command=public_command("command-map", "--json"),
+                reason="Agents should use structured command metadata rather than README prose.",
+            ),
+            start_step(
+                audience="agent",
+                label="Read agent journey manifest",
+                command=public_command("agent-tool-manifest", "--json"),
+                reason="Use the local-only manifest for safe command routing.",
+            ),
+        ]
+        if selected_mode in {"standard", "release-gated"}:
+            next_steps.append(
+                start_step(
+                    audience="agent",
+                    label="Run the source test suite",
+                    command="make test",
+                    reason="Source-checkout implementation changes need full regression evidence.",
+                )
+            )
+        if selected_mode == "release-gated":
+            next_steps.append(
+                start_step(
+                    audience="human",
+                    label="Check release metadata",
+                    command="make version-check",
+                    reason="Public CLI, docs, privacy, or release metadata changes require version evidence.",
+                )
+            )
+    elif not installed:
         setup_preset = start_setup_preset(selected_mode)
         journey_id = "new-repo"
         label = f"Set up this repo with the {setup_preset} preset."
@@ -6105,9 +6453,20 @@ def start_payload(args: argparse.Namespace | None = None, cwd: Path | None = Non
     human_next_commands = [step["command"] for step in next_steps if step["audience"] == "human"]
     agent_next_commands = [step["command"] for step in next_steps if step["audience"] == "agent"]
 
+    target_writes = target_repo_writes(
+        bool(local_update.get("applied")),
+        paths=list(local_update.get("written_paths") or []),
+        reason=(
+            "start applied a local-safe kit update"
+            if local_update.get("applied")
+            else "start local update policy did not apply target writes"
+        ),
+    )
+
     return {
         **base_payload,
         "repo": str(repo),
+        "repo_role": repo_role,
         "repo_status": {
             "installed": installed,
             "dirty": dirty,
@@ -6132,16 +6491,47 @@ def start_payload(args: argparse.Namespace | None = None, cwd: Path | None = Non
             "trigger_reasons": selection["trigger_reasons"],
             "human_override": selection["human_override"],
         },
-        "recommended_setup_preset": start_setup_preset(selected_mode) if not installed else None,
+        "recommended_setup_preset": start_setup_preset(selected_mode) if not installed and not source_repo else None,
         "why": why,
-        "blockers": [] if installed or journey_id == "new-repo" else ["target-not-installed"],
+        "blockers": [] if installed or journey_id in {"new-repo", "maintainer-source"} else ["target-not-installed"],
         "next_steps": next_steps,
         "next_commands": next_commands,
         "human_next_commands": human_next_commands,
         "agent_next_commands": agent_next_commands,
         "mode_next_commands": concrete_mode_commands,
+        "local_update": local_update,
+        "target_repo_writes": target_writes,
         "status": status,
         "sidecar_state": status["sidecar_state"],
+    }
+
+
+def start_summary(payload: dict[str, Any]) -> dict[str, Any]:
+    mode = payload.get("mode") or {}
+    return {
+        "repo_role": payload.get("repo_role"),
+        "repo": payload.get("repo"),
+        "journey": payload.get("journey"),
+        "mode": {
+            "requested": mode.get("requested"),
+            "detected": mode.get("detected"),
+            "selected": mode.get("selected"),
+            "confidence": mode.get("confidence"),
+        } if mode else None,
+        "recommended_setup_preset": payload.get("recommended_setup_preset"),
+        "next_commands": payload.get("next_commands") or [],
+        "human_next_commands": payload.get("human_next_commands") or [],
+        "agent_next_commands": payload.get("agent_next_commands") or [],
+        "mode_next_commands": payload.get("mode_next_commands") or [],
+        "local_update": {
+            "checked": (payload.get("local_update") or {}).get("checked", False),
+            "available": (payload.get("local_update") or {}).get("available", False),
+            "applied": (payload.get("local_update") or {}).get("applied", False),
+            "mode": (payload.get("local_update") or {}).get("mode"),
+            "reason": (payload.get("local_update") or {}).get("reason"),
+            "blocked_by": (payload.get("local_update") or {}).get("blocked_by") or [],
+            "next_commands": (payload.get("local_update") or {}).get("next_commands") or [],
+        },
     }
 
 
@@ -6149,6 +6539,7 @@ def render_start(payload: dict[str, Any]) -> None:
     print(f"{PUBLIC_COMMAND} start")
     print(f" - current path: {payload['cwd']}")
     print(f" - repo: {payload.get('repo') or 'not a git repo'}")
+    print(f" - repo role: {payload.get('repo_role') or 'unknown'}")
     print(f" - journey: {payload['journey']['id']} ({payload['journey']['confidence']} confidence)")
     if payload.get("repo_status"):
         repo_status = payload["repo_status"]
@@ -6156,6 +6547,18 @@ def render_start(payload: dict[str, Any]) -> None:
         print(f" - dirty: {str(repo_status['dirty']).lower()} ({repo_status['changed_file_count']} changed)")
     if payload.get("mode"):
         print(f" - mode: {payload['mode']['selected']}")
+    local_update = payload.get("local_update") or {}
+    if local_update:
+        update_state = "applied" if local_update.get("applied") else ("available" if local_update.get("available") else "current")
+        if local_update.get("blocked_by"):
+            update_state = "blocked"
+        if local_update.get("mode") == "disabled":
+            update_state = "disabled"
+        print(f" - local update: {update_state} ({local_update.get('reason') or 'unknown'})")
+        if local_update.get("written_paths"):
+            print(f"   - written paths: {len(local_update['written_paths'])}")
+        for blocker in local_update.get("blocked_by") or []:
+            print(f"   - {blocker}")
     print(" - why:")
     for reason in payload.get("why", []):
         print(f"   - {reason}")
@@ -6489,10 +6892,61 @@ def agent_tool_manifest_payload() -> dict[str, Any]:
                 "source_command",
                 "integration_contract",
                 "no_input_contract",
+                "journey_contract",
                 "safe_commands",
                 "target_write_commands",
                 "sidecar_write_commands",
                 "schemas",
+            ],
+        },
+        "journey_contract": {
+            "front_door_command": public_command("start", "--json"),
+            "stable_start_fields": [
+                "schema_version",
+                "command",
+                "repo_role",
+                "journey",
+                "mode",
+                "recommended_setup_preset",
+                "next_steps",
+                "next_commands",
+                "human_next_commands",
+                "agent_next_commands",
+                "mode_next_commands",
+                "local_update",
+                "target_repo_writes",
+                "sidecar_writes",
+                "exit_code",
+            ],
+            "route_rules": [
+                {
+                    "route": public_command("start", "--json"),
+                    "use_when": "first command in an unknown repo; selects journey, mode, setup preset, local update status, and next commands",
+                },
+                {
+                    "route": public_command("start", "--no-update", "--json"),
+                    "use_when": "first command when an agent must avoid target writes while still reading the journey contract",
+                },
+                {
+                    "route": "make agent-start",
+                    "use_when": "installed target repo needs a local startup packet under .agent-workflows/runs/",
+                },
+                {
+                    "route": "make agent-context-bundle",
+                    "use_when": "installed target repo needs a compact startup or handoff context bundle",
+                },
+                {
+                    "route": public_command("command-map", "--json"),
+                    "use_when": "agent needs parser metadata, command safety, schemas, examples, and aliases",
+                },
+                {
+                    "route": public_command("agent-context", "--json"),
+                    "use_when": "compatibility alias for command-map metadata; not the repo handoff bundle",
+                },
+                {
+                    "route": "python3 /path/to/kit/scripts/repo_contract_kit.py start --repo /path/to/repo --json",
+                    "use_when": "source-checkout fallback when the global kit launcher is unavailable",
+                },
             ],
         },
         "target_repo_writes": target_repo_writes(False, reason="agent-tool-manifest is read-only command metadata"),
@@ -6509,6 +6963,7 @@ def render_agent_tool_manifest(payload: dict[str, Any]) -> None:
     print(f" - target-write commands: {len(payload['target_write_commands'])}")
     print(f" - sidecar-write commands: {len(payload['sidecar_write_commands'])}")
     print(f" - schemas: {len(payload['schemas'])}")
+    print(f" - journey front door: {payload['journey_contract']['front_door_command']}")
     print(" - integration: local only, no network calls, no hosted model calls, no credentials")
     print(f" - json: {PUBLIC_COMMAND} agent-tool-manifest --json")
 
@@ -7145,6 +7600,9 @@ def render_parse_error(payload: dict[str, Any]) -> None:
 
 def render_guide(payload: dict[str, Any]) -> None:
     tool = payload["tool"]
+    start = payload.get("start") or {}
+    journey = start.get("journey") or {}
+    mode = start.get("mode") or {}
     print(f"{PUBLIC_COMMAND} guide")
     print(f" - tool version: {tool.get('version') or 'unknown'}")
     print(f" - tool root: {tool.get('root') or 'unknown'}")
@@ -7158,6 +7616,18 @@ def render_guide(payload: dict[str, Any]) -> None:
             print(f" - installed kit version: {repo_status.get('kit_version') or 'unknown'}")
     else:
         print(" - repo: not a git repo")
+    if start:
+        print(f" - repo role: {start.get('repo_role') or 'unknown'}")
+        print(f" - journey: {journey.get('id') or 'unknown'}")
+        if mode:
+            print(f" - mode: {mode.get('selected') or 'unknown'}")
+        local_update = start.get("local_update") or {}
+        if local_update:
+            print(
+                " - local update: "
+                f"{local_update.get('reason') or 'unknown'} "
+                f"(mode: {local_update.get('mode') or 'unknown'})"
+            )
     print(f" - status: {payload['status']}")
     print(f" - next: {payload['summary']}")
     print(" - recommended commands:")
@@ -7612,7 +8082,7 @@ def update_script_command(args: argparse.Namespace, repo: Path, apply_default: b
     kit = Path(getattr(args, "kit", str(ROOT))).expanduser().resolve()
     command = [sys.executable, str(kit / "scripts" / "update.py"), str(repo)]
     for option in ("preset", "profiles", "runtime_adapters"):
-        value = getattr(args, option)
+        value = getattr(args, option, None)
         if value:
             command.extend([f"--{option.replace('_', '-')}", value])
     for value in getattr(args, "runtime_adapter", None) or []:
@@ -7649,6 +8119,14 @@ def build_parser() -> argparse.ArgumentParser:
     start = subparsers.add_parser("start", help="Choose the next human or agent journey from repo state.")
     add_common_repo_args(start)
     start.add_argument("--mode", choices=HARNESS_MODE_CHOICES, default="auto", help="Requested harness mode. auto lets kit choose.")
+    start.add_argument("--lite", action="store_true", help="Shortcut for --mode lite.")
+    start.add_argument(
+        "--update-policy",
+        choices=START_UPDATE_POLICIES,
+        default="local-safe",
+        help="Local update behavior for installed target repos: local-safe applies managed-file updates; check-only only reports.",
+    )
+    start.add_argument("--no-update", action="store_true", help="Skip the local update check and apply step.")
 
     command_map = subparsers.add_parser("command-map", help="Emit structured command metadata for humans and agents.")
     command_map.add_argument("--json", action="store_true", help="Emit machine-readable JSON.")

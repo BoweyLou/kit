@@ -1,8 +1,8 @@
 # Guided Upgrade Flow
 
-Use this flow when moving an enrolled target repo to a newer kit version. It keeps updates explicit, preserves target-owned
-work, and treats conflict proposals as review artifacts rather than automatic
-instructions.
+Use this flow when moving an enrolled target repo to a newer kit version. It
+keeps remote/global updates explicit, preserves target-owned work, and treats
+conflict proposals as review artifacts rather than automatic instructions.
 
 ## Safety Boundary
 
@@ -11,6 +11,12 @@ The upgrade flow must not reset the target repo, discard local changes, move
 `.doc-contract-kit/updates/`. A kit update can replace clean kit-managed files,
 refresh kit metadata, and write proposed replacements for customized managed
 files. It must preserve target-owned files and customized managed files.
+
+`kit start` is allowed to apply only already-local, local-safe target updates:
+clean managed-file refreshes, legacy manifest adoption, and kit metadata
+migrations with no blockers or customized-file conflicts. It must not fetch a
+remote, run `kit update --global`, force managed files, or overwrite
+target-owned files.
 
 Stop and ask a human before applying an update if the target repo has unrelated
 dirty work, the source kit checkout is not the intended version, or a proposed
@@ -22,9 +28,14 @@ guardrails in a way you cannot justify.
 Start from the target repo:
 
 ```bash
+kit start
 kit status
 kit update --dry-run
 ```
+
+Use `kit start --no-update` for guaranteed no-write orientation, or
+`kit start --update-policy check-only` to report local update availability
+without applying it.
 
 When the global launcher is unavailable, use the local fallback:
 

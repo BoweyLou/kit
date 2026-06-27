@@ -48,8 +48,22 @@ kit doctor
 
 Use `kit start` when you are unsure whether this is a fresh setup, normal
 maintenance, dirty work in progress, or a release-sensitive change. It reports
-the selected journey, the suggested mode, and the next human and agent commands
-without writing to the repo.
+the selected journey, the suggested mode, and the next human and agent commands.
+In an installed target repo, it may also apply an already-local, local-safe kit
+update before returning those commands.
+
+Use this when you want startup with no target writes:
+
+```bash
+kit start --no-update
+```
+
+Use this when you want to see whether a local update is available without
+applying it:
+
+```bash
+kit start --update-policy check-only
+```
 
 If the update plan is clear and expected:
 
@@ -59,8 +73,11 @@ kit update
 
 ## Update Rules
 
-Kit updates are explicit. A global tool update does not rewrite target repos by
-itself.
+`kit start` only uses the already-local kit checkout. It does not fetch from
+GitHub, update the global launcher, or refresh a source checkout.
+
+Remote/global updates are explicit. A global tool update does not rewrite
+target repos by itself.
 
 Update the global cached tool:
 

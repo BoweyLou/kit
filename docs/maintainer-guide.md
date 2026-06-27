@@ -56,6 +56,16 @@ Update `CHANGELOG.md` and `VERSION` when the change is part of a release scope.
 For docs-only reshaping, a version bump is not required unless the published
 operator contract changes.
 
+Use `kit start --json` in this source checkout before implementation. It should
+report `repo_role: kit-source` and a `maintainer-source` journey, then point to
+the maintainer checks rather than target enrollment.
+
+`kit start` may apply local-safe managed-file updates only in installed target
+repos. In this source checkout it must stay a maintainer route and use explicit
+release checks (`make docs-freshness`, `make workflow-source-check`,
+`make version-check`, `make test`) instead of treating the source tree like a
+target install.
+
 ## Codex Thread Mining
 
 Mine local Codex thread history into a redacted aggregate CLI journey report:
@@ -66,6 +76,10 @@ python3 scripts/mine_codex_threads.py --report docs/cli-journey-research.md
 
 Raw and intermediate artifacts stay under local state:
 `${XDG_STATE_HOME:-~/.local/state}/repo-contract-kit/thread-mining/`.
+The miner writes local artifacts with private permissions and `--json` prints
+aggregate output by default. Use `--include-observations` only for local manual
+audits. Use `--kit-related --current-kit-era` for the current kit-specific
+slice, or `--since` and `--cwd-prefix` for narrower local research.
 
 ## Documentation Shape
 

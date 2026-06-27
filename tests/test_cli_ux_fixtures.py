@@ -87,6 +87,9 @@ class CliUxFixtureTests(unittest.TestCase):
                     install_kit_target(repo)
                 cwd = repo
                 args = [part.replace("{repo}", str(repo)) for part in args]
+            elif fixture == "source_repo":
+                cwd = ROOT
+                args = [part.replace("{repo}", str(ROOT)) for part in args]
             elif fixture:
                 self.fail(f"Unknown CLI UX fixture type: {fixture}")
 

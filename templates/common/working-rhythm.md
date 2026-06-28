@@ -18,6 +18,7 @@ kit status
 kit update --dry-run
 kit update
 kit doctor
+kit closeout-plan
 ```
 
 `kit setup` is the target enrollment command. It is intentionally a normal CLI
@@ -128,6 +129,7 @@ make agent-task-heartbeat TASK=<id>
 make agent-task-finalize TASK=<id> TASK_RECEIPT=<path>
 make agent-task-finish TASK=<id> TASK_RECEIPT=<path>
 make agent-task-closeout
+kit closeout-plan --json
 make agent-verify
 ```
 
@@ -140,6 +142,9 @@ finalizer, self-heal, and closeout state with attribution and latest receipt
 provenance, then recommends deterministic next commands such as
 `agent-self-heal`, `agent-task-status`, `agent-task-ready`,
 `agent-task-finalize`, `agent-task-closeout`, or `agent-automation-handoff`.
+Run `kit closeout-plan --json` after validation and before a final handoff. If
+it reports `can_claim_done=false`, do not claim the work is done; report the
+`completion_state`, `claim_blockers`, and `next_action`.
 `agent-branch-readiness` sits after those local task gates when a whole branch
 or PR needs one JSON answer before a human updates PR state or hosted branch
 governance.
@@ -237,6 +242,7 @@ kit status
 kit update --dry-run
 kit update
 kit doctor
+kit closeout-plan
 make kit-explain
 ```
 

@@ -4,7 +4,7 @@ Generated from `kit command-map --json`.
 Do not edit command sections by hand; run `kit cli-reference --write docs/cli-reference.md`.
 
 - Schema version: `1`
-- Command count: `55`
+- Command count: `56`
 
 ## Commands
 
@@ -462,6 +462,32 @@ Flags:
 - `--json` - Emit machine-readable JSON.
 - `--check` - Compare generated Markdown with a reference file.
 - `--write` - Write generated Markdown to a reference file.
+
+### kit closeout-plan
+
+Plan whether current work can be claimed done from dirty state, task, receipt, and closeout evidence.
+
+- Audience: `human, agent`
+- Mutation: `read-only`
+- Target writes: `never`
+- Sidecar writes: `never`
+- JSON: `yes`
+- Output schema: `closeout_plan_payload`
+- Route role: `canonical`
+- Canonical command: `closeout-plan`
+- Docs: `docs/agent-guide.md, docs/cli-reference.md`
+
+Examples:
+
+- `kit closeout-plan --repo /path/to/repo --json`
+- `kit closeout-plan --repo /path/to/repo --strict`
+
+Flags:
+
+- `--repo` - Target git repository. Defaults to the current directory.
+- `--json` - Emit machine-readable JSON.
+- `--format`
+- `--strict` - Exit non-zero when completion cannot be claimed cleanly.
 
 ### kit command-map
 

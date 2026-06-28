@@ -1019,6 +1019,32 @@ def command_map_annotations() -> dict[tuple[str, ...], dict[str, Any]]:
                 "exit_code",
             ],
         },
+        ("closeout-plan",): {
+            "audience": ["human", "agent"],
+            "mutation": "read-only",
+            "sidecar_write": "never",
+            "route_role": "canonical",
+            "canonical_command": "closeout-plan",
+            "alias_group": "task-closeout",
+            "route_note": "`kit closeout-plan` translates task, dirty-state, receipt, and closeout evidence into whether work can truthfully be claimed done.",
+            "examples": [
+                public_command("closeout-plan", "--repo", "/path/to/repo", "--json"),
+                public_command("closeout-plan", "--repo", "/path/to/repo", "--strict"),
+            ],
+            "output_schema": "closeout_plan_payload",
+            "docs": ["docs/agent-guide.md", "docs/cli-reference.md"],
+            "stable_payload_fields": [
+                "schema_version",
+                "command",
+                "target_repo_writes",
+                "sidecar_writes",
+                "can_claim_done",
+                "completion_state",
+                "next_action",
+                "claim_blockers",
+                "exit_code",
+            ],
+        },
         ("self",): {
             "audience": ["human", "agent"],
             "mutation": "namespace",
@@ -3423,6 +3449,315 @@ def render_agent_state_ledger(payload: dict[str, Any]) -> None:
     print(" - next safe commands:")
     for command in payload.get("next_safe_commands") or []:
         print(f"   - {command}")
+
+
+def closeout_dirty_file_groups(entries: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    groups: dict[str, dict[str, Any]] = {}
+    for entry in entries:
+        path = entry.get("path") or ""
+        group = path.split("/", 1)[0] if "/" in path else "(root)"
+        payload = groups.setdefault(
+            group,
+            {
+                "group": group,
+                "count": 0,
+                "tracked_count": 0,
+                "untracked_count": 0,
+                "staged_count": 0,
+                "unstaged_count": 0,
+                "files": [],
+            },
+        )
+        code = entry.get("code") or ""
+        payload["count"] += 1
+        payload["files"].append({"path": path, "code": code})
+        if code == "??":
+            payload["untracked_count"] += 1
+            continue
+        payload["tracked_count"] += 1
+        if code[:1] != " ":
+            payload["staged_count"] += 1
+        if len(code) > 1 and code[1:2] != " ":
+            payload["unstaged_count"] += 1
+    return [groups[key] for key in sorted(groups)]
+
+
+def closeout_plan_action(command: str, reason: str, *, task_id: str | None = None, mutating: bool = False) -> dict[str, Any]:
+    return {
+        "command": command,
+        "reason": reason,
+        "task_id": task_id or "",
+        "mutating": mutating,
+    }
+
+
+def closeout_plan_relevant_blocked_items(items: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    relevant = []
+    for item in items:
+        reasons = set(item.get("reasons") or [])
+        if "primary checkout is never removed" in reasons:
+            continue
+        relevant.append(item)
+    return relevant
+
+
+def task_brief(task: dict[str, Any]) -> dict[str, Any]:
+    return {
+        "task_id": task.get("task_id"),
+        "status": task.get("status"),
+        "owner": task.get("owner"),
+        "owner_label": task.get("owner_label"),
+        "session_id": task.get("session_id"),
+        "thread_id": task.get("thread_id"),
+        "automation_id": task.get("automation_id"),
+        "attribution": task.get("attribution") or {},
+        "worktree": task.get("worktree"),
+        "dirty": bool(task.get("dirty")),
+        "dirty_count": task.get("dirty_count", 0),
+        "missing_worktree": bool(task.get("missing_worktree")),
+        "missing_final_receipt": bool(task.get("missing_final_receipt")),
+        "stale_lease": bool(task.get("stale_lease")),
+        "active_overlap": bool(task.get("active_overlap")),
+        "final_receipt": task.get("final_receipt") or {},
+        "latest_receipt": task.get("latest_receipt") or {},
+        "next_safe_command": task.get("next_safe_command") or "",
+        "unresolved": task.get("unresolved") or [],
+    }
+
+
+def closeout_plan_payload(args: argparse.Namespace, repo: Path) -> dict[str, Any]:
+    primary = primary_checkout(repo)
+    ledger = agent_state_ledger_payload(args, primary)
+    dirty = ledger.get("dirty") or {}
+    task_status = ledger.get("task_status") or {}
+    task_summary = task_status.get("summary") or {}
+    tasks = task_status.get("tasks") or []
+    closeout = ledger.get("closeout_state") or {}
+    closeout_blocked = closeout_plan_relevant_blocked_items(closeout.get("closeout_blocked", []) or [])
+    closeout_blocked_count = len(closeout_blocked)
+    unresolved = ledger.get("unresolved") or {}
+    blockers = unresolved.get("blockers") or []
+    warnings = unresolved.get("warnings") or []
+    warning_codes = {item.get("code") for item in warnings}
+    blocker_codes = {item.get("code") for item in blockers}
+
+    active_tasks = [task_brief(task) for task in tasks if task.get("status") == "in-progress"]
+    terminal_missing_receipts = [task_brief(task) for task in tasks if task.get("missing_final_receipt")]
+    dirty_worktree_tasks = [task_brief(task) for task in tasks if task.get("dirty")]
+    blocked_task_states = [
+        task_brief(task)
+        for task in tasks
+        if task.get("missing_worktree") or task.get("stale_lease") or task.get("active_overlap")
+    ]
+
+    claim_blockers: list[dict[str, Any]] = []
+    if dirty.get("dirty"):
+        claim_blockers.append(
+            {
+                "code": "dirty_primary_checkout",
+                "message": "Primary checkout has uncommitted changes; record integration or clean the checkout before claiming completion.",
+                "count": dirty.get("count", 0),
+            }
+        )
+    if active_tasks:
+        claim_blockers.append(
+            {
+                "code": "active_tasks",
+                "message": "One or more task records are still in progress.",
+                "count": len(active_tasks),
+            }
+        )
+    if terminal_missing_receipts:
+        claim_blockers.append(
+            {
+                "code": "missing_final_receipts",
+                "message": "Terminal task metadata is missing durable final receipt evidence.",
+                "count": len(terminal_missing_receipts),
+            }
+        )
+    if dirty_worktree_tasks:
+        claim_blockers.append(
+            {
+                "code": "dirty_task_worktrees",
+                "message": "One or more task worktrees have uncommitted changes.",
+                "count": len(dirty_worktree_tasks),
+            }
+        )
+    if blocked_task_states:
+        claim_blockers.append(
+            {
+                "code": "blocked_task_state",
+                "message": "Task metadata has missing, stale, or overlapping worktree state.",
+                "count": len(blocked_task_states),
+            }
+        )
+    if closeout.get("closeout_candidate_count", 0):
+        claim_blockers.append(
+            {
+                "code": "closeout_candidates",
+                "message": "Finished task worktrees are eligible for reviewed closeout.",
+                "count": closeout.get("closeout_candidate_count", 0),
+            }
+        )
+    if closeout_blocked_count:
+        claim_blockers.append(
+            {
+                "code": "closeout_blocked",
+                "message": "Closeout preview has blocked worktrees that need inspection.",
+                "count": closeout_blocked_count,
+            }
+        )
+
+    external_blockers = [
+        item
+        for item in blockers
+        if item.get("code") not in {"missing_final_receipt", "active_overlap", "missing_worktree"}
+    ]
+    if external_blockers:
+        claim_blockers.append(
+            {
+                "code": "external_blockers",
+                "message": "Ledger reported automation, receipt, or other repository blockers.",
+                "count": len(external_blockers),
+            }
+        )
+
+    if dirty.get("dirty"):
+        completion_state = "needs-integration"
+        next_action = closeout_plan_action(
+            "git status --short",
+            "Inspect and either preserve, commit, hand off, or explicitly receipt the dirty primary checkout.",
+        )
+    elif blocked_task_states or external_blockers or "automation_handoff_blocked" in blocker_codes or "automation_baseline_blocked" in blocker_codes:
+        completion_state = "blocked"
+        next_action = closeout_plan_action(
+            "make agent-task-status TASK_STATUS_STRICT=1",
+            "Resolve missing, stale, overlapping, or externally blocked task state before closeout.",
+        )
+    elif terminal_missing_receipts:
+        task_id = terminal_missing_receipts[0].get("task_id") or "<id>"
+        completion_state = "needs-receipt"
+        next_action = closeout_plan_action(
+            f"make agent-task-link-receipt TASK={task_id} TASK_RECEIPT=<path>",
+            "Link durable final receipt evidence for the terminal task.",
+            task_id=task_id,
+            mutating=True,
+        )
+    elif active_tasks:
+        first = active_tasks[0]
+        task_id = first.get("task_id") or "<id>"
+        command = first.get("next_safe_command") or f"make agent-task-ready TASK={task_id} TASK_READY_JSON=1"
+        if first.get("final_receipt", {}).get("exists"):
+            completion_state = "needs-finalizer"
+            reason = "Finalize the active task with its linked final receipt."
+            mutating = True
+        else:
+            completion_state = "needs-receipt"
+            reason = "Run readiness and produce or link final receipt evidence before finalizing the active task."
+            mutating = False
+        next_action = closeout_plan_action(command, reason, task_id=task_id, mutating=mutating)
+    elif closeout.get("closeout_candidate_count", 0):
+        completion_state = "needs-cleanup"
+        next_action = closeout_plan_action(
+            "make agent-task-closeout TASK_CLOSEOUT_APPLY=1",
+            "Review the closeout dry run, then apply removal for eligible finished task worktrees.",
+            mutating=True,
+        )
+    elif closeout_blocked_count:
+        completion_state = "blocked"
+        next_action = closeout_plan_action(
+            "make agent-task-closeout TASK_CLOSEOUT_JSON=1",
+            "Inspect blocked closeout entries and resolve their safety reasons.",
+        )
+    else:
+        completion_state = "clean"
+        next_action = closeout_plan_action(
+            "none",
+            "No dirty checkout, active task, missing receipt, or closeout blocker prevents claiming completion.",
+        )
+
+    can_claim_done = not claim_blockers
+    nonblocking_warning_codes = sorted(
+        code for code in warning_codes if code in {"missing_sidecar", "receipt_warning", "task_status_warning", "closeout_warning"}
+    )
+    exit_code = 1 if args.strict and not can_claim_done else 0
+    return {
+        "schema_version": 1,
+        "command": "closeout-plan",
+        "repo": str(primary),
+        "invoked_from": str(repo),
+        "created_at": now(),
+        "target_repo_writes": False,
+        "sidecar_writes": False,
+        "write_guarantees": {
+            "target_repo_writes": target_repo_writes(False, reason="closeout-plan is read-only"),
+            "sidecar_writes": sidecar_writes(False, reason="closeout-plan is read-only"),
+        },
+        "can_claim_done": can_claim_done,
+        "completion_state": completion_state,
+        "result": "ok" if can_claim_done else "blocked",
+        "strict": bool(args.strict),
+        "next_action": next_action,
+        "claim_blockers": claim_blockers,
+        "nonblocking_warnings": nonblocking_warning_codes,
+        "dirty": dirty,
+        "dirty_file_groups": closeout_dirty_file_groups(dirty.get("entries") or []),
+        "task_summary": task_summary,
+        "active_tasks": active_tasks,
+        "terminal_missing_receipts": terminal_missing_receipts,
+        "dirty_worktree_tasks": dirty_worktree_tasks,
+        "blocked_task_states": blocked_task_states,
+        "closeout": {
+            "source_command": closeout.get("source_command"),
+            "exit_code": closeout.get("exit_code"),
+            "candidate_count": closeout.get("closeout_candidate_count", 0),
+            "blocked_count": closeout_blocked_count,
+            "raw_blocked_count": closeout.get("closeout_blocked_count", 0),
+            "retained_count": closeout.get("closeout_retained_count", 0),
+            "candidates": closeout.get("closeout_candidates", []),
+            "blocked": closeout_blocked,
+        },
+        "ledger_result": ledger.get("result"),
+        "ledger_unresolved": unresolved,
+        "next_safe_commands": ledger.get("next_safe_commands") or [],
+        "source_commands": {
+            "ledger": "make agent-state-ledger STATE_LEDGER_JSON=1",
+            "task_status": "make agent-task-status TASK_STATUS_INCLUDE_CLOSED=1 TASK_STATUS_JSON=1",
+            "closeout_preview": "make agent-task-closeout TASK_CLOSEOUT_JSON=1",
+        },
+        "exit_code": exit_code,
+    }
+
+
+def render_closeout_plan(payload: dict[str, Any]) -> None:
+    print(f"kit closeout-plan for {payload['repo']}:")
+    print(f" - can claim done: {str(payload['can_claim_done']).lower()}")
+    print(f" - completion state: {payload['completion_state']}")
+    print(f" - writes: target=false sidecar=false")
+    dirty = payload.get("dirty") or {}
+    task_summary = payload.get("task_summary") or {}
+    closeout = payload.get("closeout") or {}
+    print(f" - dirty checkout: {str(dirty.get('dirty')).lower()} ({dirty.get('count', 0)} changed)")
+    print(f" - tasks: {task_summary.get('active_task_count', 0)} active / {task_summary.get('task_count', 0)} total")
+    print(f" - closeout: {closeout.get('candidate_count', 0)} candidate / {closeout.get('blocked_count', 0)} blocked")
+    if payload.get("claim_blockers"):
+        print(" - claim blockers:")
+        for item in payload["claim_blockers"]:
+            print(f"   - {item.get('code')}: {item.get('message')} ({item.get('count', 0)})")
+    if payload.get("active_tasks"):
+        print(" - active tasks:")
+        for task in payload["active_tasks"][:10]:
+            print(f"   - {task.get('task_id')}: {task.get('status')} -> {task.get('next_safe_command')}")
+            attribution = task.get("attribution") or {}
+            if attribution:
+                print(f"     attribution: {render_attribution(attribution)}")
+    if payload.get("dirty_file_groups"):
+        print(" - dirty file groups:")
+        for group in payload["dirty_file_groups"][:10]:
+            print(f"   - {group['group']}: {group['count']} changed")
+    action = payload.get("next_action") or {}
+    print(" - next action:")
+    print(f"   - {action.get('command')}: {action.get('reason')}")
 
 
 def render_feedback(payload: dict[str, Any]) -> None:
@@ -7650,6 +7985,7 @@ def render_options(include_advanced: bool = False) -> None:
     print(f"  {PUBLIC_COMMAND} task-packet --harness-mode auto --json")
     print(f"  {PUBLIC_COMMAND} verify --harness-mode auto --json")
     print(f"  {PUBLIC_COMMAND} update --dry-run --json          Preview managed-file updates")
+    print(f"  {PUBLIC_COMMAND} closeout-plan --json             Check whether work can be claimed done")
     print("")
     print("Daily commands:")
     print(f"  {PUBLIC_COMMAND} start                   Choose the next human/agent journey")
@@ -7660,6 +7996,7 @@ def render_options(include_advanced: bool = False) -> None:
     print(f"  {PUBLIC_COMMAND} update --dry-run        Preview managed-file updates")
     print(f"  {PUBLIC_COMMAND} update                  Apply safe managed-file updates")
     print(f"  {PUBLIC_COMMAND} doctor                  Diagnose dirty state and task blockers")
+    print(f"  {PUBLIC_COMMAND} closeout-plan           Decide whether work is actually closed out")
     print(f"  {PUBLIC_COMMAND} palette                 Search commands in a TTY")
     print(f"  {PUBLIC_COMMAND} completion zsh          Print shell completion code")
     print("")
@@ -7701,6 +8038,7 @@ def render_options(include_advanced: bool = False) -> None:
         "agent-preflight --repo /path/to/repo --json",
         "agent-context-bundle --repo /path/to/repo --json",
         "agent-state-ledger --repo /path/to/repo --json",
+        "closeout-plan --repo /path/to/repo --json",
         "branch-readiness --repo /path/to/repo --json",
         "doc-impact --repo /path/to/repo --working-tree --json",
         "update-plan --repo /path/to/repo --json",
@@ -8165,6 +8503,14 @@ def build_parser() -> argparse.ArgumentParser:
     add_style_arg(doctor)
     doctor.add_argument("--strict", action="store_true", help="Exit non-zero when startup blockers are present.")
     doctor.add_argument("--write-sidecar", action="store_true", help="Write a doctor receipt under the repo sidecar.")
+
+    closeout_plan = subparsers.add_parser(
+        "closeout-plan",
+        help="Plan whether current work can be claimed done from dirty state, task, receipt, and closeout evidence.",
+    )
+    add_common_repo_args(closeout_plan)
+    closeout_plan.add_argument("--format", choices=["text", "json"], default=None)
+    closeout_plan.add_argument("--strict", action="store_true", help="Exit non-zero when completion cannot be claimed cleanly.")
 
     self_cmd = subparsers.add_parser("self", help="Inspect or update the global repo-contract-kit tool checkout.")
     self_subparsers = self_cmd.add_subparsers(dest="self_command", required=True, parser_class=KitArgumentParser)
@@ -8744,6 +9090,11 @@ def main(argv: list[str] | None = None) -> int:
         output_format = args.format or ("json" if args.json else "text")
         render_json(payload) if output_format == "json" else render_agent_state_ledger(payload)
         return 0
+    if args.command == "closeout-plan":
+        payload = apply_runtime_mode(closeout_plan_payload(args, repo), raw_argv, args)
+        output_format = args.format or ("json" if args.json else "text")
+        render_json(payload) if output_format == "json" else render_closeout_plan(payload)
+        return payload["exit_code"]
     if args.command == "branch-readiness":
         payload, exit_code = branch_readiness.build_report(args, repo)
         output_format = args.format or ("json" if args.json else "text")

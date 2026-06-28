@@ -64,6 +64,7 @@ kit status
 kit mode-check
 kit update --dry-run
 kit doctor
+kit closeout-plan
 ```
 
 `kit start` is the front door. In an installed target repo it first checks the
@@ -109,7 +110,12 @@ For normal scoped work:
 ```bash
 kit task-packet --harness-mode auto --json
 kit verify --harness-mode auto --json
+kit closeout-plan --json
 ```
+
+Run `kit closeout-plan --json` before claiming implementation work is done. If
+`can_claim_done` is false, report the `completion_state` and `next_action`
+instead of saying the work is closed out.
 
 Use JSON fields such as `target_repo_writes`, `sidecar_writes`, `route_role`,
 `audience`, `output_schema`, and `next_commands` to decide whether a command is

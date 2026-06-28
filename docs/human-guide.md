@@ -44,6 +44,7 @@ kit status
 kit mode-check
 kit update --dry-run
 kit doctor
+kit closeout-plan
 ```
 
 Use `kit start` when you are unsure whether this is a fresh setup, normal
@@ -108,6 +109,7 @@ Use this order:
 kit status
 kit mode-check
 kit doctor
+kit closeout-plan
 kit help
 ```
 

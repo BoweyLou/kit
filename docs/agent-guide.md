@@ -80,7 +80,15 @@ For normal work:
 ```bash
 kit task-packet --harness-mode auto --json
 kit verify --harness-mode auto --json
+kit closeout-plan --json
 ```
+
+Before the final response for write-capable work, run
+`kit closeout-plan --json`. Treat `can_claim_done=false` as a hard stop on
+“done” wording: report the `completion_state`, `claim_blockers`, and
+`next_action` instead. Use `kit closeout-plan --strict --json` when a shell
+gate should fail until dirty primary state, active tasks, missing receipts, and
+closeout blockers are resolved.
 
 For backlog-led work:
 
@@ -99,6 +107,7 @@ kit status --json
 kit update-plan --json
 kit update --dry-run --json
 kit doctor --json
+kit closeout-plan --json
 ```
 
 A command that writes should say so in structured output. Inspect

@@ -41,6 +41,7 @@ make agent-task-prepare TASK=<id> SCOPE=<paths>
 make agent-task-heartbeat TASK=<id>
 make agent-task-finalize TASK=<id> TASK_RECEIPT=<path>
 make agent-task-finish TASK=<id> TASK_RECEIPT=<path>
+kit closeout-plan --json
 make agent-token-budget
 make agent-receipt-verify
 make agent-verify
@@ -130,6 +131,13 @@ next safe commands. Use `STATE_LEDGER_JSON=1` for machine-readable output. It
 reports `target_repo_writes=false` and `sidecar_writes=false`; it is not a
 cleanup, closeout, finalizer, automation handoff, self-heal apply, or receipt
 writer.
+
+`kit closeout-plan --json` translates the ledger, task status, dirty checkout,
+receipt, and closeout preview evidence into a completion decision. Run it after
+validation and before the final handoff. If `can_claim_done=false`, report the
+`completion_state`, `claim_blockers`, and `next_action` instead of saying the
+work is done. Use `--strict` when the shell command should fail until closeout
+is clean.
 
 `make agent-branch-readiness` emits a no-write branch-or-PR readiness report for
 the point just before a human considers PR update, merge queue, auto-merge, or

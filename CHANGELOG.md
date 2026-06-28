@@ -1,5 +1,15 @@
 # Changelog
 
+## 0.6.30 - 2026-06-28
+
+- Add read-only `kit closeout-plan`, translating dirty checkout, task,
+  receipt, and closeout-preview evidence into `can_claim_done`,
+  `completion_state`, `claim_blockers`, and a concrete `next_action`.
+- Document the final handoff rule for agents: run `kit closeout-plan --json`
+  after validation and avoid “done” wording when closeout blockers remain.
+- Add regression coverage for clean closeout, dirty primary checkout, active
+  task state, and terminal tasks missing final receipts.
+
 ## 0.6.29 - 2026-06-28
 
 - Let `kit start` opportunistically apply already-local, local-safe managed-file

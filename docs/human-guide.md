@@ -140,6 +140,11 @@ include linked sibling worktrees from Git, such as
 `MiniCommand-agent-worktrees/...`, while prune still removes only clean linked
 worktrees under `agent-worktrees` paths.
 
+`kit closeout-plan --json` now includes the same repo-aware audit under
+`worktree_prune`. When clean disposable worktrees are removable, the closeout
+next action points at the prune dry-run first and still reports dirty blocked
+worktrees plus task-ledger blockers separately.
+
 Review proposed replacements under `.doc-contract-kit/updates/` instead of
 copying them blindly over target-owned decisions.
 

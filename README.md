@@ -156,6 +156,12 @@ Run `kit closeout-plan --json` before claiming implementation work is done. If
 `can_claim_done` is false, report the `completion_state` and `next_action`
 instead of saying the work is closed out.
 
+`closeout-plan` also embeds the repo-aware disposable-worktree audit. When
+`worktree_prune.summary.would_remove` is non-zero, run the reported
+`kit worktree prune --root <repo> --dry-run --json` path before working through
+task-ledger blockers. Dirty worktrees remain blocked and are listed in
+`worktree_prune.blocked`.
+
 Treat `git_worktree_state` and `kit_managed_state` as separate facts. A Git
 dirty checkout needs integration or a receipt. Kit managed-file proposals under
 `.doc-contract-kit/updates/` need review, but they are not Git worktree dirt.

@@ -63,6 +63,10 @@ def install_agentic(repo: Path):
     )
 
 
+def add_git_worktree(repo: Path, path: Path, branch: str):
+    run(["git", "worktree", "add", "-q", "-b", branch, str(path)], repo, check=True)
+
+
 def make_env(state_home: Path):
     return {**os.environ, "XDG_STATE_HOME": str(state_home)}
 
@@ -158,6 +162,42 @@ class CloseoutPlanTests(unittest.TestCase):
             blocker_codes = {item["code"] for item in payload["claim_blockers"]}
             self.assertIn("kit_managed_review", blocker_codes)
 
+    def test_closeout_plan_prioritizes_repo_aware_worktree_prune(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            repo = root / "primary"
+            repo.mkdir()
+            init_repo(repo)
+            install_agentic(repo)
+            clean_worktree = root / "primary-agent-worktrees" / "task-clean"
+            dirty_worktree = root / "primary-agent-worktrees" / "task-dirty"
+            clean_worktree.parent.mkdir()
+            add_git_worktree(repo, clean_worktree, "codex/task-clean")
+            add_git_worktree(repo, dirty_worktree, "codex/task-dirty")
+            (dirty_worktree / "dirty.txt").write_text("dirty\n", encoding="utf-8")
+            state_home = root / "state"
+
+            result = closeout_plan(repo, state_home, "--strict")
+
+            self.assertEqual(result.returncode, 1, result.stdout + result.stderr)
+            payload = json.loads(result.stdout)
+            self.assertFalse(payload["can_claim_done"])
+            self.assertEqual(payload["completion_state"], "needs-worktree-prune")
+            self.assertEqual(
+                payload["next_action"]["command"],
+                f"kit worktree prune --root {repo.resolve()} --dry-run --json",
+            )
+            self.assertEqual(payload["worktree_prune"]["summary"]["total"], 2)
+            self.assertEqual(payload["worktree_prune"]["summary"]["would_remove"], 1)
+            self.assertEqual(payload["worktree_prune"]["summary"]["blocked"], 1)
+            self.assertEqual(payload["worktree_prune"]["summary"]["dirty"], 1)
+            self.assertEqual(payload["worktree_prune"]["summary"]["discovery_sources"], ["git-worktree-list"])
+            blocker_codes = {item["code"] for item in payload["claim_blockers"]}
+            self.assertIn("worktree_prune_candidates", blocker_codes)
+            self.assertIn("worktree_prune_blocked", blocker_codes)
+            task_ledger_codes = {item["code"] for item in payload["task_ledger_blockers"]}
+            self.assertIn("closeout_blocked", task_ledger_codes)
+
     def test_active_task_requires_receipt_or_finalizer_before_done(self):
         with tempfile.TemporaryDirectory() as tmp:
             repo = Path(tmp) / "repo"
@@ -175,6 +215,8 @@ class CloseoutPlanTests(unittest.TestCase):
             self.assertFalse(payload["can_claim_done"])
             self.assertEqual(payload["completion_state"], "needs-receipt")
             self.assertEqual(payload["active_tasks"][0]["task_id"], "AGW-200")
+            task_ledger_codes = {item["code"] for item in payload["task_ledger_blockers"]}
+            self.assertIn("active_tasks", task_ledger_codes)
             self.assertIn("make agent-task-ready TASK=AGW-200", payload["next_action"]["command"])
             self.assertFalse(payload["next_action"]["mutating"])
             blocker_codes = {item["code"] for item in payload["claim_blockers"]}

@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.6.36 - 2026-06-30
+
+- Add repo-aware disposable-worktree diagnostics to `kit closeout-plan`,
+  including prune dry-run/apply commands, blocked dirty worktrees, and separate
+  task-ledger blockers.
+- Prefer the worktree prune dry-run next action when clean disposable sibling
+  worktrees can be reclaimed before stale task-ledger cleanup.
+
 ## 0.6.35 - 2026-06-29
 
 - Add read-only `kit target dirty-report` for enrolled repos so operators can

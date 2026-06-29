@@ -1652,7 +1652,7 @@ def command_map_annotations() -> dict[tuple[str, ...], dict[str, Any]]:
             "route_role": "canonical",
             "canonical_command": "closeout-plan",
             "alias_group": "task-closeout",
-            "route_note": "`kit closeout-plan` translates task, dirty-state, receipt, and closeout evidence into whether work can truthfully be claimed done.",
+            "route_note": "`kit closeout-plan` translates dirty state, disposable-worktree prune diagnostics, task-ledger blockers, receipts, and closeout evidence into whether work can truthfully be claimed done.",
             "examples": [
                 public_command("closeout-plan", "--repo", "/path/to/repo", "--json"),
                 public_command("closeout-plan", "--repo", "/path/to/repo", "--strict"),
@@ -4265,6 +4265,62 @@ def closeout_plan_relevant_blocked_items(items: list[dict[str, Any]]) -> list[di
     return relevant
 
 
+def closeout_plan_protected_worktree_paths(tasks: list[dict[str, Any]]) -> set[str]:
+    protected: set[str] = set()
+    for task in tasks:
+        is_active_with_live_lease = task.get("status") == "in-progress" and not task.get("stale_lease")
+        needs_receipt_evidence = bool(task.get("missing_final_receipt"))
+        if not is_active_with_live_lease and not needs_receipt_evidence:
+            continue
+        worktree = task.get("worktree")
+        if not worktree:
+            continue
+        protected.add(str(Path(str(worktree)).expanduser().resolve()))
+    return protected
+
+
+def closeout_plan_worktree_prune(primary: Path, tasks: list[dict[str, Any]]) -> dict[str, Any]:
+    audit_args = argparse.Namespace(root=[str(primary)])
+    entries, root_errors = worktree_audit_entries(audit_args)
+    summary = worktree_summary(entries)
+    protected_paths = closeout_plan_protected_worktree_paths(tasks)
+    protected_removable = [
+        entry
+        for entry in entries
+        if entry.get("removable") and str(Path(str(entry.get("root"))).expanduser().resolve()) in protected_paths
+    ]
+    unprotected_removable = [
+        entry
+        for entry in entries
+        if entry.get("removable") and str(Path(str(entry.get("root"))).expanduser().resolve()) not in protected_paths
+    ]
+    blocked = [entry for entry in entries if entry.get("status") == "blocked"]
+    dry_run_command = public_command("worktree", "prune", "--root", str(primary), "--dry-run", "--json")
+    apply_command = public_command("worktree", "prune", "--root", str(primary), "--apply", "--json")
+    next_commands: list[str] = []
+    if unprotected_removable and not protected_removable:
+        next_commands.append(dry_run_command)
+        next_commands.append(apply_command)
+    elif blocked:
+        next_commands.append(public_command("worktree", "audit", "--root", str(primary), "--json"))
+    return {
+        "source_command": public_command("worktree", "audit", "--root", str(primary), "--json"),
+        "dry_run_command": dry_run_command,
+        "apply_command": apply_command,
+        "root_errors": root_errors,
+        "summary": {
+            **summary,
+            "would_remove": len(unprotected_removable),
+            "protected_removable": len(protected_removable),
+            "unprotected_removable": len(unprotected_removable),
+        },
+        "blocked": blocked,
+        "removable_sample": [entry.get("root") for entry in unprotected_removable[:10]],
+        "protected_removable_sample": [entry.get("root") for entry in protected_removable[:10]],
+        "next_commands": next_commands,
+    }
+
+
 def task_brief(task: dict[str, Any]) -> dict[str, Any]:
     return {
         "task_id": task.get("task_id"),
@@ -4316,8 +4372,14 @@ def closeout_plan_payload(args: argparse.Namespace, repo: Path) -> dict[str, Any
         for task in tasks
         if task.get("missing_worktree") or task.get("stale_lease") or task.get("active_overlap")
     ]
+    worktree_prune = closeout_plan_worktree_prune(primary, tasks)
+    worktree_prune_summary = worktree_prune.get("summary") or {}
+    worktree_prune_would_remove = int(worktree_prune_summary.get("would_remove") or 0)
+    worktree_prune_protected_removable = int(worktree_prune_summary.get("protected_removable") or 0)
+    worktree_prune_blocked = int(worktree_prune_summary.get("blocked") or 0)
 
     claim_blockers: list[dict[str, Any]] = []
+    task_ledger_blockers: list[dict[str, Any]] = []
     if dirty.get("dirty"):
         claim_blockers.append(
             {
@@ -4326,8 +4388,34 @@ def closeout_plan_payload(args: argparse.Namespace, repo: Path) -> dict[str, Any
                 "count": dirty.get("count", 0),
             }
         )
-    if active_tasks:
+    if worktree_prune_would_remove:
         claim_blockers.append(
+            {
+                "code": "worktree_prune_candidates",
+                "message": "Clean disposable linked worktrees can be pruned before task-ledger closeout.",
+                "count": worktree_prune_would_remove,
+                "dry_run_command": worktree_prune.get("dry_run_command"),
+                "apply_command": worktree_prune.get("apply_command"),
+            }
+        )
+    if worktree_prune_blocked:
+        claim_blockers.append(
+            {
+                "code": "worktree_prune_blocked",
+                "message": "One or more disposable linked worktrees are blocked from pruning, usually because they are dirty.",
+                "count": worktree_prune_blocked,
+            }
+        )
+    if worktree_prune_protected_removable:
+        claim_blockers.append(
+            {
+                "code": "active_worktree_prune_risk",
+                "message": "A non-expired active task worktree is clean but should not be broad-pruned before task handoff.",
+                "count": worktree_prune_protected_removable,
+            }
+        )
+    if active_tasks:
+        task_ledger_blockers.append(
             {
                 "code": "active_tasks",
                 "message": "One or more task records are still in progress.",
@@ -4335,7 +4423,7 @@ def closeout_plan_payload(args: argparse.Namespace, repo: Path) -> dict[str, Any
             }
         )
     if terminal_missing_receipts:
-        claim_blockers.append(
+        task_ledger_blockers.append(
             {
                 "code": "missing_final_receipts",
                 "message": "Terminal task metadata is missing durable final receipt evidence.",
@@ -4343,7 +4431,7 @@ def closeout_plan_payload(args: argparse.Namespace, repo: Path) -> dict[str, Any
             }
         )
     if dirty_worktree_tasks:
-        claim_blockers.append(
+        task_ledger_blockers.append(
             {
                 "code": "dirty_task_worktrees",
                 "message": "One or more task worktrees have uncommitted changes.",
@@ -4351,7 +4439,7 @@ def closeout_plan_payload(args: argparse.Namespace, repo: Path) -> dict[str, Any
             }
         )
     if blocked_task_states:
-        claim_blockers.append(
+        task_ledger_blockers.append(
             {
                 "code": "blocked_task_state",
                 "message": "Task metadata has missing, stale, or overlapping worktree state.",
@@ -4359,7 +4447,7 @@ def closeout_plan_payload(args: argparse.Namespace, repo: Path) -> dict[str, Any
             }
         )
     if closeout.get("closeout_candidate_count", 0):
-        claim_blockers.append(
+        task_ledger_blockers.append(
             {
                 "code": "closeout_candidates",
                 "message": "Finished task worktrees are eligible for reviewed closeout.",
@@ -4367,7 +4455,7 @@ def closeout_plan_payload(args: argparse.Namespace, repo: Path) -> dict[str, Any
             }
         )
     if closeout_blocked_count:
-        claim_blockers.append(
+        task_ledger_blockers.append(
             {
                 "code": "closeout_blocked",
                 "message": "Closeout preview has blocked worktrees that need inspection.",
@@ -4390,19 +4478,26 @@ def closeout_plan_payload(args: argparse.Namespace, repo: Path) -> dict[str, Any
         if item.get("code") not in {"missing_final_receipt", "active_overlap", "missing_worktree"}
     ]
     if external_blockers:
-        claim_blockers.append(
+        task_ledger_blockers.append(
             {
                 "code": "external_blockers",
                 "message": "Ledger reported automation, receipt, or other repository blockers.",
                 "count": len(external_blockers),
             }
         )
+    claim_blockers.extend(task_ledger_blockers)
 
     if dirty.get("dirty"):
         completion_state = "needs-integration"
         next_action = closeout_plan_action(
             "git status --short",
             "Inspect and either preserve, commit, hand off, or explicitly receipt the dirty primary checkout.",
+        )
+    elif worktree_prune_would_remove and not worktree_prune_protected_removable:
+        completion_state = "needs-worktree-prune"
+        next_action = closeout_plan_action(
+            str(worktree_prune.get("dry_run_command")),
+            "Preview clean disposable linked worktrees before resolving task-ledger blockers.",
         )
     elif blocked_task_states or external_blockers or "automation_handoff_blocked" in blocker_codes or "automation_baseline_blocked" in blocker_codes:
         completion_state = "blocked"
@@ -4481,9 +4576,11 @@ def closeout_plan_payload(args: argparse.Namespace, repo: Path) -> dict[str, Any
         "strict": bool(args.strict),
         "next_action": next_action,
         "claim_blockers": claim_blockers,
+        "task_ledger_blockers": task_ledger_blockers,
         "nonblocking_warnings": nonblocking_warning_codes,
         "git_worktree_state": git_worktree_state,
         "kit_managed_state": kit_managed_state,
+        "worktree_prune": worktree_prune,
         "dirty": dirty,
         "dirty_file_groups": closeout_dirty_file_groups(dirty.get("entries") or []),
         "task_summary": task_summary,
@@ -4508,6 +4605,8 @@ def closeout_plan_payload(args: argparse.Namespace, repo: Path) -> dict[str, Any
             "ledger": "make agent-state-ledger STATE_LEDGER_JSON=1",
             "task_status": "make agent-task-status TASK_STATUS_INCLUDE_CLOSED=1 TASK_STATUS_JSON=1",
             "closeout_preview": "make agent-task-closeout TASK_CLOSEOUT_JSON=1",
+            "worktree_audit": worktree_prune.get("source_command"),
+            "worktree_prune": worktree_prune.get("dry_run_command"),
         },
         "exit_code": exit_code,
     }
@@ -4523,6 +4622,8 @@ def render_closeout_plan(payload: dict[str, Any]) -> None:
     managed_state = payload.get("kit_managed_state") or {}
     task_summary = payload.get("task_summary") or {}
     closeout = payload.get("closeout") or {}
+    worktree_prune = payload.get("worktree_prune") or {}
+    worktree_prune_summary = worktree_prune.get("summary") or {}
     print(f" - dirty checkout: {str(dirty.get('dirty')).lower()} ({dirty.get('count', 0)} changed)")
     if git_state:
         print(f" - git worktree state: {git_state.get('state')} ({git_state.get('count', 0)} changed)")
@@ -4532,11 +4633,22 @@ def render_closeout_plan(payload: dict[str, Any]) -> None:
             f"{managed_state.get('state')} "
             f"({managed_state.get('proposal_count', 0)} proposals; not Git dirt)"
         )
+    if worktree_prune_summary:
+        print(
+            " - disposable worktrees: "
+            f"{worktree_prune_summary.get('would_remove', 0)} removable / "
+            f"{worktree_prune_summary.get('blocked', 0)} blocked "
+            f"({worktree_prune_summary.get('dirty', 0)} dirty)"
+        )
     print(f" - tasks: {task_summary.get('active_task_count', 0)} active / {task_summary.get('task_count', 0)} total")
     print(f" - closeout: {closeout.get('candidate_count', 0)} candidate / {closeout.get('blocked_count', 0)} blocked")
     if payload.get("claim_blockers"):
         print(" - claim blockers:")
         for item in payload["claim_blockers"]:
+            print(f"   - {item.get('code')}: {item.get('message')} ({item.get('count', 0)})")
+    if payload.get("task_ledger_blockers"):
+        print(" - task ledger blockers:")
+        for item in payload["task_ledger_blockers"]:
             print(f"   - {item.get('code')}: {item.get('message')} ({item.get('count', 0)})")
     if payload.get("active_tasks"):
         print(" - active tasks:")

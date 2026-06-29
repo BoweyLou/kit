@@ -112,6 +112,14 @@ Before the final response for write-capable work, run
 gate should fail until dirty primary state, active tasks, missing receipts, and
 closeout blockers are resolved.
 
+`closeout-plan` includes a `worktree_prune` section from the same repo-aware
+audit used by `kit worktree audit --root <repo>`. If
+`worktree_prune.summary.would_remove` is positive, the `next_action` prefers the
+reported `kit worktree prune --root <repo> --dry-run --json` command before
+task-ledger cleanup. Keep `task_ledger_blockers` separate in your final report:
+clean disposable worktree spread is solved with the prune lane, while expired
+leases, overlapping scopes, and missing receipts stay task-ledger work.
+
 For backlog-led work:
 
 ```bash

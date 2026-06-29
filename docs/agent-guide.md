@@ -63,12 +63,22 @@ and global tool refreshes are never part of `kit start`; run
 `kit update --global` only when a human asks to refresh the global checkout.
 For batch target maintenance, use `kit update --all --dry-run --json` first.
 The batch route reads the local enrolled-target registry populated by successful
-`kit setup` and `kit update` runs. `kit update --all --apply --json` may update
-clean registered targets, but skips dirty, missing, or no-longer-enrolled
-targets and reports each target status in `targets[]`. When a dry-run reports
-stale missing registry entries, use `kit target prune-missing --dry-run --json`
-before `kit target prune-missing --apply --json`; that command writes only the
-local kit registry, not target repos.
+`kit setup`, `kit update`, and `kit target import` runs. Use
+`kit target import --root <root> --dry-run --json` to seed primary repos from
+install receipts; agent-worktree and archive paths are excluded by default.
+Use `kit target list --json` before applying global maintenance.
+`kit update --all --apply --json` may update clean registered targets, but
+skips dirty, missing, or no-longer-enrolled targets and reports each target
+status in `targets[]`. When a dry-run reports stale missing registry entries,
+use `kit target prune-missing --dry-run --json` before
+`kit target prune-missing --apply --json`; that command writes only the local
+kit registry, not target repos.
+
+Worktree cleanup is a separate lane. Use
+`kit worktree audit --root <root> --json` to inspect disposable worktrees and
+`kit worktree prune --root <root> --dry-run --json` before any prune apply.
+Prune only removes clean linked worktrees under `agent-worktrees` paths; dirty
+or standalone repos are reported, not removed.
 
 ## Choose Work Weight
 

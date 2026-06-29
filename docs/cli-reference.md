@@ -4,7 +4,7 @@ Generated from `kit command-map --json`.
 Do not edit command sections by hand; run `kit cli-reference --write docs/cli-reference.md`.
 
 - Schema version: `1`
-- Command count: `58`
+- Command count: `63`
 
 ## Commands
 
@@ -1280,6 +1280,59 @@ Flags:
 - `--strict` - Exit non-zero when startup blockers are present.
 - `--write-sidecar` - Write a doctor receipt under the repo sidecar.
 
+### kit target import
+
+Seed the registered target list from installed kit repos under a scan root.
+
+- Audience: `human, agent`
+- Mutation: `writes-local-kit-registry-with-apply`
+- Target writes: `never`
+- Sidecar writes: `with --apply`
+- JSON: `yes`
+- Output schema: `target_import_payload`
+- Route role: `canonical`
+- Canonical command: `target import`
+- Docs: `README.md#installed-commands`
+
+Examples:
+
+- `kit target import --root /Volumes/Myrtle/Code/04_Code --dry-run --json`
+- `kit target import --root /Volumes/Myrtle/Code/04_Code --apply --json`
+
+Flags:
+
+- `--json` - Emit machine-readable JSON.
+- `--style` - Human output style: auto uses ANSI only on a TTY, plain disables it, pretty forces it unless NO_COLOR is set.
+- `--root` - Root directory to scan for installed target repos. Defaults to the current directory.
+- `--exclude` - Additional fnmatch pattern to exclude from import.
+- `--include-agent-worktrees` - Include paths containing agent-worktrees. Excluded by default.
+- `--include-archive` - Include paths under archive directories. Excluded by default.
+- `--dry-run` - Preview registry import without writing. This is the default.
+- `--apply` - Write eligible installed primary repos to the local kit registry.
+
+### kit target list
+
+List registered target repos used by batch updates.
+
+- Audience: `human, agent`
+- Mutation: `read-only`
+- Target writes: `never`
+- Sidecar writes: `never`
+- JSON: `yes`
+- Output schema: `target_list_payload`
+- Route role: `canonical`
+- Canonical command: `target list`
+- Docs: `README.md#installed-commands`
+
+Examples:
+
+- `kit target list --json`
+
+Flags:
+
+- `--json` - Emit machine-readable JSON.
+- `--style` - Human output style: auto uses ANSI only on a TTY, plain disables it, pretty forces it unless NO_COLOR is set.
+
 ### kit target prune-missing
 
 Remove registered target repos whose paths no longer exist.
@@ -1602,3 +1655,73 @@ Examples:
 Flags:
 
 - `--json` - Emit machine-readable JSON.
+
+### kit worktree
+
+Audit and prune disposable agent worktrees.
+
+- Audience: `human, agent`
+- Mutation: `namespace`
+- Target writes: `never`
+- Sidecar writes: `never`
+- JSON: `no`
+- Output schema: `subcommand_namespace`
+- Route role: `namespace`
+- Canonical command: `worktree`
+- Docs: `README.md#installed-commands`
+
+Examples:
+
+- `kit worktree audit --root /path/to/repos --json`
+
+### kit worktree audit
+
+Audit disposable agent worktrees under one or more roots.
+
+- Audience: `human, agent`
+- Mutation: `read-only`
+- Target writes: `never`
+- Sidecar writes: `never`
+- JSON: `yes`
+- Output schema: `worktree_audit_payload`
+- Route role: `canonical`
+- Canonical command: `worktree audit`
+- Docs: `README.md#installed-commands`
+
+Examples:
+
+- `kit worktree audit --root /Volumes/Myrtle/Code/04_Code --json`
+
+Flags:
+
+- `--json` - Emit machine-readable JSON.
+- `--style` - Human output style: auto uses ANSI only on a TTY, plain disables it, pretty forces it unless NO_COLOR is set.
+- `--root` - Root directory to scan. Defaults to the current directory.
+
+### kit worktree prune
+
+Remove clean disposable linked worktrees under agent-worktrees paths.
+
+- Audience: `human, agent`
+- Mutation: `removes-clean-disposable-worktrees-with-apply`
+- Target writes: `with --apply`
+- Sidecar writes: `never`
+- JSON: `yes`
+- Output schema: `worktree_prune_payload`
+- Route role: `canonical`
+- Canonical command: `worktree prune`
+- Docs: `README.md#installed-commands`
+
+Examples:
+
+- `kit worktree prune --root /Volumes/Myrtle/Code/04_Code --dry-run --json`
+- `kit worktree prune --root /Volumes/Myrtle/Code/04_Code --apply --json`
+
+Flags:
+
+- `--json` - Emit machine-readable JSON.
+- `--style` - Human output style: auto uses ANSI only on a TTY, plain disables it, pretty forces it unless NO_COLOR is set.
+- `--root` - Root directory to scan. Defaults to the current directory.
+- `--dry-run` - Preview removable worktrees without deleting them. This is the default.
+- `--apply` - Remove eligible clean linked worktrees.
+- `--force` - Pass --force to git worktree remove for eligible clean worktrees.

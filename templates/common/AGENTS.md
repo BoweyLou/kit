@@ -98,7 +98,11 @@ kit setup
 kit status
 kit update --dry-run
 kit update
+kit target import --root /path/to/repos --dry-run
+kit target list --json
 kit update --all --dry-run
+kit worktree audit --root /path/to/repos --json
+kit worktree prune --root /path/to/repos --dry-run
 kit doctor
 ```
 
@@ -111,7 +115,10 @@ Use `make kit-update KIT=/path/to/kit` or
 unavailable or a specific local checkout is required. Preserve customized
 managed files and review `.doc-contract-kit/updates/` before accepting proposed
 replacements. Use `kit update --all --apply` only after reviewing the batch
-dry-run; dirty registered targets are skipped. Use `make kit-explain` when
+dry-run; dirty registered targets are skipped. Use `kit target import` only for
+primary repos, with agent-worktree and archive paths excluded by default. Use
+`kit worktree audit` and `kit worktree prune --dry-run` for disposable task
+worktrees instead of enrolling them globally. Use `make kit-explain` when
 ownership is unclear.
 
 For external agent artifacts, use the source kit CLI with `--repo <path>`;

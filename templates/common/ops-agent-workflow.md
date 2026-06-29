@@ -196,7 +196,11 @@ For update management, prefer the global CLI:
 kit status
 kit update --dry-run
 kit update
+kit target import --root /path/to/repos --dry-run
+kit target list --json
 kit update --all --dry-run
+kit worktree audit --root /path/to/repos --json
+kit worktree prune --root /path/to/repos --dry-run
 kit doctor
 ```
 
@@ -204,7 +208,10 @@ kit doctor
 when the repo's root `Makefile` or installed scripts look like project code.
 `kit update --all --dry-run` previews registered enrolled target repos from the
 local kit registry. `kit update --all --apply` may update clean registered
-targets and skips dirty, missing, or no-longer-enrolled targets.
+targets and skips dirty, missing, or no-longer-enrolled targets. Use
+`kit target import --root <root> --dry-run` to seed existing primary repos;
+agent-worktree and archive paths are excluded by default. Use `kit worktree
+audit` and `kit worktree prune --dry-run` for disposable task worktrees.
 The target repo owns the root `Makefile`; the kit-owned targets live in
 `.doc-contract-kit/make/repo-contract.mk` and are exposed by including that
 fragment.

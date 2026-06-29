@@ -247,7 +247,11 @@ For kit maintenance:
 kit status
 kit update --dry-run
 kit update
+kit target import --root /path/to/repos --dry-run
+kit target list --json
 kit update --all --dry-run
+kit worktree audit --root /path/to/repos --json
+kit worktree prune --root /path/to/repos --dry-run
 kit doctor
 kit closeout-plan
 make kit-explain
@@ -259,8 +263,12 @@ updates stay explicit through `kit update --global`. Update plans and reports
 include a `read_next` list; read those docs before merging proposed replacements
 from `.doc-contract-kit/updates/`.
 Successful `kit setup` and `kit update` runs register enrolled targets for
-`kit update --all --dry-run`; batch apply needs `--apply` and skips dirty,
-missing, or no-longer-enrolled targets.
+`kit update --all --dry-run`. Use `kit target import --root <root> --dry-run`
+to seed existing primary repos from install receipts; agent-worktree and archive
+paths are excluded by default. Batch apply needs `--apply` and skips dirty,
+missing, or no-longer-enrolled targets. Use `kit worktree audit` and
+`kit worktree prune --dry-run` for disposable task worktrees, separately from
+primary repo updates.
 Use `docs/upgrade-flow.md` for the full safe update sequence, including
 metadata-only migration and conflict review. Kit updates keep root `AGENTS.md`
 in place and preserve customized managed files.

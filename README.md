@@ -86,7 +86,15 @@ preserve target-owned files and customized managed files. Proposed replacements
 are written under `.doc-contract-kit/updates/` for review.
 
 Successful `kit setup` and `kit update` runs register enrolled targets in local
-kit state. To preview every registered target repo, run:
+kit state. To import existing primary repos without pulling in old task
+worktrees, run:
+
+```bash
+kit target import --root /Volumes/Myrtle/Code/04_Code --dry-run
+```
+
+Then inspect scope with `kit target list --json`. To preview every registered
+target repo, run:
 
 ```bash
 kit update --all --dry-run
@@ -97,6 +105,13 @@ Batch apply skips dirty, missing, or no-longer-enrolled targets instead of
 rewriting them. If the dry-run reports stale missing registry entries, clean
 them with `kit target prune-missing --dry-run` and then
 `kit target prune-missing --apply`.
+
+Disposable task worktrees use a separate lane:
+
+```bash
+kit worktree audit --root /Volumes/Myrtle/Code/04_Code --json
+kit worktree prune --root /Volumes/Myrtle/Code/04_Code --dry-run
+```
 
 Read [docs/human-guide.md](docs/human-guide.md) for install, daily use, update,
 and troubleshooting flows.

@@ -1,5 +1,14 @@
 # Changelog
 
+## 0.6.33 - 2026-06-29
+
+- Add `kit target import` and `kit target list` so global batch updates can be
+  seeded with primary repos while excluding agent-worktree and archive paths by
+  default.
+- Add `kit worktree audit` and `kit worktree prune` to inspect disposable
+  agent worktrees and remove only clean linked worktrees with explicit
+  `--apply`.
+
 ## 0.6.32 - 2026-06-29
 
 - Add a local enrolled-target registry populated by successful `kit setup` and

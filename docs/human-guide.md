@@ -104,6 +104,15 @@ Preview every registered enrolled target repo:
 kit update --all --dry-run
 ```
 
+Import existing primary repos into the batch registry without importing old
+task worktrees:
+
+```bash
+kit target import --root /Volumes/Myrtle/Code/04_Code --dry-run
+kit target import --root /Volumes/Myrtle/Code/04_Code --apply
+kit target list --json
+```
+
 Apply updates across registered targets:
 
 ```bash
@@ -115,6 +124,13 @@ Batch apply skips dirty, missing, or no-longer-enrolled targets. Successful
 If the dry-run reports stale missing entries, preview registry cleanup with
 `kit target prune-missing --dry-run`, then apply it with
 `kit target prune-missing --apply`.
+
+Audit disposable task worktrees separately from primary repos:
+
+```bash
+kit worktree audit --root /Volumes/Myrtle/Code/04_Code --json
+kit worktree prune --root /Volumes/Myrtle/Code/04_Code --dry-run
+```
 
 Review proposed replacements under `.doc-contract-kit/updates/` instead of
 copying them blindly over target-owned decisions.

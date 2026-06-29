@@ -15,6 +15,7 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
 CLI = ROOT / "scripts" / "repo_contract_kit.py"
+INSTALL = ROOT / "scripts" / "install.py"
 
 
 def init_git_repo(path: Path):
@@ -146,6 +147,7 @@ class RepoContractKitCliTests(unittest.TestCase):
                 "start",
                 "self update",
                 "target add",
+                "target import --apply",
                 "target prune-missing --apply",
                 "target repair-source-clone --apply",
                 "target update",
@@ -153,6 +155,7 @@ class RepoContractKitCliTests(unittest.TestCase):
                 "update",
                 "update --all --apply",
                 "update --global",
+                "worktree prune --apply",
                 "migrate-config",
             ],
         )
@@ -160,6 +163,7 @@ class RepoContractKitCliTests(unittest.TestCase):
         self.assertIn("feedback", payload["cli"]["sidecar_write_commands"])
         self.assertIn("agent-self-heal --apply", payload["cli"]["sidecar_write_commands"])
         self.assertIn("agent-preflight --write-sidecar", payload["cli"]["sidecar_write_commands"])
+        self.assertIn("target import --apply", payload["cli"]["sidecar_write_commands"])
         self.assertIn("target prune-missing --apply", payload["cli"]["sidecar_write_commands"])
 
     def test_no_args_prints_non_tty_guide_outside_git_repo(self):
@@ -1346,6 +1350,124 @@ class RepoContractKitCliTests(unittest.TestCase):
             self.assertTrue(apply_payload["sidecar_writes"]["performed"])
             self.assertEqual(apply_payload["summary"]["pruned"], 1)
             self.assertEqual(json.loads(registry_path.read_text(encoding="utf-8"))["targets"], [])
+
+    def test_target_import_seeds_primary_repos_and_excludes_agent_worktrees(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            primary = root / "primary"
+            primary.mkdir()
+            init_git_repo(primary)
+            worktree_like = root / "primary-agent-worktrees" / "task-001"
+            worktree_like.mkdir(parents=True)
+            init_git_repo(worktree_like)
+            state_home = root / "state"
+            env = {**os.environ, "XDG_STATE_HOME": str(state_home)}
+            for repo in (primary, worktree_like):
+                install = subprocess.run(
+                    [sys.executable, str(INSTALL), str(repo), "--preset", "minimal"],
+                    cwd=ROOT,
+                    env=env,
+                    capture_output=True,
+                    text=True,
+                    check=False,
+                )
+                self.assertEqual(install.returncode, 0, install.stderr)
+
+            preview = subprocess.run(
+                [sys.executable, str(CLI), "target", "import", "--root", str(root), "--dry-run", "--json"],
+                cwd=ROOT,
+                env=env,
+                capture_output=True,
+                text=True,
+                check=False,
+            )
+            self.assertEqual(preview.returncode, 0, preview.stderr)
+            preview_payload = json.loads(preview.stdout)
+            self.assertFalse(preview_payload["sidecar_writes"]["performed"])
+            self.assertEqual(preview_payload["summary"]["would_import"], 1)
+            self.assertEqual(preview_payload["summary"]["skip_reasons"]["excluded"], 1)
+            self.assertIn(str(primary.resolve()), {item["root"] for item in preview_payload["targets"] if item["status"] == "would-import"})
+
+            apply = subprocess.run(
+                [sys.executable, str(CLI), "target", "import", "--root", str(root), "--apply", "--json"],
+                cwd=ROOT,
+                env=env,
+                capture_output=True,
+                text=True,
+                check=False,
+            )
+            self.assertEqual(apply.returncode, 0, apply.stderr)
+            apply_payload = json.loads(apply.stdout)
+            self.assertTrue(apply_payload["sidecar_writes"]["performed"])
+            self.assertFalse(apply_payload["target_repo_writes"]["performed"])
+            self.assertEqual(apply_payload["summary"]["imported"], 1)
+            self.assertEqual(apply_payload["registry"]["target_count"], 1)
+
+            listed = subprocess.run(
+                [sys.executable, str(CLI), "target", "list", "--json"],
+                cwd=ROOT,
+                env=env,
+                capture_output=True,
+                text=True,
+                check=False,
+            )
+            self.assertEqual(listed.returncode, 0, listed.stderr)
+            list_payload = json.loads(listed.stdout)
+            self.assertEqual(list_payload["registry"]["target_count"], 1)
+            self.assertEqual(list_payload["targets"][0]["root"], str(primary.resolve()))
+
+    def test_worktree_audit_and_prune_remove_only_clean_linked_agent_worktrees(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            repo = root / "primary"
+            repo.mkdir()
+            init_git_repo(repo)
+            worktree = root / "primary-agent-worktrees" / "task-001"
+            worktree.parent.mkdir()
+            add_git_worktree(repo, worktree, branch="codex/task-001")
+            state_home = root / "state"
+            env = {**os.environ, "XDG_STATE_HOME": str(state_home)}
+
+            audit = subprocess.run(
+                [sys.executable, str(CLI), "worktree", "audit", "--root", str(root), "--json"],
+                cwd=ROOT,
+                env=env,
+                capture_output=True,
+                text=True,
+                check=False,
+            )
+            self.assertEqual(audit.returncode, 0, audit.stderr)
+            audit_payload = json.loads(audit.stdout)
+            self.assertEqual(audit_payload["summary"]["removable"], 1)
+            self.assertEqual(audit_payload["worktrees"][0]["root"], str(worktree.resolve()))
+
+            preview = subprocess.run(
+                [sys.executable, str(CLI), "worktree", "prune", "--root", str(root), "--dry-run", "--json"],
+                cwd=ROOT,
+                env=env,
+                capture_output=True,
+                text=True,
+                check=False,
+            )
+            self.assertEqual(preview.returncode, 0, preview.stderr)
+            preview_payload = json.loads(preview.stdout)
+            self.assertFalse(preview_payload["filesystem_writes"]["performed"])
+            self.assertEqual(preview_payload["summary"]["would_remove"], 1)
+            self.assertTrue(worktree.exists())
+
+            apply = subprocess.run(
+                [sys.executable, str(CLI), "worktree", "prune", "--root", str(root), "--apply", "--json"],
+                cwd=ROOT,
+                env=env,
+                capture_output=True,
+                text=True,
+                check=False,
+            )
+            self.assertEqual(apply.returncode, 0, apply.stdout + apply.stderr)
+            apply_payload = json.loads(apply.stdout)
+            self.assertTrue(apply_payload["filesystem_writes"]["performed"])
+            self.assertEqual(apply_payload["summary"]["removed"], 1)
+            self.assertFalse(worktree.exists())
 
     def test_doctor_alias_reports_preflight_without_target_writes(self):
         with tempfile.TemporaryDirectory() as tmp:
@@ -4270,8 +4392,8 @@ class RepoContractKitCliTests(unittest.TestCase):
         )
 
         self.assertEqual(result.returncode, 0, result.stderr)
-        self.assertIn("doctor", result.stdout)
-        self.assertIn("add,status,doctor,repair-source-clone,update", result.stdout)
+        for command in ("add", "status", "list", "import", "doctor", "repair-source-clone", "update", "update-all", "prune-missing"):
+            self.assertIn(command, result.stdout)
 
     def test_target_doctor_alias_reports_preflight_without_target_writes(self):
         with tempfile.TemporaryDirectory() as tmp:

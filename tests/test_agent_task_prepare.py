@@ -76,6 +76,7 @@ class AgentTaskPrepareTests(unittest.TestCase):
         self.assertIs(status.paths_overlap, scope.paths_overlap)
         self.assertTrue(scope.paths_overlap("scripts", "./scripts/agent_task_prepare.py"))
         self.assertFalse(scope.paths_overlap("docs", "scripts/agent_task_prepare.py"))
+        self.assertEqual(scope.parse_scope("README.md docs/ops"), ["README.md", "docs/ops"])
 
     def test_prepare_creates_sibling_worktree_and_local_task_artifacts(self):
         with tempfile.TemporaryDirectory() as tmp:
@@ -400,6 +401,35 @@ class AgentTaskPrepareTests(unittest.TestCase):
 
             status_paths = {line[3:] for line in run(["git", "status", "--porcelain=v1", "--untracked-files=all"], repo).stdout.splitlines()}
             self.assertEqual(status_paths, {"README.md", "notes.txt"})
+
+    def test_prepare_dirty_primary_baseline_blocks_untracked_scoped_files(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            repo = Path(tmp) / "repo"
+            repo.mkdir()
+            init_repo(repo)
+            install_agentic(repo)
+            frontend = repo / "frontend" / "app"
+            frontend.mkdir(parents=True)
+            (frontend / "main.tsx").write_text("export const value = 1;\n", encoding="utf-8")
+
+            result = run(
+                [
+                    "make",
+                    "agent-task-prepare",
+                    "TASK=AGW-096",
+                    "SCOPE=frontend",
+                    "DIRTY_PRIMARY_BASELINE=1",
+                    "TASK_PREPARE_JSON=1",
+                ],
+                repo,
+            )
+
+            self.assertNotEqual(result.returncode, 0)
+            payload = json.loads(result.stdout)
+            self.assertEqual(payload["result"], "blocked")
+            self.assertIn("untracked files inside the task scope", payload["blockers"][0])
+            self.assertEqual(payload["untracked_scope_files"][0]["path"], "frontend/app/main.tsx")
+            self.assertEqual(payload["untracked_scope_files"][0]["scope"], "frontend")
 
     def test_prepare_rejects_existing_task_worktree_as_source(self):
         with tempfile.TemporaryDirectory() as tmp:

@@ -119,6 +119,45 @@ class CloseoutPlanTests(unittest.TestCase):
             self.assertEqual(payload["dirty_file_groups"][0]["group"], "(root)")
             self.assertEqual(payload["dirty_file_groups"][0]["files"][0]["path"], "README.md")
 
+    def test_clean_git_with_update_proposals_requires_kit_review_not_dirty_claim(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            repo = Path(tmp) / "repo"
+            repo.mkdir()
+            init_repo(repo)
+            install_agentic(repo)
+            state_home = Path(tmp) / "state"
+            report_dir = repo / ".doc-contract-kit" / "updates" / "20260628T213322Z"
+            report_dir.mkdir(parents=True)
+            (report_dir / "update-report.json").write_text(
+                json.dumps(
+                    {
+                        "actions": [],
+                        "conflicts": [
+                            {
+                                "path": "AGENTS.md",
+                                "proposed": ".doc-contract-kit/updates/20260628T213322Z/proposed/AGENTS.md",
+                            }
+                        ],
+                    }
+                )
+                + "\n",
+                encoding="utf-8",
+            )
+
+            status = run(["git", "status", "--porcelain=v1", "--untracked-files=all"], repo, check=True)
+            self.assertEqual(status.stdout.strip(), "")
+
+            result = closeout_plan(repo, state_home, "--strict")
+
+            self.assertEqual(result.returncode, 1, result.stdout + result.stderr)
+            payload = json.loads(result.stdout)
+            self.assertFalse(payload["dirty"]["dirty"])
+            self.assertEqual(payload["git_worktree_state"]["state"], "clean")
+            self.assertEqual(payload["kit_managed_state"]["state"], "needs-review")
+            self.assertEqual(payload["completion_state"], "needs-kit-review")
+            blocker_codes = {item["code"] for item in payload["claim_blockers"]}
+            self.assertIn("kit_managed_review", blocker_codes)
+
     def test_active_task_requires_receipt_or_finalizer_before_done(self):
         with tempfile.TemporaryDirectory() as tmp:
             repo = Path(tmp) / "repo"

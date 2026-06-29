@@ -426,14 +426,47 @@ class RepoContractKitCliTests(unittest.TestCase):
                 check=False,
             )
 
-        self.assertEqual(result.returncode, 0, result.stderr)
-        self.assertIn("Version roles:", result.stdout)
-        self.assertIn("running tool version:", result.stdout)
-        self.assertIn("target install version:", result.stdout)
-        self.assertIn("target repo version:", result.stdout)
-        self.assertIn("prompt snapshot:", result.stdout)
-        self.assertIn("source refs:", result.stdout)
-        self.assertIn("next: kit update --dry-run --repo", result.stdout)
+            self.assertEqual(result.returncode, 0, result.stderr)
+            self.assertIn("Version roles:", result.stdout)
+            self.assertIn("running tool version:", result.stdout)
+            self.assertIn("target install version:", result.stdout)
+            self.assertIn("target repo version:", result.stdout)
+            self.assertIn("prompt snapshot:", result.stdout)
+            self.assertIn("source refs:", result.stdout)
+            self.assertIn("Worktree state:", result.stdout)
+            self.assertIn("Kit managed state:", result.stdout)
+            self.assertIn("kit managed state is not Git dirty state", result.stdout)
+            self.assertIn("next: kit update --dry-run --repo", result.stdout)
+
+    def test_status_json_splits_git_worktree_state_from_kit_managed_state(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            target = Path(tmp) / "target"
+            target.mkdir()
+            init_git_repo(target)
+            install = subprocess.run(
+                [sys.executable, str(CLI), "setup", "--repo", str(target), "--preset", "minimal", "--json"],
+                cwd=ROOT,
+                capture_output=True,
+                text=True,
+                check=False,
+            )
+            self.assertEqual(install.returncode, 0, install.stderr)
+
+            result = subprocess.run(
+                [sys.executable, str(CLI), "status", "--repo", str(target), "--json"],
+                cwd=ROOT,
+                capture_output=True,
+                text=True,
+                check=False,
+            )
+
+            self.assertEqual(result.returncode, 0, result.stderr)
+            payload = json.loads(result.stdout)
+            self.assertEqual(payload["git_worktree_state"]["state"], "dirty")
+            self.assertTrue(payload["git_worktree_state"]["dirty"])
+            self.assertGreater(payload["git_worktree_state"]["untracked_count"], 0)
+            self.assertEqual(payload["kit_managed_state"]["state"], "clean")
+            self.assertFalse(payload["kit_managed_state"]["dirty_equivalent"])
 
     def test_status_text_guides_not_installed_repo_to_setup(self):
         with tempfile.TemporaryDirectory() as tmp:
@@ -1151,6 +1184,8 @@ class RepoContractKitCliTests(unittest.TestCase):
             payload = json.loads(result.stdout)
             self.assertEqual(payload["returncode"], 0)
             self.assertTrue(payload["target_repo_writes"]["performed"])
+            self.assertEqual(payload["setup_closeout"]["status"], "needs-commit-or-park")
+            self.assertIn("kit closeout-plan --repo", " ".join(payload["setup_closeout"]["next_commands"]))
             self.assertTrue((target / ".doc-contract-kit" / "install.json").exists())
 
     def test_doctor_alias_reports_preflight_without_target_writes(self):

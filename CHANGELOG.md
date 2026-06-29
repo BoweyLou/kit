@@ -1,5 +1,15 @@
 # Changelog
 
+## 0.6.31 - 2026-06-29
+
+- Split real Git worktree state from kit-managed template/proposal state in
+  status and closeout-plan JSON/text so agents stop treating pending kit
+  proposals as ordinary dirty source files.
+- Add setup closeout guidance and closeout-plan blockers for pending
+  managed-file proposals.
+- Block dirty-primary task prep when untracked files overlap the declared task
+  scope, and parse whitespace-separated scope values as separate paths.
+
 ## 0.6.30 - 2026-06-28
 
 - Add read-only `kit closeout-plan`, translating dirty checkout, task,

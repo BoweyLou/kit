@@ -114,6 +114,17 @@ A command that writes should say so in structured output. Inspect
 `local_update`, `target_repo_writes`, `sidecar_writes`, `next_commands`, and
 `exit_code`.
 
+`kit status --json` separates `git_worktree_state` from
+`kit_managed_state`. Do not call managed-file proposals or template drift a
+dirty Git worktree. Conversely, do not claim implementation work is done just
+because kit managed files are clean; `kit closeout-plan --json` is the finish
+gate.
+
+Dirty-primary task worktrees start from `HEAD`. If untracked source files are
+inside the requested task scope, commit or park those files before
+`DIRTY_PRIMARY_BASELINE=1 make agent-task-prepare`; otherwise the prepared
+worktree would be missing the source the task depends on.
+
 ## Sidecar Artifacts
 
 Some commands can write repo-external sidecar artifacts when explicitly asked.

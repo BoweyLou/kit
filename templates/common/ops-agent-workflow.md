@@ -382,8 +382,11 @@ overlaps another active task. Dirty-primary baseline mode records tracked and
 untracked entries, counts, changed files, HEAD, and a deterministic
 content-sensitive state hash in the task metadata and receipt template; later
 `agent-task-ready` / `agent-task-finalize` runs block if the primary checkout
-changed after that baseline. `ALLOW_DIRTY=1` remains a legacy alias for the same
-baseline mode. Keep the default `OVERLAP=warn` while triaging.
+changed after that baseline. Because the task worktree starts from HEAD,
+prepare blocks dirty-baseline runs when untracked files overlap the declared
+task scope; commit or park those files first. `ALLOW_DIRTY=1` remains a legacy
+alias for the same baseline mode. Keep the default `OVERLAP=warn` while
+triaging.
 The metadata records run id, owner/session id, optional `TASK_OWNER_LABEL`,
 `TASK_THREAD_ID`, and `TASK_AUTOMATION_ID`, heartbeat timestamp, lease expiry,
 active sibling tasks, and overlap warnings. Long-running workers should

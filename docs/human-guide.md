@@ -101,6 +101,10 @@ kit update
 Review proposed replacements under `.doc-contract-kit/updates/` instead of
 copying them blindly over target-owned decisions.
 
+Use `git_worktree_state` for real Git dirt and `kit_managed_state` for kit
+template/proposal state. Managed proposals need a review decision, but they are
+not the same as uncommitted product-code changes.
+
 ## If You Are Lost
 
 Use this order:

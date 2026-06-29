@@ -1965,6 +1965,58 @@ def dirty_summary(entries: list[dict[str, Any]]) -> dict[str, Any]:
     }
 
 
+def git_worktree_state_payload(repo: Path, entries: list[dict[str, Any]]) -> dict[str, Any]:
+    summary = dirty_summary(entries)
+    return {
+        "state": "dirty" if summary["dirty"] else "clean",
+        "source": "git status --porcelain=v1 --untracked-files=all",
+        "root": str(repo),
+        "dirty": summary["dirty"],
+        "count": summary["count"],
+        "tracked_count": summary["tracked_count"],
+        "untracked_count": summary["untracked_count"],
+        "staged_count": summary["staged_count"],
+        "unstaged_count": summary["unstaged_count"],
+        "changed_files": sorted({entry["path"] for entry in entries}),
+        "entries": entries,
+    }
+
+
+def kit_managed_state_payload(repo: Path, install: dict[str, Any]) -> dict[str, Any]:
+    status = install.get("managed_file_status") if isinstance(install, dict) else None
+    report = latest_update_report(repo)
+    proposal_paths = update_proposal_paths(report) if isinstance(report, dict) else []
+    if not install.get("installed"):
+        state = "not-installed"
+        reason = "repo-contract-kit is not installed in this target repo"
+    elif not isinstance(status, dict):
+        state = "unknown"
+        reason = "managed-file manifest status is unavailable"
+    elif proposal_paths:
+        state = "needs-review"
+        reason = "managed update proposals exist under .doc-contract-kit/updates"
+    elif status.get("missing") or status.get("modified"):
+        state = "modified"
+        reason = "managed files differ from the installed manifest"
+    else:
+        state = "clean"
+        reason = "managed files match the installed manifest and no proposals are pending"
+    return {
+        "state": state,
+        "reason": reason,
+        "dirty_equivalent": False,
+        "managed_count": (status or {}).get("managed", 0),
+        "missing_count": len((status or {}).get("missing") or []),
+        "modified_count": len((status or {}).get("modified") or []),
+        "missing_files": (status or {}).get("missing") or [],
+        "modified_files": (status or {}).get("modified") or [],
+        "proposal_count": len(proposal_paths),
+        "proposal_paths": proposal_paths,
+        "latest_update_report": report.get("path") if isinstance(report, dict) else None,
+        "note": "This is kit-managed template/proposal state, not Git worktree dirt.",
+    }
+
+
 def worktree_status(path: Path) -> dict[str, Any]:
     if not path.exists():
         return {"available": False, "dirty": None, "entries": [], "error": "worktree path is missing"}
@@ -2764,9 +2816,12 @@ def kit_drift_diagnostics(repo: Path, install: dict[str, Any], local_kit: dict[s
 
 
 def status_payload(repo: Path) -> dict[str, Any]:
-    changed = changed_files(repo, "working-tree")
+    entries = git_status_entries(repo)
+    changed = sorted({entry["path"] for entry in entries})
     local_kit = kit_status.local_kit_state(ROOT)
     install = install_state(repo)
+    git_worktree_state = git_worktree_state_payload(repo, entries)
+    kit_managed_state = kit_managed_state_payload(repo, install)
     return {
         "schema_version": 1,
         "command": "status",
@@ -2780,6 +2835,8 @@ def status_payload(repo: Path) -> dict[str, Any]:
             "dirty": bool(changed),
             "changed_files": changed,
         },
+        "git_worktree_state": git_worktree_state,
+        "kit_managed_state": kit_managed_state,
         "install": install,
         "target_version": read_text(repo / "VERSION"),
         "local_kit": {
@@ -3527,6 +3584,9 @@ def task_brief(task: dict[str, Any]) -> dict[str, Any]:
 
 def closeout_plan_payload(args: argparse.Namespace, repo: Path) -> dict[str, Any]:
     primary = primary_checkout(repo)
+    status = status_payload(primary)
+    git_worktree_state = status.get("git_worktree_state") or {}
+    kit_managed_state = status.get("kit_managed_state") or {}
     ledger = agent_state_ledger_payload(args, primary)
     dirty = ledger.get("dirty") or {}
     task_status = ledger.get("task_status") or {}
@@ -3607,6 +3667,15 @@ def closeout_plan_payload(args: argparse.Namespace, repo: Path) -> dict[str, Any
                 "count": closeout_blocked_count,
             }
         )
+    if kit_managed_state.get("state") == "needs-review":
+        claim_blockers.append(
+            {
+                "code": "kit_managed_review",
+                "message": "Kit managed-file proposals are pending review; this is not Git dirt, but it must be accepted, rejected, or receipted before closeout.",
+                "count": kit_managed_state.get("proposal_count", 0),
+                "latest_update_report": kit_managed_state.get("latest_update_report"),
+            }
+        )
 
     external_blockers = [
         item
@@ -3669,6 +3738,12 @@ def closeout_plan_payload(args: argparse.Namespace, repo: Path) -> dict[str, Any
             "make agent-task-closeout TASK_CLOSEOUT_JSON=1",
             "Inspect blocked closeout entries and resolve their safety reasons.",
         )
+    elif kit_managed_state.get("state") == "needs-review":
+        completion_state = "needs-kit-review"
+        next_action = closeout_plan_action(
+            "review .doc-contract-kit/updates/ and either accept, reject, or receipt the proposals",
+            "Resolve managed-file update proposals without describing them as Git worktree dirt.",
+        )
     else:
         completion_state = "clean"
         next_action = closeout_plan_action(
@@ -3700,6 +3775,8 @@ def closeout_plan_payload(args: argparse.Namespace, repo: Path) -> dict[str, Any
         "next_action": next_action,
         "claim_blockers": claim_blockers,
         "nonblocking_warnings": nonblocking_warning_codes,
+        "git_worktree_state": git_worktree_state,
+        "kit_managed_state": kit_managed_state,
         "dirty": dirty,
         "dirty_file_groups": closeout_dirty_file_groups(dirty.get("entries") or []),
         "task_summary": task_summary,
@@ -3735,9 +3812,19 @@ def render_closeout_plan(payload: dict[str, Any]) -> None:
     print(f" - completion state: {payload['completion_state']}")
     print(f" - writes: target=false sidecar=false")
     dirty = payload.get("dirty") or {}
+    git_state = payload.get("git_worktree_state") or {}
+    managed_state = payload.get("kit_managed_state") or {}
     task_summary = payload.get("task_summary") or {}
     closeout = payload.get("closeout") or {}
     print(f" - dirty checkout: {str(dirty.get('dirty')).lower()} ({dirty.get('count', 0)} changed)")
+    if git_state:
+        print(f" - git worktree state: {git_state.get('state')} ({git_state.get('count', 0)} changed)")
+    if managed_state:
+        print(
+            " - kit managed state: "
+            f"{managed_state.get('state')} "
+            f"({managed_state.get('proposal_count', 0)} proposals; not Git dirt)"
+        )
     print(f" - tasks: {task_summary.get('active_task_count', 0)} active / {task_summary.get('task_count', 0)} total")
     print(f" - closeout: {closeout.get('candidate_count', 0)} candidate / {closeout.get('blocked_count', 0)} blocked")
     if payload.get("claim_blockers"):
@@ -5833,6 +5920,26 @@ def render_status(payload: dict[str, Any]) -> None:
     )
     print(f"repo: {payload['repo']}")
     print(f"dirty: {str(payload['git']['dirty']).lower()}")
+    git_state = payload.get("git_worktree_state") or {}
+    managed_state = payload.get("kit_managed_state") or {}
+    if git_state:
+        print("Worktree state:")
+        print(
+            " - git worktree: "
+            f"{git_state.get('state', 'unknown')} "
+            f"({git_state.get('count', 0)} changed; "
+            f"tracked/untracked {git_state.get('tracked_count', 0)}/{git_state.get('untracked_count', 0)})"
+        )
+    if managed_state:
+        print("Kit managed state:")
+        print(
+            " - managed files: "
+            f"{managed_state.get('state', 'unknown')} "
+            f"({managed_state.get('modified_count', 0)} modified, "
+            f"{managed_state.get('missing_count', 0)} missing, "
+            f"{managed_state.get('proposal_count', 0)} proposals)"
+        )
+        print(" - note: kit managed state is not Git dirty state")
     print(f"repo-contract-kit installed: {str(install['installed']).lower()}")
     print("Version roles:")
     print(f" - running tool version: {running_version}")
@@ -8091,6 +8198,25 @@ def run_guide_interactive(payload: dict[str, Any], force_non_interactive: bool =
     return main(command)
 
 
+def setup_closeout_payload(repo: Path, write_paths: list[str]) -> dict[str, Any]:
+    needs_commit = bool(write_paths)
+    return {
+        "status": "needs-commit-or-park" if needs_commit else "no-target-writes",
+        "written_paths": write_paths,
+        "next_commands": [
+            "git status --short",
+            public_command("status", "--repo", str(repo), "--json"),
+            public_command("closeout-plan", "--repo", str(repo), "--json"),
+        ],
+        "decision": (
+            "Commit the setup footprint deliberately, or remove/park it if enrollment was exploratory."
+            if needs_commit
+            else "No setup footprint was written."
+        ),
+        "note": "Setup/enrollment files are target repo writes and need explicit repository closeout.",
+    }
+
+
 def run_mutating_script(command: list[str], repo: Path, json_output: bool, writes_on_success: bool) -> int:
     before_status = git_status_entries(repo)
     result = subprocess.run(command, cwd=ROOT, capture_output=True, text=True, check=False)
@@ -8134,6 +8260,8 @@ def run_mutating_script(command: list[str], repo: Path, json_output: bool, write
         }
         if update_report:
             payload["update_report"] = update_report
+        if Path(command[1]).name == "install.py":
+            payload["setup_closeout"] = setup_closeout_payload(repo, write_paths if writes_performed else [])
         render_json(
             payload
         )

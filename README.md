@@ -117,6 +117,13 @@ Run `kit closeout-plan --json` before claiming implementation work is done. If
 `can_claim_done` is false, report the `completion_state` and `next_action`
 instead of saying the work is closed out.
 
+Treat `git_worktree_state` and `kit_managed_state` as separate facts. A Git
+dirty checkout needs integration or a receipt. Kit managed-file proposals under
+`.doc-contract-kit/updates/` need review, but they are not Git worktree dirt.
+When preparing a dirty-baseline task, commit or park untracked source files
+inside the task scope first; a fresh task worktree starts from `HEAD` and will
+not contain those files.
+
 Use JSON fields such as `target_repo_writes`, `sidecar_writes`, `route_role`,
 `audience`, `output_schema`, and `next_commands` to decide whether a command is
 safe, mutating, human-facing, or agent-only.

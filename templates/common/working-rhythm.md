@@ -145,6 +145,9 @@ provenance, then recommends deterministic next commands such as
 Run `kit closeout-plan --json` after validation and before a final handoff. If
 it reports `can_claim_done=false`, do not claim the work is done; report the
 `completion_state`, `claim_blockers`, and `next_action`.
+Use `git_worktree_state` for real Git dirt and `kit_managed_state` for kit
+template or proposal review; managed proposals are not Git worktree dirt, but
+they still need an accept, reject, or receipt decision before closeout.
 `agent-branch-readiness` sits after those local task gates when a whole branch
 or PR needs one JSON answer before a human updates PR state or hosted branch
 governance.
@@ -171,12 +174,15 @@ If the main checkout is dirty, the prepare blocker lists dirty
 entries and safe recovery commands; set `TASK_PREPARE_JSON=1` for machine output
 or `DIRTY_PRIMARY_BASELINE=1` only when preserving existing dirt is intentional.
 That mode records the primary checkout's dirty entries, counts, HEAD, changed
-files, and state hash in task metadata and receipt scaffolds. `ALLOW_DIRTY=1`
-remains a legacy alias for the same baseline mode. `agent-task-ready` then
-checks actual changed files against declared scope, reports goal-check status,
-validates strict receipt/docs-impact evidence, verifies base branch freshness,
-blocks primary-checkout drift after a dirty baseline, and blocks overlap with
-other in-progress tasks before PR update or merge handoff. The worker edits in the
+files, and state hash in task metadata and receipt scaffolds. Because the task
+worktree starts from HEAD, prepare blocks dirty-baseline runs when untracked
+files overlap the declared task scope; commit or park those files first.
+`ALLOW_DIRTY=1` remains a legacy alias for the same baseline mode.
+`agent-task-ready` then checks actual changed files against declared scope,
+reports goal-check status, validates strict receipt/docs-impact evidence,
+verifies base branch freshness, blocks primary-checkout drift after a dirty
+baseline, and blocks overlap with other in-progress tasks before PR update or
+merge handoff. The worker edits in the
 task worktree, refreshes the
 lease with `agent-task-heartbeat` during long work, checks `agent-task-status`
 before handoff, then captures validation evidence and closes the task with

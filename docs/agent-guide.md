@@ -75,10 +75,12 @@ use `kit target prune-missing --dry-run --json` before
 kit registry, not target repos.
 
 Worktree cleanup is a separate lane. Use
-`kit worktree audit --root <root> --json` to inspect disposable worktrees and
-`kit worktree prune --root <root> --dry-run --json` before any prune apply.
-Prune only removes clean linked worktrees under `agent-worktrees` paths; dirty
-or standalone repos are reported, not removed.
+`kit worktree audit --root <repo-or-parent> --json` to inspect disposable
+worktrees and `kit worktree prune --root <repo-or-parent> --dry-run --json`
+before any prune apply. `--root` may be an exact Git repo root, in which case
+Git-linked sibling worktrees such as `<repo>-agent-worktrees/...` are included,
+or a parent directory root. Prune only removes clean linked worktrees under
+`agent-worktrees` paths; dirty or standalone repos are reported, not removed.
 
 ## Choose Work Weight
 

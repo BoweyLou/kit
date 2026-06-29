@@ -1,5 +1,14 @@
 # Changelog
 
+## 0.6.34 - 2026-06-29
+
+- Make `kit worktree audit --root <repo>` and `kit worktree prune --root <repo>`
+  include the repo's Git-linked sibling worktrees under disposable
+  `agent-worktrees` paths, while preserving parent-directory scans.
+- Add JSON discovery-source diagnostics for worktree audit and prune summaries
+  and entries.
+- Document exact repo-root worktree cleanup examples.
+
 ## 0.6.33 - 2026-06-29
 
 - Add `kit target import` and `kit target list` so global batch updates can be

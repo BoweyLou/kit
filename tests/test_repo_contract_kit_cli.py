@@ -1439,7 +1439,9 @@ class RepoContractKitCliTests(unittest.TestCase):
             self.assertEqual(audit.returncode, 0, audit.stderr)
             audit_payload = json.loads(audit.stdout)
             self.assertEqual(audit_payload["summary"]["removable"], 1)
+            self.assertEqual(audit_payload["summary"]["discovery_sources"], ["filesystem-scan"])
             self.assertEqual(audit_payload["worktrees"][0]["root"], str(worktree.resolve()))
+            self.assertEqual(audit_payload["worktrees"][0]["discovery_sources"], ["filesystem-scan"])
 
             preview = subprocess.run(
                 [sys.executable, str(CLI), "worktree", "prune", "--root", str(root), "--dry-run", "--json"],
@@ -1468,6 +1470,86 @@ class RepoContractKitCliTests(unittest.TestCase):
             self.assertTrue(apply_payload["filesystem_writes"]["performed"])
             self.assertEqual(apply_payload["summary"]["removed"], 1)
             self.assertFalse(worktree.exists())
+
+    def test_worktree_audit_exact_repo_root_discovers_git_linked_sibling_worktree(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            repo = root / "primary"
+            repo.mkdir()
+            init_git_repo(repo)
+            worktree = root / "primary-agent-worktrees" / "task-001"
+            worktree.parent.mkdir()
+            add_git_worktree(repo, worktree, branch="codex/exact-root-audit")
+
+            audit = subprocess.run(
+                [sys.executable, str(CLI), "worktree", "audit", "--root", str(repo), "--json"],
+                cwd=ROOT,
+                capture_output=True,
+                text=True,
+                check=False,
+            )
+
+            self.assertEqual(audit.returncode, 0, audit.stderr)
+            payload = json.loads(audit.stdout)
+            self.assertEqual(payload["summary"]["total"], 1)
+            self.assertEqual(payload["summary"]["removable"], 1)
+            self.assertEqual(payload["summary"]["discovery_sources"], ["git-worktree-list"])
+            self.assertEqual(payload["worktrees"][0]["root"], str(worktree.resolve()))
+            self.assertEqual(payload["worktrees"][0]["discovery_sources"], ["git-worktree-list"])
+
+    def test_worktree_prune_dry_run_exact_repo_root_discovers_git_linked_sibling_worktree(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            repo = root / "primary"
+            repo.mkdir()
+            init_git_repo(repo)
+            worktree = root / "primary-agent-worktrees" / "task-001"
+            worktree.parent.mkdir()
+            add_git_worktree(repo, worktree, branch="codex/exact-root-prune")
+
+            preview = subprocess.run(
+                [sys.executable, str(CLI), "worktree", "prune", "--root", str(repo), "--dry-run", "--json"],
+                cwd=ROOT,
+                capture_output=True,
+                text=True,
+                check=False,
+            )
+
+            self.assertEqual(preview.returncode, 0, preview.stderr)
+            payload = json.loads(preview.stdout)
+            self.assertFalse(payload["filesystem_writes"]["performed"])
+            self.assertEqual(payload["summary"]["total"], 1)
+            self.assertEqual(payload["summary"]["would_remove"], 1)
+            self.assertEqual(payload["summary"]["discovery_sources"], ["git-worktree-list"])
+            self.assertTrue(worktree.exists())
+
+    def test_worktree_prune_exact_repo_root_blocks_dirty_git_linked_sibling_worktree(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            repo = root / "primary"
+            repo.mkdir()
+            init_git_repo(repo)
+            worktree = root / "primary-agent-worktrees" / "task-001"
+            worktree.parent.mkdir()
+            add_git_worktree(repo, worktree, branch="codex/exact-root-dirty")
+            (worktree / "dirty.txt").write_text("dirty\n", encoding="utf-8")
+
+            preview = subprocess.run(
+                [sys.executable, str(CLI), "worktree", "prune", "--root", str(repo), "--dry-run", "--json"],
+                cwd=ROOT,
+                capture_output=True,
+                text=True,
+                check=False,
+            )
+
+            self.assertEqual(preview.returncode, 0, preview.stderr)
+            payload = json.loads(preview.stdout)
+            self.assertEqual(payload["summary"]["blocked"], 1)
+            self.assertEqual(payload["summary"]["dirty"], 1)
+            self.assertEqual(payload["summary"]["would_remove"], 0)
+            self.assertEqual(payload["summary"]["discovery_sources"], ["git-worktree-list"])
+            self.assertIn("dirty", payload["worktrees"][0]["blockers"])
+            self.assertTrue(worktree.exists())
 
     def test_doctor_alias_reports_preflight_without_target_writes(self):
         with tempfile.TemporaryDirectory() as tmp:

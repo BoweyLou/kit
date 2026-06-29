@@ -1672,11 +1672,11 @@ Audit and prune disposable agent worktrees.
 
 Examples:
 
-- `kit worktree audit --root /path/to/repos --json`
+- `kit worktree audit --root /path/to/repo-or-parent --json`
 
 ### kit worktree audit
 
-Audit disposable agent worktrees under one or more roots.
+Audit disposable agent worktrees under one or more repo or directory roots.
 
 - Audience: `human, agent`
 - Mutation: `read-only`
@@ -1690,17 +1690,17 @@ Audit disposable agent worktrees under one or more roots.
 
 Examples:
 
-- `kit worktree audit --root /Volumes/Myrtle/Code/04_Code --json`
+- `kit worktree audit --root /Volumes/Myrtle/MiniProjects/MiniCommand --json`
 
 Flags:
 
 - `--json` - Emit machine-readable JSON.
 - `--style` - Human output style: auto uses ANSI only on a TTY, plain disables it, pretty forces it unless NO_COLOR is set.
-- `--root` - Root directory to scan. Defaults to the current directory.
+- `--root` - Repo or directory root to scan. Defaults to the current directory.
 
 ### kit worktree prune
 
-Remove clean disposable linked worktrees under agent-worktrees paths.
+Remove clean disposable linked worktrees under agent-worktrees paths from repo or directory roots.
 
 - Audience: `human, agent`
 - Mutation: `removes-clean-disposable-worktrees-with-apply`
@@ -1714,14 +1714,14 @@ Remove clean disposable linked worktrees under agent-worktrees paths.
 
 Examples:
 
-- `kit worktree prune --root /Volumes/Myrtle/Code/04_Code --dry-run --json`
-- `kit worktree prune --root /Volumes/Myrtle/Code/04_Code --apply --json`
+- `kit worktree prune --root /Volumes/Myrtle/MiniProjects/MiniCommand --dry-run --json`
+- `kit worktree prune --root /Volumes/Myrtle/MiniProjects/MiniCommand --apply --json`
 
 Flags:
 
 - `--json` - Emit machine-readable JSON.
 - `--style` - Human output style: auto uses ANSI only on a TTY, plain disables it, pretty forces it unless NO_COLOR is set.
-- `--root` - Root directory to scan. Defaults to the current directory.
+- `--root` - Repo or directory root to scan. Defaults to the current directory.
 - `--dry-run` - Preview removable worktrees without deleting them. This is the default.
 - `--apply` - Remove eligible clean linked worktrees.
 - `--force` - Pass --force to git worktree remove for eligible clean worktrees.

@@ -128,9 +128,14 @@ If the dry-run reports stale missing entries, preview registry cleanup with
 Audit disposable task worktrees separately from primary repos:
 
 ```bash
-kit worktree audit --root /Volumes/Myrtle/Code/04_Code --json
-kit worktree prune --root /Volumes/Myrtle/Code/04_Code --dry-run
+kit worktree audit --root /Volumes/Myrtle/MiniProjects/MiniCommand --json
+kit worktree prune --root /Volumes/Myrtle/MiniProjects/MiniCommand --dry-run
 ```
+
+`--root` may be an exact Git repo root or a parent directory. Exact repo roots
+include linked sibling worktrees from Git, such as
+`MiniCommand-agent-worktrees/...`, while prune still removes only clean linked
+worktrees under `agent-worktrees` paths.
 
 Review proposed replacements under `.doc-contract-kit/updates/` instead of
 copying them blindly over target-owned decisions.

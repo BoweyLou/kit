@@ -109,9 +109,13 @@ them with `kit target prune-missing --dry-run` and then
 Disposable task worktrees use a separate lane:
 
 ```bash
-kit worktree audit --root /Volumes/Myrtle/Code/04_Code --json
-kit worktree prune --root /Volumes/Myrtle/Code/04_Code --dry-run
+kit worktree audit --root /Volumes/Myrtle/MiniProjects/MiniCommand --json
+kit worktree prune --root /Volumes/Myrtle/MiniProjects/MiniCommand --dry-run
 ```
+
+`--root` may be either an exact repo root or a parent directory. Exact Git repo
+roots also inspect the repo's linked sibling worktrees, such as
+`MiniCommand-agent-worktrees/...`.
 
 Read [docs/human-guide.md](docs/human-guide.md) for install, daily use, update,
 and troubleshooting flows.

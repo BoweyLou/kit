@@ -710,6 +710,10 @@ def worktree_path_is_disposable(path: Path) -> bool:
     return "agent-worktrees" in path.as_posix()
 
 
+def add_worktree_candidate(candidates: dict[Path, set[str]], path: Path, source: str) -> None:
+    candidates.setdefault(path.resolve(), set()).add(source)
+
+
 def git_marker_kind(path: Path) -> str:
     marker = path / ".git"
     if marker.is_file():
@@ -719,7 +723,7 @@ def git_marker_kind(path: Path) -> str:
     return "missing"
 
 
-def worktree_candidate_paths(root: Path) -> list[Path]:
+def filesystem_worktree_candidate_paths(root: Path) -> list[Path]:
     root = root.expanduser()
     if not root.exists():
         return []
@@ -736,10 +740,45 @@ def worktree_candidate_paths(root: Path) -> list[Path]:
     return sorted(candidates)
 
 
-def worktree_entry(path: Path) -> dict[str, Any]:
+def git_linked_worktree_candidate_paths(root: Path) -> list[Path]:
+    root = root.expanduser()
+    if not root.exists():
+        return []
+    if run_git(root, ["rev-parse", "--show-toplevel"]).returncode != 0:
+        return []
+    primary = primary_checkout(root)
+    primary_resolved = primary.resolve()
+    candidates: set[Path] = set()
+    for metadata in git_worktrees(primary):
+        raw_path = metadata.get("path")
+        if not raw_path:
+            continue
+        path = Path(raw_path).resolve()
+        if path == primary_resolved:
+            continue
+        if worktree_path_is_disposable(path):
+            candidates.add(path)
+    return sorted(candidates)
+
+
+def worktree_candidate_source_map(root: Path) -> dict[Path, set[str]]:
+    candidates: dict[Path, set[str]] = {}
+    for path in filesystem_worktree_candidate_paths(root):
+        add_worktree_candidate(candidates, path, "filesystem-scan")
+    for path in git_linked_worktree_candidate_paths(root):
+        add_worktree_candidate(candidates, path, "git-worktree-list")
+    return candidates
+
+
+def worktree_candidate_paths(root: Path) -> list[Path]:
+    return sorted(worktree_candidate_source_map(root))
+
+
+def worktree_entry(path: Path, discovery_sources: list[str] | None = None) -> dict[str, Any]:
     item: dict[str, Any] = {
         "root": str(path),
         "status": "unknown",
+        "discovery_sources": sorted(discovery_sources or []),
         "disposable_path": worktree_path_is_disposable(path),
         "git_marker": git_marker_kind(path),
         "installed": (path / ".doc-contract-kit" / "install.json").exists(),
@@ -775,28 +814,33 @@ def worktree_entry(path: Path) -> dict[str, Any]:
 
 
 def worktree_audit_entries(args: argparse.Namespace) -> tuple[list[dict[str, Any]], list[dict[str, Any]]]:
-    seen: set[str] = set()
-    entries: list[dict[str, Any]] = []
+    candidates: dict[str, tuple[Path, set[str]]] = {}
     root_errors: list[dict[str, Any]] = []
     for root in worktree_scan_roots(args):
         if not root.exists():
             root_errors.append({"root": str(root), "status": "missing", "error": "Scan root does not exist."})
             continue
-        for path in worktree_candidate_paths(root):
+        for path, sources in worktree_candidate_source_map(root).items():
             key = str(path)
-            if key in seen:
-                continue
-            seen.add(key)
-            entries.append(worktree_entry(path))
+            if key not in candidates:
+                candidates[key] = (path, set())
+            candidates[key][1].update(sources)
+    entries = [
+        worktree_entry(path, sorted(sources))
+        for _key, (path, sources) in sorted(candidates.items(), key=lambda item: item[0])
+    ]
     return entries, root_errors
 
 
 def worktree_summary(entries: list[dict[str, Any]]) -> dict[str, Any]:
     statuses: dict[str, int] = {}
     blocker_counts: dict[str, int] = {}
+    discovery_sources: set[str] = set()
     for entry in entries:
         status = str(entry.get("status") or "unknown")
         statuses[status] = statuses.get(status, 0) + 1
+        for source in entry.get("discovery_sources") or []:
+            discovery_sources.add(str(source))
         for blocker in entry.get("blockers") or []:
             blocker_counts[str(blocker)] = blocker_counts.get(str(blocker), 0) + 1
     return {
@@ -804,6 +848,7 @@ def worktree_summary(entries: list[dict[str, Any]]) -> dict[str, Any]:
         "removable": statuses.get("removable", 0),
         "blocked": statuses.get("blocked", 0),
         "dirty": blocker_counts.get("dirty", 0),
+        "discovery_sources": sorted(discovery_sources),
         "statuses": statuses,
         "blockers": blocker_counts,
     }
@@ -1981,24 +2026,24 @@ def command_map_annotations() -> dict[tuple[str, ...], dict[str, Any]]:
             "audience": ["human", "agent"],
             "mutation": "namespace",
             "json_supported": False,
-            "examples": [public_command("worktree", "audit", "--root", "/path/to/repos", "--json")],
+            "examples": [public_command("worktree", "audit", "--root", "/path/to/repo-or-parent", "--json")],
             "output_schema": "subcommand_namespace",
         },
         ("worktree", "audit"): {
             "audience": ["human", "agent"],
             "mutation": "read-only",
-            "route_note": "Scans one or more roots for disposable agent worktrees, reports dirty state, and marks clean linked worktrees as prune candidates.",
-            "examples": [public_command("worktree", "audit", "--root", "/Volumes/Myrtle/Code/04_Code", "--json")],
+            "route_note": "Scans one or more repo or directory roots for disposable agent worktrees, adds Git-linked sibling worktrees for Git roots, reports dirty state, and marks clean linked worktrees as prune candidates.",
+            "examples": [public_command("worktree", "audit", "--root", "/Volumes/Myrtle/MiniProjects/MiniCommand", "--json")],
             "output_schema": "worktree_audit_payload",
         },
         ("worktree", "prune"): {
             "audience": ["human", "agent"],
             "mutation": "removes-clean-disposable-worktrees-with-apply",
             "target_repo_write": "with --apply",
-            "route_note": "Removes only clean linked worktrees under agent-worktrees paths. Dry-run is the default and dirty or standalone repos are reported, not removed.",
+            "route_note": "Removes only clean linked worktrees under agent-worktrees paths discovered from repo or directory roots. Dry-run is the default and dirty or standalone repos are reported, not removed.",
             "examples": [
-                public_command("worktree", "prune", "--root", "/Volumes/Myrtle/Code/04_Code", "--dry-run", "--json"),
-                public_command("worktree", "prune", "--root", "/Volumes/Myrtle/Code/04_Code", "--apply", "--json"),
+                public_command("worktree", "prune", "--root", "/Volumes/Myrtle/MiniProjects/MiniCommand", "--dry-run", "--json"),
+                public_command("worktree", "prune", "--root", "/Volumes/Myrtle/MiniProjects/MiniCommand", "--apply", "--json"),
             ],
             "output_schema": "worktree_prune_payload",
         },
@@ -10080,14 +10125,14 @@ def build_parser() -> argparse.ArgumentParser:
 
     worktree = subparsers.add_parser("worktree", help="Audit and prune disposable agent worktrees.")
     worktree_subparsers = worktree.add_subparsers(dest="worktree_command", required=True, parser_class=KitArgumentParser)
-    worktree_audit = worktree_subparsers.add_parser("audit", help="Audit disposable agent worktrees under one or more roots.")
+    worktree_audit = worktree_subparsers.add_parser("audit", help="Audit disposable agent worktrees under one or more repo or directory roots.")
     worktree_audit.add_argument("--json", action="store_true", help="Emit machine-readable JSON.")
     add_style_arg(worktree_audit)
-    worktree_audit.add_argument("--root", action="append", help="Root directory to scan. Defaults to the current directory.")
-    worktree_prune = worktree_subparsers.add_parser("prune", help="Remove clean disposable linked worktrees under agent-worktrees paths.")
+    worktree_audit.add_argument("--root", action="append", help="Repo or directory root to scan. Defaults to the current directory.")
+    worktree_prune = worktree_subparsers.add_parser("prune", help="Remove clean disposable linked worktrees under agent-worktrees paths from repo or directory roots.")
     worktree_prune.add_argument("--json", action="store_true", help="Emit machine-readable JSON.")
     add_style_arg(worktree_prune)
-    worktree_prune.add_argument("--root", action="append", help="Root directory to scan. Defaults to the current directory.")
+    worktree_prune.add_argument("--root", action="append", help="Repo or directory root to scan. Defaults to the current directory.")
     worktree_prune.add_argument("--dry-run", action="store_true", help="Preview removable worktrees without deleting them. This is the default.")
     worktree_prune.add_argument("--apply", action="store_true", help="Remove eligible clean linked worktrees.")
     worktree_prune.add_argument("--force", action="store_true", help="Pass --force to git worktree remove for eligible clean worktrees.")

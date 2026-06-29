@@ -101,6 +101,7 @@ kit update
 Preview every registered enrolled target repo:
 
 ```bash
+kit target dirty-report --json
 kit update --all --dry-run
 ```
 
@@ -111,6 +112,7 @@ task worktrees:
 kit target import --root /Volumes/Myrtle/Code/04_Code --dry-run
 kit target import --root /Volumes/Myrtle/Code/04_Code --apply
 kit target list --json
+kit target dirty-report --json
 ```
 
 Apply updates across registered targets:
@@ -119,9 +121,10 @@ Apply updates across registered targets:
 kit update --all --apply
 ```
 
-Batch apply skips dirty, missing, or no-longer-enrolled targets. Successful
-`kit setup` and `kit update` runs add the target repo to the local registry.
-If the dry-run reports stale missing entries, preview registry cleanup with
+Batch dry-run classifies dirty targets before update planning. Batch apply skips
+dirty, missing, or no-longer-enrolled targets. Successful `kit setup` and
+`kit update` runs add the target repo to the local registry. If the dry-run
+reports stale missing entries, preview registry cleanup with
 `kit target prune-missing --dry-run`, then apply it with
 `kit target prune-missing --apply`.
 

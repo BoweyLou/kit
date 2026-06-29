@@ -93,17 +93,24 @@ worktrees, run:
 kit target import --root /Volumes/Myrtle/Code/04_Code --dry-run
 ```
 
-Then inspect scope with `kit target list --json`. To preview every registered
-target repo, run:
+Then inspect scope with `kit target list --json` and check dirty targets before
+planning a batch update:
+
+```bash
+kit target dirty-report --json
+```
+
+To preview every registered target repo, run:
 
 ```bash
 kit update --all --dry-run
 ```
 
 To apply updates across registered targets, use `kit update --all --apply`.
-Batch apply skips dirty, missing, or no-longer-enrolled targets instead of
-rewriting them. If the dry-run reports stale missing registry entries, clean
-them with `kit target prune-missing --dry-run` and then
+Batch dry-run classifies dirty targets before update planning, and batch apply
+skips dirty, missing, or no-longer-enrolled targets instead of rewriting them.
+If the dry-run reports stale missing registry entries, clean them with
+`kit target prune-missing --dry-run` and then
 `kit target prune-missing --apply`.
 
 Disposable task worktrees use a separate lane:

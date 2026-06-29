@@ -4,7 +4,7 @@ Generated from `kit command-map --json`.
 Do not edit command sections by hand; run `kit cli-reference --write docs/cli-reference.md`.
 
 - Schema version: `1`
-- Command count: `63`
+- Command count: `64`
 
 ## Commands
 
@@ -1253,6 +1253,29 @@ Flags:
 - `--runtime-adapter`
 - `--runtime-adapters`
 - `--force`
+
+### kit target dirty-report
+
+Report Git dirty state across registered target repos without running update plans.
+
+- Audience: `human, agent`
+- Mutation: `read-only`
+- Target writes: `never`
+- Sidecar writes: `never`
+- JSON: `yes`
+- Output schema: `target_dirty_report_payload`
+- Route role: `canonical`
+- Canonical command: `target dirty-report`
+- Docs: `README.md#installed-commands`
+
+Examples:
+
+- `kit target dirty-report --json`
+
+Flags:
+
+- `--json` - Emit machine-readable JSON.
+- `--style` - Human output style: auto uses ANSI only on a TTY, plain disables it, pretty forces it unless NO_COLOR is set.
 
 ### kit target doctor
 

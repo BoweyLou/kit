@@ -1233,6 +1233,7 @@ class RepoContractKitCliTests(unittest.TestCase):
             self.assertEqual(setup_payload["target_registry"]["entry"]["root"], str(target.resolve()))
             registry_path = Path(setup_payload["target_registry"]["path"])
             self.assertTrue(registry_path.exists())
+            commit_all(target, "Install repo-contract-kit")
 
             result = subprocess.run(
                 [sys.executable, str(CLI), "update", "--all", "--dry-run", "--json"],
@@ -1251,6 +1252,87 @@ class RepoContractKitCliTests(unittest.TestCase):
             self.assertEqual(payload["registry"]["target_count"], 1)
             self.assertEqual(payload["summary"]["statuses"]["planned"], 1)
             self.assertEqual(payload["targets"][0]["root"], str(target.resolve()))
+
+    def test_target_dirty_report_lists_dirty_registered_targets(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            target = Path(tmp) / "target"
+            target.mkdir()
+            init_git_repo(target)
+            state_home = Path(tmp) / "state"
+            env = {**os.environ, "XDG_STATE_HOME": str(state_home)}
+
+            setup = subprocess.run(
+                [sys.executable, str(CLI), "setup", "--repo", str(target), "--preset", "minimal", "--json"],
+                cwd=ROOT,
+                env=env,
+                capture_output=True,
+                text=True,
+                check=False,
+            )
+            self.assertEqual(setup.returncode, 0, setup.stderr)
+            commit_all(target, "Install repo-contract-kit")
+            (target / "README.md").write_text("# dirty\n", encoding="utf-8")
+
+            result = subprocess.run(
+                [sys.executable, str(CLI), "target", "dirty-report", "--json"],
+                cwd=tmp,
+                env=env,
+                capture_output=True,
+                text=True,
+                check=False,
+            )
+
+            self.assertEqual(result.returncode, 0, result.stderr)
+            payload = json.loads(result.stdout)
+            self.assertEqual(payload["command"], "target-dirty-report")
+            self.assertEqual(payload["summary"]["total"], 1)
+            self.assertEqual(payload["summary"]["dirty"], 1)
+            self.assertEqual(payload["summary"]["statuses"]["dirty"], 1)
+            self.assertEqual(payload["dirty_targets"][0]["root"], str(target.resolve()))
+            self.assertEqual(payload["dirty_targets"][0]["dirty_files"], ["README.md"])
+            self.assertFalse(payload["target_repo_writes"]["performed"])
+
+    def test_update_all_dry_run_classifies_dirty_targets_before_planning(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            target = Path(tmp) / "target"
+            target.mkdir()
+            init_git_repo(target)
+            state_home = Path(tmp) / "state"
+            env = {**os.environ, "XDG_STATE_HOME": str(state_home)}
+
+            setup = subprocess.run(
+                [sys.executable, str(CLI), "setup", "--repo", str(target), "--preset", "minimal", "--json"],
+                cwd=ROOT,
+                env=env,
+                capture_output=True,
+                text=True,
+                check=False,
+            )
+            self.assertEqual(setup.returncode, 0, setup.stderr)
+            commit_all(target, "Install repo-contract-kit")
+            receipt_path = target / ".doc-contract-kit" / "install.json"
+            receipt = read_json_file(receipt_path)
+            receipt["profiles"] = ["missing-profile"]
+            write_json_file(receipt_path, receipt)
+
+            result = subprocess.run(
+                [sys.executable, str(CLI), "update", "--all", "--dry-run", "--json"],
+                cwd=tmp,
+                env=env,
+                capture_output=True,
+                text=True,
+                check=False,
+            )
+
+            self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+            payload = json.loads(result.stdout)
+            self.assertEqual(payload["mode"], "dry-run")
+            self.assertEqual(payload["summary"]["failed"], 0)
+            self.assertEqual(payload["summary"]["statuses"]["dirty"], 1)
+            self.assertEqual(payload["targets"][0]["status"], "dirty")
+            self.assertNotIn("plan", payload["targets"][0])
+            self.assertEqual(payload["targets"][0]["dirty_files"], [".doc-contract-kit/install.json"])
+            self.assertFalse(payload["target_repo_writes"]["performed"])
 
     def test_target_update_all_apply_skips_dirty_registered_target(self):
         with tempfile.TemporaryDirectory() as tmp:
@@ -4474,7 +4556,7 @@ class RepoContractKitCliTests(unittest.TestCase):
         )
 
         self.assertEqual(result.returncode, 0, result.stderr)
-        for command in ("add", "status", "list", "import", "doctor", "repair-source-clone", "update", "update-all", "prune-missing"):
+        for command in ("add", "status", "list", "dirty-report", "import", "doctor", "repair-source-clone", "update", "update-all", "prune-missing"):
             self.assertIn(command, result.stdout)
 
     def test_target_doctor_alias_reports_preflight_without_target_writes(self):

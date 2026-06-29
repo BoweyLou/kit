@@ -1,5 +1,14 @@
 # Changelog
 
+## 0.6.35 - 2026-06-29
+
+- Add read-only `kit target dirty-report` for enrolled repos so operators can
+  see dirty targets before global maintenance.
+- Make `kit update --all --dry-run` classify dirty targets before running
+  update plans, avoiding stale metadata/profile failures from repos that need
+  human cleanup first.
+- Document the dirty-report step in batch target update workflows.
+
 ## 0.6.34 - 2026-06-29
 
 - Make `kit worktree audit --root <repo>` and `kit worktree prune --root <repo>`

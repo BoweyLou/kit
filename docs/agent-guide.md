@@ -66,11 +66,13 @@ The batch route reads the local enrolled-target registry populated by successful
 `kit setup`, `kit update`, and `kit target import` runs. Use
 `kit target import --root <root> --dry-run --json` to seed primary repos from
 install receipts; agent-worktree and archive paths are excluded by default.
-Use `kit target list --json` before applying global maintenance.
-`kit update --all --apply --json` may update clean registered targets, but
-skips dirty, missing, or no-longer-enrolled targets and reports each target
-status in `targets[]`. When a dry-run reports stale missing registry entries,
-use `kit target prune-missing --dry-run --json` before
+Use `kit target list --json` and `kit target dirty-report --json` before
+applying global maintenance. `kit update --all --dry-run --json` classifies
+dirty targets before running update plans, so stale metadata in a dirty repo does
+not make the preview fail. `kit update --all --apply --json` may update clean
+registered targets, but skips dirty, missing, or no-longer-enrolled targets and
+reports each target status in `targets[]`. When a dry-run reports stale missing
+registry entries, use `kit target prune-missing --dry-run --json` before
 `kit target prune-missing --apply --json`; that command writes only the local
 kit registry, not target repos.
 

@@ -247,6 +247,7 @@ For kit maintenance:
 kit status
 kit update --dry-run
 kit update
+kit update --all --dry-run
 kit doctor
 kit closeout-plan
 make kit-explain
@@ -257,6 +258,9 @@ Use `kit start` for opportunistic local-safe kit maintenance and
 updates stay explicit through `kit update --global`. Update plans and reports
 include a `read_next` list; read those docs before merging proposed replacements
 from `.doc-contract-kit/updates/`.
+Successful `kit setup` and `kit update` runs register enrolled targets for
+`kit update --all --dry-run`; batch apply needs `--apply` and skips dirty,
+missing, or no-longer-enrolled targets.
 Use `docs/upgrade-flow.md` for the full safe update sequence, including
 metadata-only migration and conflict review. Kit updates keep root `AGENTS.md`
 in place and preserve customized managed files.

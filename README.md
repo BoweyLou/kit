@@ -85,6 +85,17 @@ tool checkout, and `kit update` to apply a target update yourself. Kit updates
 preserve target-owned files and customized managed files. Proposed replacements
 are written under `.doc-contract-kit/updates/` for review.
 
+Successful `kit setup` and `kit update` runs register enrolled targets in local
+kit state. To preview every registered target repo, run:
+
+```bash
+kit update --all --dry-run
+```
+
+To apply updates across registered targets, use `kit update --all --apply`.
+Batch apply skips dirty, missing, or no-longer-enrolled targets instead of
+rewriting them.
+
 Read [docs/human-guide.md](docs/human-guide.md) for install, daily use, update,
 and troubleshooting flows.
 

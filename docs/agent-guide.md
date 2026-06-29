@@ -61,6 +61,11 @@ writes. Use `kit start --update-policy check-only --json` when the agent should
 inspect whether a local update is available without applying it. Remote fetches
 and global tool refreshes are never part of `kit start`; run
 `kit update --global` only when a human asks to refresh the global checkout.
+For batch target maintenance, use `kit update --all --dry-run --json` first.
+The batch route reads the local enrolled-target registry populated by successful
+`kit setup` and `kit update` runs. `kit update --all --apply --json` may update
+clean registered targets, but skips dirty, missing, or no-longer-enrolled
+targets and reports each target status in `targets[]`.
 
 ## Choose Work Weight
 

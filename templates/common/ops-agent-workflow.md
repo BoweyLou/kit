@@ -196,11 +196,15 @@ For update management, prefer the global CLI:
 kit status
 kit update --dry-run
 kit update
+kit update --all --dry-run
 kit doctor
 ```
 
 `make kit-explain` prints the ownership boundary for installed kit files. Use it
 when the repo's root `Makefile` or installed scripts look like project code.
+`kit update --all --dry-run` previews registered enrolled target repos from the
+local kit registry. `kit update --all --apply` may update clean registered
+targets and skips dirty, missing, or no-longer-enrolled targets.
 The target repo owns the root `Makefile`; the kit-owned targets live in
 `.doc-contract-kit/make/repo-contract.mk` and are exposed by including that
 fragment.

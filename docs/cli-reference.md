@@ -4,7 +4,7 @@ Generated from `kit command-map --json`.
 Do not edit command sections by hand; run `kit cli-reference --write docs/cli-reference.md`.
 
 - Schema version: `1`
-- Command count: `56`
+- Command count: `57`
 
 ## Commands
 
@@ -1361,6 +1361,38 @@ Flags:
 - `--force-managed`
 - `--verbose` - Show raw update script detail after the compact summary.
 
+### kit target update-all
+
+Dry-run or apply updates to every registered enrolled target repo.
+
+- Audience: `human, agent`
+- Mutation: `writes-targets-with-apply`
+- Target writes: `with --apply`
+- Sidecar writes: `never`
+- JSON: `yes`
+- Output schema: `target_update_all_payload`
+- Route role: `canonical`
+- Canonical command: `target update-all`
+- Docs: `README.md#installed-commands`
+
+Examples:
+
+- `kit target update-all --dry-run --json`
+- `kit target update-all --apply --json`
+
+Flags:
+
+- `--json` - Emit machine-readable JSON.
+- `--style` - Human output style: auto uses ANSI only on a TTY, plain disables it, pretty forces it unless NO_COLOR is set.
+- `--dry-run` - Plan every registered target update without writing files. This is the default.
+- `--apply` - Apply updates to clean registered targets. Dirty targets are skipped.
+- `--preset`
+- `--profiles`
+- `--runtime-adapter`
+- `--runtime-adapters`
+- `--metadata-only`
+- `--force-managed`
+
 ### kit task-packet
 
 Emit a task-packet JSON scaffold.
@@ -1440,6 +1472,8 @@ Examples:
 
 - `kit update --dry-run --json`
 - `kit update --json`
+- `kit update --all --dry-run --json`
+- `kit update --all --apply --json`
 
 Flags:
 
@@ -1448,6 +1482,7 @@ Flags:
 - `--style` - Human output style: auto uses ANSI only on a TTY, plain disables it, pretty forces it unless NO_COLOR is set.
 - `--kit` - kit checkout to update from. Defaults to this checkout.
 - `--global` - Update the global tool checkout instead of a target repo.
+- `--all` - Update every registered enrolled target repo. Defaults to dry-run unless --apply is set.
 - `--ref` - Branch or tag to fetch for --global. Default: main.
 - `--workflow-ref` - Branch or tag for the optional legacy workflow-source checkout when --global is used. Defaults to --ref.
 - `--dry-run`

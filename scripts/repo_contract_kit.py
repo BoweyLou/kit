@@ -24,6 +24,7 @@ SCRIPT_DIR = Path(__file__).resolve().parent
 ROOT = SCRIPT_DIR.parent
 CLI_ENTRYPOINT = ROOT / "scripts" / "repo_contract_kit.py"
 STATE_APP_DIR = "repo-contract-kit"
+TARGET_REGISTRY_FILENAME = "enrolled-targets.json"
 PUBLIC_COMMAND = "kit"
 INTERNAL_PRODUCT_NAME = "repo-contract-kit"
 COMPLETION_SHELLS = ("bash", "zsh", "fish")
@@ -349,6 +350,91 @@ def sidecar_state(repo: Path | None = None) -> dict[str, Any]:
     return payload
 
 
+def target_registry_path() -> Path:
+    return state_base_dir() / TARGET_REGISTRY_FILENAME
+
+
+def read_target_registry() -> dict[str, Any]:
+    path = target_registry_path()
+    payload = read_json(path)
+    if not isinstance(payload, dict) or payload.get("_error"):
+        return {
+            "schema_version": 1,
+            "path": str(path),
+            "targets": [],
+        }
+    targets = payload.get("targets")
+    if not isinstance(targets, list):
+        targets = []
+    payload["schema_version"] = payload.get("schema_version") or 1
+    payload["path"] = str(path)
+    payload["targets"] = [item for item in targets if isinstance(item, dict)]
+    return payload
+
+
+def write_target_registry(payload: dict[str, Any]) -> None:
+    path = target_registry_path()
+    path.parent.mkdir(parents=True, exist_ok=True)
+    tmp_path = path.with_suffix(path.suffix + ".tmp")
+    tmp_path.write_text(json.dumps(payload, indent=2, sort_keys=True) + "\n", encoding="utf-8")
+    tmp_path.replace(path)
+
+
+def registered_target_entry(repo: Path, source: str) -> dict[str, Any]:
+    identity = repo_identity(repo)
+    install = install_state(repo)
+    return {
+        "root": identity["root"],
+        "id": identity["id"],
+        "hash": identity["hash"],
+        "hash_algorithm": identity["hash_algorithm"],
+        "name": repo.name,
+        "last_seen_at": now(),
+        "last_seen_command": source,
+        "kit_version": kit_version(),
+        "installed": bool(install.get("installed")),
+        "install_version": install.get("kit_version"),
+        "install_source_ref": install.get("source_ref"),
+    }
+
+
+def register_target_repo(repo: Path, source: str) -> dict[str, Any]:
+    registry = read_target_registry()
+    targets = list(registry.get("targets") or [])
+    entry = registered_target_entry(repo, source)
+    previous = next((item for item in targets if item.get("root") == entry["root"]), None)
+    if previous and previous.get("registered_at"):
+        entry["registered_at"] = previous["registered_at"]
+    else:
+        entry["registered_at"] = entry["last_seen_at"]
+    targets = [item for item in targets if item.get("root") != entry["root"]]
+    targets.append(entry)
+    registry.update(
+        {
+            "schema_version": 1,
+            "path": str(target_registry_path()),
+            "updated_at": entry["last_seen_at"],
+            "targets": sorted(targets, key=lambda item: str(item.get("root") or "")),
+        }
+    )
+    write_target_registry(registry)
+    return {
+        "path": str(target_registry_path()),
+        "entry": entry,
+        "target_count": len(registry["targets"]),
+    }
+
+
+def target_registry_summary() -> dict[str, Any]:
+    registry = read_target_registry()
+    return {
+        "path": registry["path"],
+        "target_count": len(registry.get("targets") or []),
+        "updated_at": registry.get("updated_at"),
+        "targets": registry.get("targets") or [],
+    }
+
+
 def write_json_file(path: Path, payload: Any) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
     path.write_text(json.dumps(payload, indent=2, sort_keys=True) + "\n", encoding="utf-8")
@@ -588,7 +674,9 @@ def cli_metadata() -> dict[str, Any]:
             "target add",
             "target repair-source-clone --apply",
             "target update",
+            "target update-all --apply",
             "update",
+            "update --all --apply",
             "update --global",
             "migrate-config",
         ],
@@ -1386,6 +1474,20 @@ def command_map_annotations() -> dict[tuple[str, ...], dict[str, Any]]:
             "examples": [public_command("target", "update", "--repo", "/path/to/repo", "--dry-run", "--json")],
             "output_schema": "install_update_payload",
         },
+        ("target", "update-all"): {
+            "audience": ["human", "agent"],
+            "mutation": "writes-targets-with-apply",
+            "target_repo_write": "with --apply",
+            "route_role": "canonical",
+            "canonical_command": "target update-all",
+            "alias_group": "target-update",
+            "route_note": "Updates every registered enrolled target repo from the global tool checkout; dry-run is the default and --apply is required for writes.",
+            "examples": [
+                public_command("target", "update-all", "--dry-run", "--json"),
+                public_command("target", "update-all", "--apply", "--json"),
+            ],
+            "output_schema": "target_update_all_payload",
+        },
         ("migrate-config",): {
             "audience": ["agent"],
             "mutation": "writes-target-metadata",
@@ -1399,7 +1501,13 @@ def command_map_annotations() -> dict[tuple[str, ...], dict[str, Any]]:
         ("update",): {
             "audience": ["human", "agent"],
             "mutation": "writes-target-by-default",
-            "examples": [public_command("update", "--dry-run", "--json"), public_command("update", "--json")],
+            "route_note": "`kit update --all` is the short route for registered target batch updates; it defaults to dry-run and needs --apply for writes.",
+            "examples": [
+                public_command("update", "--dry-run", "--json"),
+                public_command("update", "--json"),
+                public_command("update", "--all", "--dry-run", "--json"),
+                public_command("update", "--all", "--apply", "--json"),
+            ],
             "output_schema": "install_update_payload",
         },
     }
@@ -8102,6 +8210,7 @@ def render_options(include_advanced: bool = False) -> None:
     print(f"  {PUBLIC_COMMAND} mode-check              Show harness mode selection")
     print(f"  {PUBLIC_COMMAND} update --dry-run        Preview managed-file updates")
     print(f"  {PUBLIC_COMMAND} update                  Apply safe managed-file updates")
+    print(f"  {PUBLIC_COMMAND} update --all --dry-run  Preview updates for registered target repos")
     print(f"  {PUBLIC_COMMAND} doctor                  Diagnose dirty state and task blockers")
     print(f"  {PUBLIC_COMMAND} closeout-plan           Decide whether work is actually closed out")
     print(f"  {PUBLIC_COMMAND} palette                 Search commands in a TTY")
@@ -8221,6 +8330,9 @@ def run_mutating_script(command: list[str], repo: Path, json_output: bool, write
     before_status = git_status_entries(repo)
     result = subprocess.run(command, cwd=ROOT, capture_output=True, text=True, check=False)
     writes_performed = writes_on_success and result.returncode == 0
+    target_registry = None
+    if writes_performed and Path(command[1]).name in {"install.py", "update.py"}:
+        target_registry = register_target_repo(repo, Path(command[1]).stem)
     if writes_performed:
         write_reason = "explicit install/update command"
     elif result.returncode != 0:
@@ -8262,6 +8374,8 @@ def run_mutating_script(command: list[str], repo: Path, json_output: bool, write
             payload["update_report"] = update_report
         if Path(command[1]).name == "install.py":
             payload["setup_closeout"] = setup_closeout_payload(repo, write_paths if writes_performed else [])
+        if target_registry:
+            payload["target_registry"] = target_registry
         render_json(
             payload
         )
@@ -8463,6 +8577,204 @@ def run_update_script(
     if result.stderr:
         print(result.stderr, end="", file=sys.stderr)
     return result.returncode
+
+
+def target_update_all_script_command(args: argparse.Namespace, repo: Path, *, apply: bool) -> list[str]:
+    command = [sys.executable, str(ROOT / "scripts" / "update.py"), str(repo), "--apply" if apply else "--dry-run"]
+    if getattr(args, "metadata_only", False):
+        command.append("--metadata-only")
+    if getattr(args, "force_managed", False):
+        command.append("--force-managed")
+    for flag, attr in (
+        ("--preset", "preset"),
+        ("--profiles", "profiles"),
+        ("--runtime-adapters", "runtime_adapters"),
+    ):
+        value = getattr(args, attr, None)
+        if value:
+            command.extend([flag, str(value)])
+    for value in getattr(args, "runtime_adapter", None) or []:
+        command.extend(["--runtime-adapter", str(value)])
+    return command
+
+
+def target_update_all_run_target(args: argparse.Namespace, entry: dict[str, Any], *, apply: bool) -> dict[str, Any]:
+    root = entry.get("root")
+    result: dict[str, Any] = {
+        "root": root,
+        "id": entry.get("id"),
+        "name": entry.get("name"),
+        "status": "unknown",
+        "target_repo_writes": target_repo_writes(False, reason="not attempted"),
+    }
+    if not root:
+        result.update({"status": "invalid-registry-entry", "exit_code": 2, "error": "Registry entry has no root path."})
+        return result
+
+    repo_path = Path(str(root)).expanduser()
+    if not repo_path.exists():
+        result.update({"status": "missing", "exit_code": 2, "error": "Registered target path does not exist."})
+        return result
+    git_root_result = run_git(repo_path, ["rev-parse", "--show-toplevel"])
+    if git_root_result.returncode != 0:
+        result.update({"status": "not-git", "exit_code": 2, "error": "Registered target path is not a git repository."})
+        return result
+    repo = Path(git_root_result.stdout.strip()).resolve()
+    result["root"] = str(repo)
+    if not (repo / ".doc-contract-kit" / "install.json").exists():
+        result.update({"status": "not-installed", "exit_code": 2, "error": "Registered target no longer has a kit install receipt."})
+        return result
+
+    dirty_entries = git_status_entries(repo)
+    if apply and dirty_entries:
+        result.update(
+            {
+                "status": "skipped-dirty",
+                "exit_code": 1,
+                "dirty_count": len(dirty_entries),
+                "dirty_files": sorted({item["path"] for item in dirty_entries}),
+                "target_repo_writes": target_repo_writes(False, reason="skipped dirty target before apply"),
+            }
+        )
+        return result
+
+    command = target_update_all_script_command(args, repo, apply=apply)
+    plan_result = subprocess.run(update_plan_command(command), cwd=ROOT, capture_output=True, text=True, check=False)
+    plan_payload = parse_json_stdout(plan_result)
+    if not plan_payload:
+        result.update(
+            {
+                "status": "failed",
+                "exit_code": plan_result.returncode or 1,
+                "error": "Target update plan did not return JSON.",
+                "stderr": plan_result.stderr,
+            }
+        )
+        return result
+
+    blockers = list(plan_payload.get("blockers") or [])
+    warnings = list(plan_payload.get("warnings") or [])
+    actions = list(plan_payload.get("actions") or [])
+    conflicts = list(plan_payload.get("conflicts") or [])
+    result.update(
+        {
+            "plan": {
+                "actions": len(actions),
+                "conflicts": len(conflicts),
+                "blockers": len(blockers),
+                "warnings": len(warnings),
+                "detected_state": (plan_payload.get("detected_state") or {}).get("kind"),
+            },
+            "warnings": warnings,
+            "blockers": blockers,
+        }
+    )
+    if blockers:
+        result.update({"status": "blocked", "exit_code": 1})
+        return result
+    if not apply:
+        result.update(
+            {
+                "status": "planned",
+                "exit_code": 0,
+                "target_repo_writes": target_repo_writes(False, reason="batch dry-run only"),
+            }
+        )
+        return result
+
+    previous_report = latest_update_report(repo)
+    previous_report_path = previous_report.get("path") if previous_report else None
+    update_result = subprocess.run(command, cwd=ROOT, capture_output=True, text=True, check=False)
+    report = latest_update_report(repo)
+    if report and report.get("path") == previous_report_path:
+        report = None
+    if update_result.returncode != 0:
+        result.update(
+            {
+                "status": "failed",
+                "exit_code": update_result.returncode,
+                "stdout": update_result.stdout,
+                "stderr": update_result.stderr,
+            }
+        )
+        return result
+
+    registry = register_target_repo(repo, "target update-all")
+    result.update(
+        {
+            "status": "updated",
+            "exit_code": 0,
+            "update_report": report.get("path") if isinstance(report, dict) else None,
+            "target_registry": {"path": registry["path"], "target_count": registry["target_count"]},
+            "target_repo_writes": target_repo_writes(True, paths=[str(repo)], reason="batch target update apply"),
+        }
+    )
+    return result
+
+
+def target_update_all_payload(args: argparse.Namespace) -> tuple[dict[str, Any], int]:
+    registry = read_target_registry()
+    targets = list(registry.get("targets") or [])
+    apply = bool(getattr(args, "apply", False)) and not bool(getattr(args, "dry_run", False))
+    results = [target_update_all_run_target(args, entry, apply=apply) for entry in targets]
+    status_counts: dict[str, int] = {}
+    for item in results:
+        status = str(item.get("status") or "unknown")
+        status_counts[status] = status_counts.get(status, 0) + 1
+    failed_statuses = {"blocked", "failed", "invalid-registry-entry", "missing", "not-git", "not-installed", "skipped-dirty"}
+    failed_count = sum(status_counts.get(status, 0) for status in failed_statuses)
+    write_paths = [item["root"] for item in results if (item.get("target_repo_writes") or {}).get("performed")]
+    next_commands: list[str] = []
+    if targets and not apply:
+        next_commands.append(public_command("target", "update-all", "--apply"))
+    if not targets:
+        next_commands.append(public_command("setup", "--repo", "/path/to/repo"))
+    exit_code = 1 if failed_count else 0
+    payload = {
+        "schema_version": 1,
+        "command": "target-update-all",
+        "mode": "apply" if apply else "dry-run",
+        "registry": {
+            "path": str(target_registry_path()),
+            "target_count": len(targets),
+            "updated_at": registry.get("updated_at"),
+        },
+        "target_repo_writes": target_repo_writes(bool(write_paths), paths=write_paths, reason="batch target updates" if write_paths else "batch dry-run or no target writes"),
+        "sidecar_writes": sidecar_writes(False),
+        "summary": {
+            "total": len(results),
+            "failed": failed_count,
+            "statuses": status_counts,
+        },
+        "targets": results,
+        "next_commands": next_commands,
+        "exit_code": exit_code,
+    }
+    return payload, exit_code
+
+
+def render_target_update_all(payload: dict[str, Any], style: str = "auto") -> None:
+    summary = payload.get("summary") or {}
+    registry = payload.get("registry") or {}
+    print(styled_text(f"{PUBLIC_COMMAND} target update-all:", style, "1;36"))
+    print(f" - mode: {payload.get('mode')}")
+    print(f" - registry: {registry.get('path')}")
+    print(f" - targets: {summary.get('total', 0)}")
+    print(f" - failed/skipped: {summary.get('failed', 0)}")
+    for status, count in sorted((summary.get("statuses") or {}).items()):
+        print(f" - {status}: {count}")
+    for item in payload.get("targets") or []:
+        root = item.get("root") or "(unknown)"
+        status = item.get("status") or "unknown"
+        plan = item.get("plan") or {}
+        detail = ""
+        if plan:
+            detail = f" ({plan.get('actions', 0)} actions, {plan.get('conflicts', 0)} conflicts, {plan.get('blockers', 0)} blockers)"
+        print(f"   - {status}: {root}{detail}")
+    if payload.get("next_commands"):
+        print(" - next commands:")
+        for command in payload["next_commands"]:
+            print(f"   - {command}")
 
 
 def latest_update_report(repo: Path) -> dict[str, Any] | None:
@@ -9054,6 +9366,20 @@ def build_parser() -> argparse.ArgumentParser:
     target_update.add_argument("--metadata-only", action="store_true")
     target_update.add_argument("--force-managed", action="store_true")
     target_update.add_argument("--verbose", action="store_true", help="Show raw update script detail after the compact summary.")
+    target_update_all = target_subparsers.add_parser(
+        "update-all",
+        help="Dry-run or apply updates to every registered enrolled target repo.",
+    )
+    target_update_all.add_argument("--json", action="store_true", help="Emit machine-readable JSON.")
+    add_style_arg(target_update_all)
+    target_update_all.add_argument("--dry-run", action="store_true", help="Plan every registered target update without writing files. This is the default.")
+    target_update_all.add_argument("--apply", action="store_true", help="Apply updates to clean registered targets. Dirty targets are skipped.")
+    target_update_all.add_argument("--preset")
+    target_update_all.add_argument("--profiles")
+    target_update_all.add_argument("--runtime-adapter", action="append")
+    target_update_all.add_argument("--runtime-adapters")
+    target_update_all.add_argument("--metadata-only", action="store_true")
+    target_update_all.add_argument("--force-managed", action="store_true")
 
     migrate_config = subparsers.add_parser(
         "migrate-config",
@@ -9067,6 +9393,7 @@ def build_parser() -> argparse.ArgumentParser:
     add_style_arg(update)
     update.add_argument("--kit", default=str(ROOT), help="kit checkout to update from. Defaults to this checkout.")
     update.add_argument("--global", action="store_true", dest="global_update", help="Update the global tool checkout instead of a target repo.")
+    update.add_argument("--all", action="store_true", dest="all_targets", help="Update every registered enrolled target repo. Defaults to dry-run unless --apply is set.")
     update.add_argument("--ref", default=os.environ.get("REPO_CONTRACT_KIT_REF", "main"), help="Branch or tag to fetch for --global. Default: main.")
     update.add_argument(
         "--workflow-ref",
@@ -9166,6 +9493,14 @@ def main(argv: list[str] | None = None) -> int:
     if args.command == "update" and getattr(args, "global_update", False):
         payload, exit_code = self_update_payload(args)
         render_json(payload) if args.json else render_self_update(payload)
+        return exit_code
+    if args.command == "update" and getattr(args, "all_targets", False):
+        payload, exit_code = target_update_all_payload(args)
+        render_json(payload) if args.json else render_target_update_all(payload, style=render_style(args))
+        return exit_code
+    if args.command == "target" and getattr(args, "target_command", "") == "update-all":
+        payload, exit_code = target_update_all_payload(args)
+        render_json(payload) if args.json else render_target_update_all(payload, style=render_style(args))
         return exit_code
 
     try:

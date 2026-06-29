@@ -98,6 +98,21 @@ Apply a target update:
 kit update
 ```
 
+Preview every registered enrolled target repo:
+
+```bash
+kit update --all --dry-run
+```
+
+Apply updates across registered targets:
+
+```bash
+kit update --all --apply
+```
+
+Batch apply skips dirty, missing, or no-longer-enrolled targets. Successful
+`kit setup` and `kit update` runs add the target repo to the local registry.
+
 Review proposed replacements under `.doc-contract-kit/updates/` instead of
 copying them blindly over target-owned decisions.
 

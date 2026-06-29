@@ -98,6 +98,7 @@ kit setup
 kit status
 kit update --dry-run
 kit update
+kit update --all --dry-run
 kit doctor
 ```
 
@@ -109,7 +110,9 @@ Use `make kit-update KIT=/path/to/kit` or
 `make kit-refresh KIT=/path/to/kit` only when the global CLI is
 unavailable or a specific local checkout is required. Preserve customized
 managed files and review `.doc-contract-kit/updates/` before accepting proposed
-replacements. Use `make kit-explain` when ownership is unclear.
+replacements. Use `kit update --all --apply` only after reviewing the batch
+dry-run; dirty registered targets are skipped. Use `make kit-explain` when
+ownership is unclear.
 
 For external agent artifacts, use the source kit CLI with `--repo <path>`;
 `sidecar-init` and `--write-sidecar` store packets, plans, and receipts outside

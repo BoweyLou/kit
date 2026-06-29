@@ -105,6 +105,20 @@ def load_cli_module():
 
 
 class RepoContractKitCliTests(unittest.TestCase):
+    @classmethod
+    def setUpClass(cls):
+        cls._old_xdg_state_home = os.environ.get("XDG_STATE_HOME")
+        cls._state_home = tempfile.TemporaryDirectory()
+        os.environ["XDG_STATE_HOME"] = cls._state_home.name
+
+    @classmethod
+    def tearDownClass(cls):
+        if cls._old_xdg_state_home is None:
+            os.environ.pop("XDG_STATE_HOME", None)
+        else:
+            os.environ["XDG_STATE_HOME"] = cls._old_xdg_state_home
+        cls._state_home.cleanup()
+
     def test_executable_entrypoint_reports_version_json(self):
         result = subprocess.run(
             [str(CLI), "version", "--json"],
@@ -133,7 +147,9 @@ class RepoContractKitCliTests(unittest.TestCase):
                 "target add",
                 "target repair-source-clone --apply",
                 "target update",
+                "target update-all --apply",
                 "update",
+                "update --all --apply",
                 "update --global",
                 "migrate-config",
             ],
@@ -676,6 +692,7 @@ class RepoContractKitCliTests(unittest.TestCase):
             "status",
             "update",
             "target update",
+            "target update-all",
             "task-packet",
             "mode-check",
             "calibration",
@@ -1187,6 +1204,80 @@ class RepoContractKitCliTests(unittest.TestCase):
             self.assertEqual(payload["setup_closeout"]["status"], "needs-commit-or-park")
             self.assertIn("kit closeout-plan --repo", " ".join(payload["setup_closeout"]["next_commands"]))
             self.assertTrue((target / ".doc-contract-kit" / "install.json").exists())
+
+    def test_setup_registers_target_for_update_all_dry_run(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            target = Path(tmp) / "target"
+            target.mkdir()
+            init_git_repo(target)
+            state_home = Path(tmp) / "state"
+            env = {**os.environ, "XDG_STATE_HOME": str(state_home)}
+
+            setup = subprocess.run(
+                [sys.executable, str(CLI), "setup", "--repo", str(target), "--preset", "minimal", "--json"],
+                cwd=ROOT,
+                env=env,
+                capture_output=True,
+                text=True,
+                check=False,
+            )
+            self.assertEqual(setup.returncode, 0, setup.stderr)
+            setup_payload = json.loads(setup.stdout)
+            self.assertEqual(setup_payload["target_registry"]["entry"]["root"], str(target.resolve()))
+            registry_path = Path(setup_payload["target_registry"]["path"])
+            self.assertTrue(registry_path.exists())
+
+            result = subprocess.run(
+                [sys.executable, str(CLI), "update", "--all", "--dry-run", "--json"],
+                cwd=tmp,
+                env=env,
+                capture_output=True,
+                text=True,
+                check=False,
+            )
+
+            self.assertEqual(result.returncode, 0, result.stderr)
+            payload = json.loads(result.stdout)
+            self.assertEqual(payload["command"], "target-update-all")
+            self.assertEqual(payload["mode"], "dry-run")
+            self.assertFalse(payload["target_repo_writes"]["performed"])
+            self.assertEqual(payload["registry"]["target_count"], 1)
+            self.assertEqual(payload["summary"]["statuses"]["planned"], 1)
+            self.assertEqual(payload["targets"][0]["root"], str(target.resolve()))
+
+    def test_target_update_all_apply_skips_dirty_registered_target(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            target = Path(tmp) / "target"
+            target.mkdir()
+            init_git_repo(target)
+            state_home = Path(tmp) / "state"
+            env = {**os.environ, "XDG_STATE_HOME": str(state_home)}
+
+            setup = subprocess.run(
+                [sys.executable, str(CLI), "setup", "--repo", str(target), "--preset", "minimal", "--json"],
+                cwd=ROOT,
+                env=env,
+                capture_output=True,
+                text=True,
+                check=False,
+            )
+            self.assertEqual(setup.returncode, 0, setup.stderr)
+
+            result = subprocess.run(
+                [sys.executable, str(CLI), "target", "update-all", "--apply", "--json"],
+                cwd=tmp,
+                env=env,
+                capture_output=True,
+                text=True,
+                check=False,
+            )
+
+            self.assertEqual(result.returncode, 1, result.stdout + result.stderr)
+            payload = json.loads(result.stdout)
+            self.assertEqual(payload["mode"], "apply")
+            self.assertFalse(payload["target_repo_writes"]["performed"])
+            self.assertEqual(payload["summary"]["statuses"]["skipped-dirty"], 1)
+            self.assertEqual(payload["targets"][0]["status"], "skipped-dirty")
 
     def test_doctor_alias_reports_preflight_without_target_writes(self):
         with tempfile.TemporaryDirectory() as tmp:

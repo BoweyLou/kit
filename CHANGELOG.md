@@ -1,5 +1,14 @@
 # Changelog
 
+## 0.6.32 - 2026-06-29
+
+- Add a local enrolled-target registry populated by successful `kit setup` and
+  `kit update` runs.
+- Add `kit target update-all` and the short `kit update --all` route, with
+  dry-run default and `--apply` required for batch target writes.
+- Skip dirty, missing, or no-longer-enrolled targets during batch apply and
+  report per-target statuses in JSON output.
+
 ## 0.6.31 - 2026-06-29
 
 - Split real Git worktree state from kit-managed template/proposal state in

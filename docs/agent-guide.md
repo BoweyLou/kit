@@ -65,7 +65,10 @@ For batch target maintenance, use `kit update --all --dry-run --json` first.
 The batch route reads the local enrolled-target registry populated by successful
 `kit setup` and `kit update` runs. `kit update --all --apply --json` may update
 clean registered targets, but skips dirty, missing, or no-longer-enrolled
-targets and reports each target status in `targets[]`.
+targets and reports each target status in `targets[]`. When a dry-run reports
+stale missing registry entries, use `kit target prune-missing --dry-run --json`
+before `kit target prune-missing --apply --json`; that command writes only the
+local kit registry, not target repos.
 
 ## Choose Work Weight
 

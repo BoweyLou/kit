@@ -4,7 +4,7 @@ Generated from `kit command-map --json`.
 Do not edit command sections by hand; run `kit cli-reference --write docs/cli-reference.md`.
 
 - Schema version: `1`
-- Command count: `57`
+- Command count: `58`
 
 ## Commands
 
@@ -1279,6 +1279,32 @@ Flags:
 - `--style` - Human output style: auto uses ANSI only on a TTY, plain disables it, pretty forces it unless NO_COLOR is set.
 - `--strict` - Exit non-zero when startup blockers are present.
 - `--write-sidecar` - Write a doctor receipt under the repo sidecar.
+
+### kit target prune-missing
+
+Remove registered target repos whose paths no longer exist.
+
+- Audience: `human, agent`
+- Mutation: `writes-local-kit-registry-with-apply`
+- Target writes: `never`
+- Sidecar writes: `with --apply`
+- JSON: `yes`
+- Output schema: `target_prune_missing_payload`
+- Route role: `canonical`
+- Canonical command: `target prune-missing`
+- Docs: `README.md#installed-commands`
+
+Examples:
+
+- `kit target prune-missing --dry-run --json`
+- `kit target prune-missing --apply --json`
+
+Flags:
+
+- `--json` - Emit machine-readable JSON.
+- `--style` - Human output style: auto uses ANSI only on a TTY, plain disables it, pretty forces it unless NO_COLOR is set.
+- `--dry-run` - Preview missing registry entries without writing. This is the default.
+- `--apply` - Remove missing registry entries from the local kit registry.
 
 ### kit target repair-source-clone
 

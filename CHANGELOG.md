@@ -8,6 +8,8 @@
   dry-run default and `--apply` required for batch target writes.
 - Skip dirty, missing, or no-longer-enrolled targets during batch apply and
   report per-target statuses in JSON output.
+- Add `kit target prune-missing` so stale missing enrolled-target registry
+  entries can be cleaned without writing target repos.
 
 ## 0.6.31 - 2026-06-29
 

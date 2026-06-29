@@ -112,6 +112,9 @@ kit update --all --apply
 
 Batch apply skips dirty, missing, or no-longer-enrolled targets. Successful
 `kit setup` and `kit update` runs add the target repo to the local registry.
+If the dry-run reports stale missing entries, preview registry cleanup with
+`kit target prune-missing --dry-run`, then apply it with
+`kit target prune-missing --apply`.
 
 Review proposed replacements under `.doc-contract-kit/updates/` instead of
 copying them blindly over target-owned decisions.

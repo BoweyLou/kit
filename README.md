@@ -94,7 +94,9 @@ kit update --all --dry-run
 
 To apply updates across registered targets, use `kit update --all --apply`.
 Batch apply skips dirty, missing, or no-longer-enrolled targets instead of
-rewriting them.
+rewriting them. If the dry-run reports stale missing registry entries, clean
+them with `kit target prune-missing --dry-run` and then
+`kit target prune-missing --apply`.
 
 Read [docs/human-guide.md](docs/human-guide.md) for install, daily use, update,
 and troubleshooting flows.

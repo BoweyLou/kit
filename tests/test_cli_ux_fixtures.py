@@ -33,7 +33,7 @@ def init_git_repo(path: Path) -> None:
     )
 
 
-def install_kit_target(path: Path) -> None:
+def install_kit_target(path: Path, env: dict[str, str]) -> None:
     subprocess.run(
         [
             sys.executable,
@@ -46,6 +46,7 @@ def install_kit_target(path: Path) -> None:
             "--json",
         ],
         cwd=ROOT,
+        env=env,
         check=True,
         capture_output=True,
         text=True,
@@ -78,13 +79,16 @@ class CliUxFixtureTests(unittest.TestCase):
             tmp_path = Path(tmp)
             cwd = ROOT
             args = list(case["args"])
+            env = os.environ.copy()
+            env["XDG_STATE_HOME"] = str(tmp_path / "state")
+            env.update(case.get("env") or {})
             fixture = case.get("fixture")
             if fixture in {"git_repo", "installed_target"}:
                 repo = tmp_path / "repo"
                 repo.mkdir()
                 init_git_repo(repo)
                 if fixture == "installed_target":
-                    install_kit_target(repo)
+                    install_kit_target(repo, env)
                 cwd = repo
                 args = [part.replace("{repo}", str(repo)) for part in args]
             elif fixture == "source_repo":
@@ -93,8 +97,6 @@ class CliUxFixtureTests(unittest.TestCase):
             elif fixture:
                 self.fail(f"Unknown CLI UX fixture type: {fixture}")
 
-            env = os.environ.copy()
-            env.update(case.get("env") or {})
             result = subprocess.run(
                 [sys.executable, str(CLI), *args],
                 cwd=cwd,

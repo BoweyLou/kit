@@ -672,6 +672,7 @@ def cli_metadata() -> dict[str, Any]:
             "start",
             "self update",
             "target add",
+            "target prune-missing --apply",
             "target repair-source-clone --apply",
             "target update",
             "target update-all --apply",
@@ -691,6 +692,7 @@ def cli_metadata() -> dict[str, Any]:
             "review-plan --write-sidecar",
             "docs-propose --write-sidecar",
             "onboarding-pr --write-sidecar",
+            "target prune-missing --apply",
             "task-packet --write-sidecar",
             "agent-task-packet-from-backlog --write-sidecar",
             "verify --write-sidecar",
@@ -1473,6 +1475,17 @@ def command_map_annotations() -> dict[tuple[str, ...], dict[str, Any]]:
             "mutation": "writes-target-by-default",
             "examples": [public_command("target", "update", "--repo", "/path/to/repo", "--dry-run", "--json")],
             "output_schema": "install_update_payload",
+        },
+        ("target", "prune-missing"): {
+            "audience": ["human", "agent"],
+            "mutation": "writes-local-kit-registry-with-apply",
+            "sidecar_write": "with --apply",
+            "route_note": "Removes enrolled-target registry entries whose repo path no longer exists. Dry-run is the default and --apply is required for registry writes.",
+            "examples": [
+                public_command("target", "prune-missing", "--dry-run", "--json"),
+                public_command("target", "prune-missing", "--apply", "--json"),
+            ],
+            "output_schema": "target_prune_missing_payload",
         },
         ("target", "update-all"): {
             "audience": ["human", "agent"],
@@ -8725,7 +8738,9 @@ def target_update_all_payload(args: argparse.Namespace) -> tuple[dict[str, Any],
     failed_count = sum(status_counts.get(status, 0) for status in failed_statuses)
     write_paths = [item["root"] for item in results if (item.get("target_repo_writes") or {}).get("performed")]
     next_commands: list[str] = []
-    if targets and not apply:
+    if status_counts.get("missing") or status_counts.get("invalid-registry-entry"):
+        next_commands.append(public_command("target", "prune-missing", "--dry-run"))
+    if targets and not apply and not failed_count:
         next_commands.append(public_command("target", "update-all", "--apply"))
     if not targets:
         next_commands.append(public_command("setup", "--repo", "/path/to/repo"))
@@ -8751,6 +8766,98 @@ def target_update_all_payload(args: argparse.Namespace) -> tuple[dict[str, Any],
         "exit_code": exit_code,
     }
     return payload, exit_code
+
+
+def target_prune_missing_payload(args: argparse.Namespace) -> tuple[dict[str, Any], int]:
+    registry = read_target_registry()
+    targets = list(registry.get("targets") or [])
+    apply = bool(getattr(args, "apply", False)) and not bool(getattr(args, "dry_run", False))
+    kept: list[dict[str, Any]] = []
+    prunable: list[dict[str, Any]] = []
+    for entry in targets:
+        root = entry.get("root")
+        item = {
+            "root": root,
+            "id": entry.get("id"),
+            "name": entry.get("name"),
+            "registered_at": entry.get("registered_at"),
+            "last_seen_at": entry.get("last_seen_at"),
+        }
+        if not root:
+            item.update({"status": "invalid-registry-entry", "error": "Registry entry has no root path."})
+            prunable.append(item)
+            continue
+        if not Path(str(root)).expanduser().exists():
+            item.update({"status": "missing", "error": "Registered target path does not exist."})
+            prunable.append(item)
+            continue
+        kept.append(entry)
+
+    performed = bool(apply and prunable)
+    if performed:
+        registry.update(
+            {
+                "schema_version": 1,
+                "path": str(target_registry_path()),
+                "updated_at": now(),
+                "targets": kept,
+            }
+        )
+        write_target_registry(registry)
+
+    next_commands: list[str] = []
+    if prunable and not apply:
+        next_commands.append(public_command("target", "prune-missing", "--apply"))
+    if apply:
+        next_commands.append(public_command("update", "--all", "--dry-run"))
+    if not targets:
+        next_commands.append(public_command("setup", "--repo", "/path/to/repo"))
+
+    payload = {
+        "schema_version": 1,
+        "command": "target-prune-missing",
+        "mode": "apply" if apply else "dry-run",
+        "registry": {
+            "path": str(target_registry_path()),
+            "target_count": len(targets),
+            "updated_at": registry.get("updated_at"),
+        },
+        "summary": {
+            "total": len(targets),
+            "kept": len(kept),
+            "prunable": len(prunable),
+            "pruned": len(prunable) if performed else 0,
+        },
+        "targets": prunable,
+        "target_repo_writes": target_repo_writes(False, reason="registry prune never writes target repos"),
+        "sidecar_writes": sidecar_writes(
+            performed,
+            paths=[str(target_registry_path())] if performed else [],
+            reason="pruned missing target registry entries" if performed else "dry-run or no missing registry entries",
+        ),
+        "next_commands": next_commands,
+        "exit_code": 0,
+    }
+    return payload, 0
+
+
+def render_target_prune_missing(payload: dict[str, Any], style: str = "auto") -> None:
+    summary = payload.get("summary") or {}
+    registry = payload.get("registry") or {}
+    print(styled_text(f"{PUBLIC_COMMAND} target prune-missing:", style, "1;36"))
+    print(f" - mode: {payload.get('mode')}")
+    print(f" - registry: {registry.get('path')}")
+    print(f" - targets: {summary.get('total', 0)}")
+    print(f" - prunable: {summary.get('prunable', 0)}")
+    print(f" - pruned: {summary.get('pruned', 0)}")
+    for item in payload.get("targets") or []:
+        root = item.get("root") or "(unknown)"
+        status = item.get("status") or "unknown"
+        print(f"   - {status}: {root}")
+    if payload.get("next_commands"):
+        print(" - next commands:")
+        for command in payload["next_commands"]:
+            print(f"   - {command}")
 
 
 def render_target_update_all(payload: dict[str, Any], style: str = "auto") -> None:
@@ -9380,6 +9487,14 @@ def build_parser() -> argparse.ArgumentParser:
     target_update_all.add_argument("--runtime-adapters")
     target_update_all.add_argument("--metadata-only", action="store_true")
     target_update_all.add_argument("--force-managed", action="store_true")
+    target_prune_missing = target_subparsers.add_parser(
+        "prune-missing",
+        help="Remove registered target repos whose paths no longer exist.",
+    )
+    target_prune_missing.add_argument("--json", action="store_true", help="Emit machine-readable JSON.")
+    add_style_arg(target_prune_missing)
+    target_prune_missing.add_argument("--dry-run", action="store_true", help="Preview missing registry entries without writing. This is the default.")
+    target_prune_missing.add_argument("--apply", action="store_true", help="Remove missing registry entries from the local kit registry.")
 
     migrate_config = subparsers.add_parser(
         "migrate-config",
@@ -9501,6 +9616,10 @@ def main(argv: list[str] | None = None) -> int:
     if args.command == "target" and getattr(args, "target_command", "") == "update-all":
         payload, exit_code = target_update_all_payload(args)
         render_json(payload) if args.json else render_target_update_all(payload, style=render_style(args))
+        return exit_code
+    if args.command == "target" and getattr(args, "target_command", "") == "prune-missing":
+        payload, exit_code = target_prune_missing_payload(args)
+        render_json(payload) if args.json else render_target_prune_missing(payload, style=render_style(args))
         return exit_code
 
     try:

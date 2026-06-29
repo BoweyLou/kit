@@ -4,6 +4,7 @@ import hashlib
 import importlib.util
 import io
 import os
+import shutil
 import subprocess
 import sys
 import tempfile
@@ -145,6 +146,7 @@ class RepoContractKitCliTests(unittest.TestCase):
                 "start",
                 "self update",
                 "target add",
+                "target prune-missing --apply",
                 "target repair-source-clone --apply",
                 "target update",
                 "target update-all --apply",
@@ -158,6 +160,7 @@ class RepoContractKitCliTests(unittest.TestCase):
         self.assertIn("feedback", payload["cli"]["sidecar_write_commands"])
         self.assertIn("agent-self-heal --apply", payload["cli"]["sidecar_write_commands"])
         self.assertIn("agent-preflight --write-sidecar", payload["cli"]["sidecar_write_commands"])
+        self.assertIn("target prune-missing --apply", payload["cli"]["sidecar_write_commands"])
 
     def test_no_args_prints_non_tty_guide_outside_git_repo(self):
         with tempfile.TemporaryDirectory() as tmp:
@@ -1278,6 +1281,71 @@ class RepoContractKitCliTests(unittest.TestCase):
             self.assertFalse(payload["target_repo_writes"]["performed"])
             self.assertEqual(payload["summary"]["statuses"]["skipped-dirty"], 1)
             self.assertEqual(payload["targets"][0]["status"], "skipped-dirty")
+
+    def test_target_prune_missing_cleans_stale_registry_without_target_writes(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            target = Path(tmp) / "target"
+            target.mkdir()
+            init_git_repo(target)
+            state_home = Path(tmp) / "state"
+            env = {**os.environ, "XDG_STATE_HOME": str(state_home)}
+
+            setup = subprocess.run(
+                [sys.executable, str(CLI), "setup", "--repo", str(target), "--preset", "minimal", "--json"],
+                cwd=ROOT,
+                env=env,
+                capture_output=True,
+                text=True,
+                check=False,
+            )
+            self.assertEqual(setup.returncode, 0, setup.stderr)
+            registry_path = Path(json.loads(setup.stdout)["target_registry"]["path"])
+            shutil.rmtree(target)
+
+            blocked = subprocess.run(
+                [sys.executable, str(CLI), "update", "--all", "--dry-run", "--json"],
+                cwd=tmp,
+                env=env,
+                capture_output=True,
+                text=True,
+                check=False,
+            )
+
+            self.assertEqual(blocked.returncode, 1, blocked.stdout + blocked.stderr)
+            blocked_payload = json.loads(blocked.stdout)
+            self.assertEqual(blocked_payload["summary"]["statuses"]["missing"], 1)
+            self.assertIn("kit target prune-missing --dry-run", blocked_payload["next_commands"])
+
+            preview = subprocess.run(
+                [sys.executable, str(CLI), "target", "prune-missing", "--dry-run", "--json"],
+                cwd=tmp,
+                env=env,
+                capture_output=True,
+                text=True,
+                check=False,
+            )
+            self.assertEqual(preview.returncode, 0, preview.stderr)
+            preview_payload = json.loads(preview.stdout)
+            self.assertFalse(preview_payload["target_repo_writes"]["performed"])
+            self.assertFalse(preview_payload["sidecar_writes"]["performed"])
+            self.assertEqual(preview_payload["summary"]["prunable"], 1)
+            self.assertEqual(json.loads(registry_path.read_text(encoding="utf-8"))["targets"][0]["root"], str(target.resolve()))
+
+            apply = subprocess.run(
+                [sys.executable, str(CLI), "target", "prune-missing", "--apply", "--json"],
+                cwd=tmp,
+                env=env,
+                capture_output=True,
+                text=True,
+                check=False,
+            )
+
+            self.assertEqual(apply.returncode, 0, apply.stderr)
+            apply_payload = json.loads(apply.stdout)
+            self.assertFalse(apply_payload["target_repo_writes"]["performed"])
+            self.assertTrue(apply_payload["sidecar_writes"]["performed"])
+            self.assertEqual(apply_payload["summary"]["pruned"], 1)
+            self.assertEqual(json.loads(registry_path.read_text(encoding="utf-8"))["targets"], [])
 
     def test_doctor_alias_reports_preflight_without_target_writes(self):
         with tempfile.TemporaryDirectory() as tmp:

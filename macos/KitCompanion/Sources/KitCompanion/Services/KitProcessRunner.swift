@@ -4,7 +4,9 @@ final class KitProcessRunner {
     enum RunnerError: LocalizedError {
         case missingBinary
         case blockedMutatingCommand(String)
-        case invalidJSON(String)
+        case commandFailed(String, Int32, String)
+        case invalidJSON(String, String)
+        case decodingFailed(String, String)
 
         var errorDescription: String? {
             switch self {
@@ -12,8 +14,13 @@ final class KitProcessRunner {
                 return "Could not find the kit binary. Set it in Settings."
             case .blockedMutatingCommand(let command):
                 return "Refusing to run mutating command in the app: \(command)"
-            case .invalidJSON(let command):
-                return "Command did not return valid JSON: \(command)"
+            case .commandFailed(let command, let code, let stderr):
+                let detail = stderr.isEmpty ? "No diagnostic output." : stderr
+                return "Command failed (\(code)): \(command). \(detail)"
+            case .invalidJSON(let command, let excerpt):
+                return "Command did not return valid JSON: \(command). Output: \(excerpt)"
+            case .decodingFailed(let command, let message):
+                return "Command JSON did not match the app model: \(command). \(message)"
             }
         }
     }
@@ -32,10 +39,14 @@ final class KitProcessRunner {
     ) async throws -> T {
         try Self.validateReadOnlyCommand(arguments)
         let result = try await run(arguments: arguments, kitPath: kitPath, workingDirectory: workingDirectory)
+        if !result.succeeded {
+            throw RunnerError.commandFailed(renderedCommand(arguments), result.exitCode, result.stderr)
+        }
+        let jsonData = try jsonObjectData(from: result.stdout, command: renderedCommand(arguments))
         do {
-            return try JSONDecoder().decode(T.self, from: Data(result.stdout.utf8))
+            return try JSONDecoder().decode(T.self, from: jsonData)
         } catch {
-            throw RunnerError.invalidJSON(renderedCommand(arguments))
+            throw RunnerError.decodingFailed(renderedCommand(arguments), error.localizedDescription)
         }
     }
 
@@ -139,5 +150,31 @@ final class KitProcessRunner {
 
     private func renderedCommand(_ arguments: [String]) -> String {
         (["kit"] + arguments).joined(separator: " ")
+    }
+
+    private func jsonObjectData(from output: String, command: String) throws -> Data {
+        let trimmed = output.trimmingCharacters(in: .whitespacesAndNewlines)
+        if trimmed.hasPrefix("{"), trimmed.hasSuffix("}") {
+            return Data(trimmed.utf8)
+        }
+
+        guard let start = trimmed.firstIndex(of: "{"),
+              let end = trimmed.lastIndex(of: "}"),
+              start <= end else {
+            throw RunnerError.invalidJSON(command, Self.outputExcerpt(trimmed))
+        }
+
+        let json = String(trimmed[start...end])
+        return Data(json.utf8)
+    }
+
+    private static func outputExcerpt(_ value: String) -> String {
+        if value.isEmpty {
+            return "(empty)"
+        }
+        if value.count <= 240 {
+            return value
+        }
+        return String(value.prefix(240)) + "..."
     }
 }

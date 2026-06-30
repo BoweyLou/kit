@@ -16,7 +16,8 @@ kit agent-tool-manifest --json
 ```
 
 `kit start --json` is the first route selector. In installed target repos it
-may apply an already-local, local-safe kit update before returning the journey.
+may apply an already-local, local-safe kit update before returning the journey,
+but only when the target Git worktree is clean.
 The command metadata includes audience, route role, mutation behavior, sidecar
 write behavior, target repo write behavior, examples, docs, and output schema
 names. `kit agent-context --json` is a compatibility alias for
@@ -61,6 +62,9 @@ writes. Use `kit start --update-policy check-only --json` when the agent should
 inspect whether a local update is available without applying it. Remote fetches
 and global tool refreshes are never part of `kit start`; run
 `kit update --global` only when a human asks to refresh the global checkout.
+If a local-safe update is available while the target repo is dirty,
+`local_update.blocked_by` includes `dirty-target-repo` and
+`target_repo_writes.performed` stays false.
 For batch target maintenance, use `kit update --all --dry-run --json` first.
 The batch route reads the local enrolled-target registry populated by successful
 `kit setup`, `kit update`, and `kit target import` runs. Use
@@ -166,8 +170,7 @@ separate in receipts and summaries.
 
 ## Safe Defaults
 
-- Treat dirty target work as a blocker unless the command says it is read-only
-  or reports an applied local-safe managed-file update.
+- Treat dirty target work as a blocker unless the command says it is read-only.
 - Preserve target-owned files.
 - Never copy `.doc-contract-kit/updates/<stamp>/proposed/` wholesale.
 - Keep root `AGENTS.md` in the target repo root.

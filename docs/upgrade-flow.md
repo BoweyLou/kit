@@ -14,9 +14,10 @@ files. It must preserve target-owned files and customized managed files.
 
 `kit start` is allowed to apply only already-local, local-safe target updates:
 clean managed-file refreshes, legacy manifest adoption, and kit metadata
-migrations with no blockers or customized-file conflicts. It must not fetch a
-remote, run `kit update --global`, force managed files, or overwrite
-target-owned files.
+migrations with a clean target Git worktree, no blockers, and no
+customized-file conflicts. It must not fetch a remote, run
+`kit update --global`, force managed files, overwrite target-owned files, or
+mix kit updates into dirty target repos.
 
 Stop and ask a human before applying an update if the target repo has unrelated
 dirty work, the source kit checkout is not the intended version, or a proposed

@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.6.43 - 2026-06-30
+
+- Block `kit start` local-safe managed updates when the target Git worktree is
+  already dirty, reporting `dirty-target-repo` instead of mixing kit changes
+  into active product work.
+
 ## 0.6.42 - 2026-06-30
 
 - Add Sparkle 2 app updates for the optional Kit Companion macOS app, including

@@ -51,7 +51,9 @@ Use `kit start` when you are unsure whether this is a fresh setup, normal
 maintenance, dirty work in progress, or a release-sensitive change. It reports
 the selected journey, the suggested mode, and the next human and agent commands.
 In an installed target repo, it may also apply an already-local, local-safe kit
-update before returning those commands.
+update before returning those commands, but only when the target Git worktree is
+clean. Dirty target repos report the blocked local update and keep files
+untouched.
 
 Use this when you want startup with no target writes:
 
@@ -76,6 +78,10 @@ kit update
 
 `kit start` only uses the already-local kit checkout. It does not fetch from
 GitHub, update the global launcher, or refresh a source checkout.
+
+`kit start` also refuses to apply local-safe target writes when the target repo
+already has dirty Git work. Use `kit update --dry-run` to inspect the available
+update after you commit, park, or otherwise classify the dirty files.
 
 Remote/global updates are explicit. A global tool update does not rewrite
 target repos by itself.

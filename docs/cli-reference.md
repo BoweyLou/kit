@@ -1159,7 +1159,7 @@ Choose the next human or agent journey from repo state.
 
 - Audience: `human, agent`
 - Mutation: `writes-target-conditionally`
-- Target writes: `local-safe managed-file update by default for installed target repos; never with --no-update`
+- Target writes: `local-safe managed-file update only for clean installed target repos; never with --no-update`
 - Sidecar writes: `never`
 - JSON: `yes`
 - Output schema: `start_payload`
@@ -1181,7 +1181,7 @@ Flags:
 - `--json` - Emit machine-readable JSON.
 - `--mode` - Requested harness mode. auto lets kit choose.
 - `--lite` - Shortcut for --mode lite.
-- `--update-policy` - Local update behavior for installed target repos: local-safe applies managed-file updates; check-only only reports.
+- `--update-policy` - Local update behavior for installed target repos: local-safe applies managed-file updates only when the target is clean; check-only only reports.
 - `--no-update` - Skip the local update check and apply step.
 
 ### kit status

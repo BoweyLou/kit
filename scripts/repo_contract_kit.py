@@ -1483,9 +1483,9 @@ def command_map_annotations() -> dict[tuple[str, ...], dict[str, Any]]:
         ("start",): {
             "audience": ["human", "agent"],
             "mutation": "writes-target-conditionally",
-            "target_repo_write": "local-safe managed-file update by default for installed target repos; never with --no-update",
+            "target_repo_write": "local-safe managed-file update only for clean installed target repos; never with --no-update",
             "sidecar_write": "never",
-            "route_note": "`kit start` is the canonical first command for choosing human, agent, setup, maintenance, and release-gated journeys; installed targets may receive local-safe managed-file updates.",
+            "route_note": "`kit start` is the canonical first command for choosing human, agent, setup, maintenance, and release-gated journeys; clean installed targets may receive local-safe managed-file updates.",
             "examples": [
                 public_command("start"),
                 public_command("start", "--no-update"),
@@ -6629,6 +6629,16 @@ def start_local_update_payload(repo: Path, status: dict[str, Any], args: argpars
         }
         for item in unsafe_actions
     ]
+    dirty_target_files = [
+        str(path)
+        for warning in plan.get("warnings") or []
+        if isinstance(warning, dict) and warning.get("code") == "dirty_target_repo"
+        for path in (warning.get("paths") or [])
+    ]
+    if dirty_target_files and write_actions:
+        local_update["blocked_by"] = sorted(set([*local_update["blocked_by"], "dirty-target-repo"]))
+        local_update["dirty_target_files"] = sorted(set(dirty_target_files))
+        local_update["dirty_target_file_count"] = len(set(dirty_target_files))
 
     if not write_actions:
         local_update.update(
@@ -6643,6 +6653,14 @@ def start_local_update_payload(repo: Path, status: dict[str, Any], args: argpars
             {
                 "reason": "local update is available but not safe for automatic start",
                 "next_commands": [command_for_repo(repo, "update", "--dry-run"), command_for_repo(repo, "doctor")],
+            }
+        )
+        return local_update
+    if dirty_target_files and write_actions:
+        local_update.update(
+            {
+                "reason": "local update is available but target repo is dirty",
+                "next_commands": [command_for_repo(repo, "status"), command_for_repo(repo, "update", "--dry-run")],
             }
         )
         return local_update
@@ -9797,7 +9815,7 @@ def build_parser() -> argparse.ArgumentParser:
         "--update-policy",
         choices=START_UPDATE_POLICIES,
         default="local-safe",
-        help="Local update behavior for installed target repos: local-safe applies managed-file updates; check-only only reports.",
+        help="Local update behavior for installed target repos: local-safe applies managed-file updates only when the target is clean; check-only only reports.",
     )
     start.add_argument("--no-update", action="store_true", help="Skip the local update check and apply step.")
 

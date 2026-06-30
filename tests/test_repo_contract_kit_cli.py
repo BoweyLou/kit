@@ -2091,6 +2091,44 @@ class RepoContractKitCliTests(unittest.TestCase):
             self.assertFalse(payload["target_repo_writes"]["performed"])
             self.assertEqual((target / "AGENTS.md").read_text(encoding="utf-8"), "# Old managed agents\n")
 
+    def test_start_blocks_local_safe_update_when_target_repo_is_dirty(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            target = Path(tmp) / "target"
+            target.mkdir()
+            init_git_repo(target)
+            install = subprocess.run(
+                [sys.executable, str(CLI), "install", "--repo", str(target), "--preset", "agentic", "--json"],
+                cwd=ROOT,
+                capture_output=True,
+                text=True,
+                check=False,
+            )
+            self.assertEqual(install.returncode, 0, install.stderr)
+            mark_managed_baseline(target, "AGENTS.md", "# Old managed agents\n")
+            commit_all(target, "Commit old managed baseline")
+            (target / "README.md").write_text("# Sample repo\n\nLocal product work.\n", encoding="utf-8")
+
+            result = subprocess.run(
+                [str(CLI), "start", "--repo", str(target), "--json"],
+                cwd=ROOT,
+                capture_output=True,
+                text=True,
+                check=False,
+            )
+
+            self.assertEqual(result.returncode, 0, result.stderr)
+            payload = json.loads(result.stdout)
+            local_update = payload["local_update"]
+            self.assertTrue(local_update["checked"])
+            self.assertTrue(local_update["available"])
+            self.assertFalse(local_update["applied"])
+            self.assertEqual(local_update["mode"], "local-safe")
+            self.assertIn("dirty-target-repo", local_update["blocked_by"])
+            self.assertEqual(local_update["dirty_target_files"], ["README.md"])
+            self.assertFalse(payload["target_repo_writes"]["performed"])
+            self.assertEqual((target / "AGENTS.md").read_text(encoding="utf-8"), "# Old managed agents\n")
+            self.assertIn("Local product work.", (target / "README.md").read_text(encoding="utf-8"))
+
     def test_start_blocks_customized_update_conflict_without_apply(self):
         with tempfile.TemporaryDirectory() as tmp:
             target = Path(tmp) / "target"

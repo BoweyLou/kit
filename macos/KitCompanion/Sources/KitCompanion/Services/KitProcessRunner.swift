@@ -39,14 +39,31 @@ final class KitProcessRunner {
     ) async throws -> T {
         try Self.validateReadOnlyCommand(arguments)
         let result = try await run(arguments: arguments, kitPath: kitPath, workingDirectory: workingDirectory)
-        if !result.succeeded {
-            throw RunnerError.commandFailed(renderedCommand(arguments), result.exitCode, result.stderr)
+        let command = renderedCommand(arguments)
+        let jsonData: Data
+        do {
+            jsonData = try jsonObjectData(from: result.stdout, command: command)
+        } catch {
+            if !result.succeeded {
+                let diagnostic = result.stderr.isEmpty ? Self.outputExcerpt(result.stdout) : result.stderr
+                throw RunnerError.commandFailed(command, result.exitCode, diagnostic)
+            }
+            throw error
         }
-        let jsonData = try jsonObjectData(from: result.stdout, command: renderedCommand(arguments))
+
         do {
             return try JSONDecoder().decode(T.self, from: jsonData)
         } catch {
-            throw RunnerError.decodingFailed(renderedCommand(arguments), error.localizedDescription)
+            if !result.succeeded {
+                let diagnostic = [
+                    result.stderr,
+                    Self.outputExcerpt(result.stdout)
+                ]
+                .filter { !$0.isEmpty }
+                .joined(separator: " ")
+                throw RunnerError.commandFailed(command, result.exitCode, diagnostic)
+            }
+            throw RunnerError.decodingFailed(command, error.localizedDescription)
         }
     }
 

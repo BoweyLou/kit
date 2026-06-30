@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.6.39 - 2026-06-30
+
+- Harden Kit Companion command handling so non-zero kit exits can still render
+  when they include valid app-facing JSON, and failed commands include better
+  diagnostics.
+
 ## 0.6.38 - 2026-06-30
 
 - Add optional Kit Companion Launch at Login support through macOS login item

@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.6.41 - 2026-06-30
+
+- Fix `kit status` import compatibility when the launcher is executed with
+  macOS's system Python.
+- Make Kit Companion provide a stable command PATH for Finder and Login Items
+  launches so the optional app resolves the intended kit/Python runtime.
+
 ## 0.6.40 - 2026-06-30
 
 - Harden Kit Companion lifecycle handling so the menu-bar app refuses

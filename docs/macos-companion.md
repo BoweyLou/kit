@@ -59,6 +59,11 @@ Command Line Tools environment used for this project does not provide XCTest.
 The app defaults to `~/.local/bin/kit`. If the launcher lives elsewhere, set it
 in Settings or launch with `KIT_COMPANION_KIT_PATH=/path/to/kit`.
 
+When launched from Finder or Login Items, the app supplies a stable command
+search path that prefers Homebrew and Python framework locations before
+macOS's system paths. This keeps the kit launcher from falling back to an older
+system Python just because the app was not started from a terminal shell.
+
 ## Private DMG
 
 ```bash

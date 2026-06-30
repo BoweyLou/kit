@@ -26,6 +26,15 @@ final class KitProcessRunner {
     }
 
     private let fileManager: FileManager
+    private static let companionPath = [
+        "/opt/homebrew/bin",
+        "/usr/local/bin",
+        "/Library/Frameworks/Python.framework/Versions/Current/bin",
+        "/usr/bin",
+        "/bin",
+        "/usr/sbin",
+        "/sbin"
+    ].joined(separator: ":")
 
     init(fileManager: FileManager = .default) {
         self.fileManager = fileManager
@@ -73,6 +82,7 @@ final class KitProcessRunner {
             let process = Process()
             process.executableURL = binary
             process.arguments = arguments
+            process.environment = Self.processEnvironment()
             if let workingDirectory {
                 process.currentDirectoryURL = URL(fileURLWithPath: workingDirectory, isDirectory: true)
             }
@@ -167,6 +177,16 @@ final class KitProcessRunner {
 
     private func renderedCommand(_ arguments: [String]) -> String {
         (["kit"] + arguments).joined(separator: " ")
+    }
+
+    private static func processEnvironment() -> [String: String] {
+        var environment = ProcessInfo.processInfo.environment
+        if let existingPath = environment["PATH"], !existingPath.isEmpty {
+            environment["PATH"] = companionPath + ":" + existingPath
+        } else {
+            environment["PATH"] = companionPath
+        }
+        return environment
     }
 
     private func jsonObjectData(from output: String, command: String) throws -> Data {

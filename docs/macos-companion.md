@@ -20,6 +20,24 @@ The companion app reads the same JSON contracts used by agents and scripts:
 The app shows registered targets, dirty repo counts, drift state, selected repo
 closeout state, and copyable next commands.
 
+## Settings
+
+Kit Companion stores app-only preferences in macOS user defaults:
+
+- `kitBinaryPath`: path to the local `kit` launcher. The default is
+  `~/.local/bin/kit`.
+- `automaticallyCheckForUpdates`: whether the app checks the latest GitHub
+  release when it starts. The default is enabled.
+
+Launch at Login is managed through macOS login item registration. It is
+optional and only starts the companion app; it does not run kit updates or
+mutate target repos. The app should be installed in `/Applications` before
+enabling Launch at Login for normal use.
+
+Automatic update checking does not silently replace the app. It compares the
+current app version with the latest GitHub release and opens the release DMG
+when the user chooses to download it.
+
 ## Safety Boundary
 
 The app runs read-only commands in-app. It blocks mutating command flags such as

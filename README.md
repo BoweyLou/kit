@@ -195,8 +195,9 @@ It is not required for setup, updates, reviews, agents, or any normal kit
 workflow. The CLI remains complete and authoritative without it.
 
 The app runs read-only JSON commands such as `kit target dirty-report --json`
-and `kit closeout-plan --json`, shows registered repo health, and copies next
-commands for terminal use. Mutating actions stay in Terminal.
+and `kit closeout-plan --json`, shows registered repo health, checks for app
+updates, supports optional Launch at Login, and copies next commands for
+terminal use. Mutating actions stay in Terminal.
 
 Build it only when wanted:
 

@@ -220,3 +220,59 @@ struct RepoDetail {
     var start: StartPayload?
     var closeout: CloseoutPayload?
 }
+
+struct UpdateCheckResult {
+    let currentVersion: String
+    let latestVersion: String?
+    let releaseURL: URL?
+    let downloadURL: URL?
+    let checkedAt: Date
+    let errorMessage: String?
+
+    var updateAvailable: Bool {
+        guard let latestVersion else {
+            return false
+        }
+        return VersionComparator.isVersion(latestVersion, newerThan: currentVersion)
+    }
+
+    var displayText: String {
+        if let errorMessage {
+            return errorMessage
+        }
+        guard let latestVersion else {
+            return "No release information found"
+        }
+        if updateAvailable {
+            return "Kit Companion \(latestVersion) is available"
+        }
+        return "Kit Companion is current"
+    }
+}
+
+enum VersionComparator {
+    static func isVersion(_ candidate: String, newerThan current: String) -> Bool {
+        normalizedParts(candidate).lexicographicallyPrecedes(normalizedParts(current)) == false
+            && normalizedParts(candidate) != normalizedParts(current)
+    }
+
+    private static func normalizedParts(_ value: String) -> [Int] {
+        value
+            .trimmingCharacters(in: CharacterSet(charactersIn: "vV"))
+            .split(separator: ".")
+            .map { part in
+                let digits = part.prefix { $0.isNumber }
+                return Int(digits) ?? 0
+            }
+            .padding(to: 3, with: 0)
+    }
+}
+
+private extension Array where Element == Int {
+    func padding(to count: Int, with value: Int) -> [Int] {
+        if self.count >= count {
+            return self
+        }
+        return self + Array(repeating: value, count: count - self.count)
+    }
+}

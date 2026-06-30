@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.6.38 - 2026-06-30
+
+- Add optional Kit Companion Launch at Login support through macOS login item
+  registration.
+- Add optional automatic app update checks against the latest GitHub release,
+  with user-initiated DMG download instead of silent app replacement.
+
 ## 0.6.37 - 2026-06-30
 
 - Add an optional macOS Kit Companion menu-bar app that reads existing kit JSON

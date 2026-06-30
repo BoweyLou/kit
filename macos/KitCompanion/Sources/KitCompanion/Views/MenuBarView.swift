@@ -43,6 +43,13 @@ struct MenuBarView: View {
             Label("Preview Updates", systemImage: "doc.text.magnifyingglass")
         }
 
+        Button {
+            store.checkForUpdates()
+            openWindow(id: "dashboard")
+        } label: {
+            Label("Check for App Update", systemImage: "arrow.down.app")
+        }
+
         SettingsLink {
             Label("Settings", systemImage: "gearshape")
         }

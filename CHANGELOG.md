@@ -1,5 +1,14 @@
 # Changelog
 
+## 0.6.44 - 2026-06-30
+
+- Add read-only `kit worktree list --repo <path> --json` so operators and apps
+  can see every Git-linked worktree for one repo, including ordinary siblings,
+  Codex worktrees, detached checkouts, and kit task worktrees.
+- Keep `kit worktree audit` and `kit worktree prune` cleanup-specific so
+  ordinary linked worktrees are visible without being classified as removable
+  cleanup candidates.
+
 ## 0.6.43 - 2026-06-30
 
 - Block `kit start` local-safe managed updates when the target Git worktree is

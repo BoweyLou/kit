@@ -115,7 +115,19 @@ If the dry-run reports stale missing registry entries, clean them with
 `kit target prune-missing --dry-run` and then
 `kit target prune-missing --apply`.
 
-Disposable task worktrees use a separate lane:
+Use a visibility-first worktree inventory when you need to see every linked
+checkout for one repo:
+
+```bash
+kit worktree list --repo /Volumes/Myrtle/MiniProjects/MiniCommand --json
+```
+
+It reads Git's linked worktree registry and includes ordinary sibling
+worktrees, detached checkouts, Codex worktrees, and kit task worktrees. It is
+read-only and does not prune, move, stash, or classify branches as safe to
+delete.
+
+Disposable task-worktree cleanup stays in a separate lane:
 
 ```bash
 kit worktree audit --root /Volumes/Myrtle/MiniProjects/MiniCommand --json
@@ -124,7 +136,8 @@ kit worktree prune --root /Volumes/Myrtle/MiniProjects/MiniCommand --dry-run
 
 `--root` may be either an exact repo root or a parent directory. Exact Git repo
 roots also inspect the repo's linked sibling worktrees, such as
-`MiniCommand-agent-worktrees/...`.
+`MiniCommand-agent-worktrees/...`, but cleanup remains limited to clean linked
+worktrees under disposable `agent-worktrees` paths.
 
 Read [docs/human-guide.md](docs/human-guide.md) for install, daily use, update,
 and troubleshooting flows.

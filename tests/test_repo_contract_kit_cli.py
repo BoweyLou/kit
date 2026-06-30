@@ -739,6 +739,7 @@ class RepoContractKitCliTests(unittest.TestCase):
             "update",
             "target update",
             "target update-all",
+            "worktree list",
             "task-packet",
             "mode-check",
             "calibration",
@@ -770,6 +771,11 @@ class RepoContractKitCliTests(unittest.TestCase):
         self.assertEqual(update["mutation"], "writes-target-by-default")
         self.assertEqual(update["sidecar_write"], "never")
         self.assertIn("kit update --dry-run --json", update["examples"])
+
+        worktree_list = commands["worktree list"]
+        self.assertEqual(worktree_list["mutation"], "read-only")
+        self.assertEqual(worktree_list["output_schema"], "worktree_list_payload")
+        self.assertIn("kit worktree list --repo /Volumes/Myrtle/MiniProjects/MiniCommand --json", worktree_list["examples"])
 
         command_map = commands["command-map"]
         self.assertEqual(command_map["output_schema"], "command_map_payload")
@@ -1591,6 +1597,99 @@ class RepoContractKitCliTests(unittest.TestCase):
             self.assertTrue(apply_payload["filesystem_writes"]["performed"])
             self.assertEqual(apply_payload["summary"]["removed"], 1)
             self.assertFalse(worktree.exists())
+
+    def test_worktree_list_reports_all_git_linked_worktrees(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            repo = root / "primary"
+            repo.mkdir()
+            init_git_repo(repo)
+            normal_worktree = root / "primary-sibling"
+            codex_worktree = root / ".codex" / "worktrees" / "abcd" / "primary"
+            detached_worktree = root / "detached-primary"
+            add_git_worktree(repo, normal_worktree, branch="codex/normal-worktree")
+            add_git_worktree(repo, codex_worktree, branch="codex/codex-worktree")
+            subprocess.run(["git", "worktree", "add", "-q", "--detach", str(detached_worktree), "HEAD"], cwd=repo, check=True)
+
+            result = subprocess.run(
+                [sys.executable, str(CLI), "worktree", "list", "--repo", str(codex_worktree), "--json"],
+                cwd=ROOT,
+                capture_output=True,
+                text=True,
+                check=False,
+            )
+
+            self.assertEqual(result.returncode, 0, result.stderr)
+            payload = json.loads(result.stdout)
+            self.assertEqual(payload["command"], "worktree-list")
+            self.assertEqual(payload["repo"], str(codex_worktree.resolve()))
+            self.assertEqual(payload["primary"], str(repo.resolve()))
+            self.assertFalse(payload["target_repo_writes"]["performed"])
+            self.assertFalse(payload["sidecar_writes"]["performed"])
+            self.assertEqual(payload["summary"]["total"], 4)
+            self.assertTrue(payload["summary"]["has_linked_worktrees"])
+            self.assertEqual(payload["summary"]["linked_count"], 3)
+            self.assertEqual(payload["summary"]["detached_count"], 1)
+            by_path = {item["path"]: item for item in payload["worktrees"]}
+            self.assertEqual(set(by_path), {str(repo.resolve()), str(normal_worktree.resolve()), str(codex_worktree.resolve()), str(detached_worktree.resolve())})
+            self.assertTrue(by_path[str(repo.resolve())]["primary"])
+            self.assertTrue(by_path[str(codex_worktree.resolve())]["current"])
+            self.assertEqual(by_path[str(normal_worktree.resolve())]["branch"], "codex/normal-worktree")
+            self.assertEqual(by_path[str(codex_worktree.resolve())]["branch"], "codex/codex-worktree")
+            self.assertTrue(by_path[str(detached_worktree.resolve())]["detached"])
+
+    def test_worktree_audit_remains_disposable_cleanup_only(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            repo = root / "primary"
+            repo.mkdir()
+            init_git_repo(repo)
+            normal_worktree = root / "primary-sibling"
+            codex_worktree = root / ".codex" / "worktrees" / "abcd" / "primary"
+            add_git_worktree(repo, normal_worktree, branch="codex/non-disposable-normal")
+            add_git_worktree(repo, codex_worktree, branch="codex/non-disposable-codex")
+
+            audit = subprocess.run(
+                [sys.executable, str(CLI), "worktree", "audit", "--root", str(repo), "--json"],
+                cwd=ROOT,
+                capture_output=True,
+                text=True,
+                check=False,
+            )
+
+            self.assertEqual(audit.returncode, 0, audit.stderr)
+            payload = json.loads(audit.stdout)
+            self.assertEqual(payload["summary"]["total"], 0)
+            self.assertEqual(payload["worktrees"], [])
+
+    def test_worktree_list_reports_structured_repo_errors(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            missing = Path(tmp) / "missing"
+            missing_result = subprocess.run(
+                [sys.executable, str(CLI), "worktree", "list", "--repo", str(missing), "--json"],
+                cwd=ROOT,
+                capture_output=True,
+                text=True,
+                check=False,
+            )
+            self.assertEqual(missing_result.returncode, 2)
+            missing_payload = json.loads(missing_result.stdout)
+            self.assertEqual(missing_payload["root_errors"][0]["status"], "missing")
+            self.assertEqual(missing_payload["summary"]["total"], 0)
+
+            not_git = Path(tmp) / "not-git"
+            not_git.mkdir()
+            not_git_result = subprocess.run(
+                [sys.executable, str(CLI), "worktree", "list", "--repo", str(not_git), "--json"],
+                cwd=ROOT,
+                capture_output=True,
+                text=True,
+                check=False,
+            )
+            self.assertEqual(not_git_result.returncode, 2)
+            not_git_payload = json.loads(not_git_result.stdout)
+            self.assertEqual(not_git_payload["root_errors"][0]["status"], "not-git")
+            self.assertFalse(not_git_payload["target_repo_writes"]["performed"])
 
     def test_worktree_audit_exact_repo_root_discovers_git_linked_sibling_worktree(self):
         with tempfile.TemporaryDirectory() as tmp:

@@ -137,7 +137,17 @@ reports stale missing entries, preview registry cleanup with
 `kit target prune-missing --dry-run`, then apply it with
 `kit target prune-missing --apply`.
 
-Audit disposable task worktrees separately from primary repos:
+List every linked worktree for one repo before deciding what needs attention:
+
+```bash
+kit worktree list --repo /Volumes/Myrtle/MiniProjects/MiniCommand --json
+```
+
+This read-only inventory reports ordinary sibling worktrees, Codex worktrees,
+detached checkouts, and kit task worktrees from Git's linked worktree registry.
+It does not remove or classify worktrees as safe to delete.
+
+Audit disposable task-worktree cleanup separately from primary repos:
 
 ```bash
 kit worktree audit --root /Volumes/Myrtle/MiniProjects/MiniCommand --json

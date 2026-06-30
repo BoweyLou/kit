@@ -8,9 +8,9 @@ next.
 
 ## Current Shape
 
-- `kit command-map --json` exposes 55 command routes.
-- 40 routes are read-only, 25 are canonical, 21 are agent-only, and 4 are
-  aliases.
+- `kit command-map --json` exposes 65 command routes.
+- 44 routes are read-only, 34 are canonical, 23 are agent-only, and 1 is an
+  alias.
 - `kit start` is now the first read-only journey selector for humans and
   agents.
 - The main CLI implementation still lives in one 8,462-line Python file.

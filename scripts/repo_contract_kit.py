@@ -808,6 +808,116 @@ def worktree_candidate_paths(root: Path) -> list[Path]:
     return sorted(worktree_candidate_source_map(root))
 
 
+def worktree_list_branch(raw: dict[str, str]) -> tuple[str | None, str | None]:
+    raw_branch = raw.get("branch") or None
+    if raw_branch and raw_branch.startswith("refs/heads/"):
+        return raw_branch.removeprefix("refs/heads/"), raw_branch
+    return raw_branch, raw_branch
+
+
+def worktree_list_entry(raw: dict[str, str], *, primary: Path, current: Path) -> dict[str, Any]:
+    raw_path = raw.get("path") or ""
+    path = Path(raw_path).expanduser().resolve() if raw_path else Path("")
+    status = worktree_status(path) if raw_path else {
+        "available": False,
+        "dirty": None,
+        "entries": [],
+        "error": "worktree path is missing",
+    }
+    branch, raw_branch = worktree_list_branch(raw)
+    locked = "locked" in raw
+    prunable = "prunable" in raw
+    disposable = worktree_path_is_disposable(path) if raw_path else False
+    cleanup_candidate = bool(disposable and not path == primary and status.get("dirty") is False)
+    return {
+        "path": str(path) if raw_path else "",
+        "primary": bool(raw_path and path == primary),
+        "current": bool(raw_path and path == current),
+        "branch": branch,
+        "raw_branch_ref": raw_branch,
+        "head": raw.get("HEAD") or "",
+        "detached": "detached" in raw or not branch,
+        "dirty": status.get("dirty"),
+        "changed_count": len(status.get("entries") or []),
+        "status_entries": status.get("entries") or [],
+        "status_error": status.get("error"),
+        "locked": locked,
+        "locked_reason": raw.get("locked") if locked else None,
+        "prunable": prunable,
+        "prunable_reason": raw.get("prunable") if prunable else None,
+        "disposable_path": disposable,
+        "cleanup_candidate": cleanup_candidate,
+    }
+
+
+def worktree_list_error_payload(args: argparse.Namespace, root: Path, status: str, message: str, exit_code: int = 2) -> tuple[dict[str, Any], int]:
+    payload = {
+        "schema_version": 1,
+        "command": "worktree-list",
+        "repo": str(root),
+        "primary": "",
+        "created_at": now(),
+        "summary": {
+            "total": 0,
+            "has_linked_worktrees": False,
+            "linked_count": 0,
+            "dirty_count": 0,
+            "detached_count": 0,
+            "missing_count": 0,
+            "locked_count": 0,
+        },
+        "worktrees": [],
+        "root_errors": [{"root": str(root), "status": status, "error": message}],
+        "target_repo_writes": target_repo_writes(False, reason="worktree list is read-only"),
+        "sidecar_writes": sidecar_writes(False, reason="worktree list is read-only"),
+        "exit_code": exit_code,
+    }
+    return payload, exit_code
+
+
+def worktree_list_payload(args: argparse.Namespace) -> tuple[dict[str, Any], int]:
+    root = Path(getattr(args, "repo", "") or ".").expanduser().resolve()
+    if not root.exists():
+        return worktree_list_error_payload(args, root, "missing", "Repository path does not exist.")
+    git_root_result = run_git(root, ["rev-parse", "--show-toplevel"])
+    if git_root_result.returncode != 0:
+        return worktree_list_error_payload(
+            args,
+            root,
+            "not-git",
+            git_root_result.stderr.strip() or git_root_result.stdout.strip() or "Not a git repository.",
+        )
+    repo = Path(git_root_result.stdout.strip()).resolve()
+    primary = primary_checkout(repo)
+    raw_worktrees = git_worktrees(primary)
+    worktrees = [worktree_list_entry(raw, primary=primary, current=repo) for raw in raw_worktrees]
+    total = len(worktrees)
+    linked_count = len([item for item in worktrees if not item.get("primary")])
+    summary = {
+        "total": total,
+        "has_linked_worktrees": linked_count > 0,
+        "linked_count": linked_count,
+        "dirty_count": len([item for item in worktrees if item.get("dirty") is True]),
+        "detached_count": len([item for item in worktrees if item.get("detached")]),
+        "missing_count": len([item for item in worktrees if item.get("status_error") == "worktree path is missing"]),
+        "locked_count": len([item for item in worktrees if item.get("locked")]),
+    }
+    payload = {
+        "schema_version": 1,
+        "command": "worktree-list",
+        "repo": str(repo),
+        "primary": str(primary),
+        "created_at": now(),
+        "summary": summary,
+        "worktrees": worktrees,
+        "root_errors": [],
+        "target_repo_writes": target_repo_writes(False, reason="worktree list is read-only"),
+        "sidecar_writes": sidecar_writes(False, reason="worktree list is read-only"),
+        "exit_code": 0,
+    }
+    return payload, 0
+
+
 def worktree_entry(path: Path, discovery_sources: list[str] | None = None) -> dict[str, Any]:
     item: dict[str, Any] = {
         "root": str(path),
@@ -2085,8 +2195,18 @@ def command_map_annotations() -> dict[tuple[str, ...], dict[str, Any]]:
             "audience": ["human", "agent"],
             "mutation": "namespace",
             "json_supported": False,
-            "examples": [public_command("worktree", "audit", "--root", "/path/to/repo-or-parent", "--json")],
+            "examples": [
+                public_command("worktree", "list", "--repo", "/path/to/repo", "--json"),
+                public_command("worktree", "audit", "--root", "/path/to/repo-or-parent", "--json"),
+            ],
             "output_schema": "subcommand_namespace",
+        },
+        ("worktree", "list"): {
+            "audience": ["human", "agent"],
+            "mutation": "read-only",
+            "route_note": "Lists every Git-linked worktree for one repository, including ordinary siblings, detached checkouts, Codex worktrees, and kit task worktrees. This is visibility-only and does not classify cleanup safety.",
+            "examples": [public_command("worktree", "list", "--repo", "/Volumes/Myrtle/MiniProjects/MiniCommand", "--json")],
+            "output_schema": "worktree_list_payload",
         },
         ("worktree", "audit"): {
             "audience": ["human", "agent"],
@@ -9716,6 +9836,37 @@ def render_worktree_audit(payload: dict[str, Any], style: str = "auto") -> None:
         print(f"   - {item.get('status', 'unknown')}: {item.get('root')}{detail}")
 
 
+def render_worktree_list(payload: dict[str, Any], style: str = "auto") -> None:
+    summary = payload.get("summary") or {}
+    print(styled_text(f"{PUBLIC_COMMAND} worktree list:", style, "1;36"))
+    print(f" - repo: {payload.get('repo') or '(unknown)'}")
+    if payload.get("primary"):
+        print(f" - primary: {payload.get('primary')}")
+    print(f" - worktrees: {summary.get('total', 0)}")
+    print(f" - linked: {summary.get('linked_count', 0)}")
+    print(f" - dirty: {summary.get('dirty_count', 0)}")
+    print(f" - detached: {summary.get('detached_count', 0)}")
+    if summary.get("locked_count", 0):
+        print(f" - locked: {summary.get('locked_count', 0)}")
+    for error in payload.get("root_errors") or []:
+        print(f" - error: {error.get('error') or error.get('status') or 'unknown error'}")
+    for item in payload.get("worktrees") or []:
+        flags = []
+        if item.get("primary"):
+            flags.append("primary")
+        if item.get("current"):
+            flags.append("current")
+        if item.get("dirty"):
+            flags.append("dirty")
+        if item.get("detached"):
+            flags.append("detached")
+        if item.get("locked"):
+            flags.append("locked")
+        detail = f" ({', '.join(flags)})" if flags else ""
+        branch = item.get("branch") or "detached"
+        print(f"   - {branch}: {item.get('path')}{detail}")
+
+
 def render_worktree_prune(payload: dict[str, Any], style: str = "auto") -> None:
     summary = payload.get("summary") or {}
     print(styled_text(f"{PUBLIC_COMMAND} worktree prune:", style, "1;36"))
@@ -10369,8 +10520,12 @@ def build_parser() -> argparse.ArgumentParser:
     target_prune_missing.add_argument("--dry-run", action="store_true", help="Preview missing registry entries without writing. This is the default.")
     target_prune_missing.add_argument("--apply", action="store_true", help="Remove missing registry entries from the local kit registry.")
 
-    worktree = subparsers.add_parser("worktree", help="Audit and prune disposable agent worktrees.")
+    worktree = subparsers.add_parser("worktree", help="List, audit, and prune Git worktrees.")
     worktree_subparsers = worktree.add_subparsers(dest="worktree_command", required=True, parser_class=KitArgumentParser)
+    worktree_list = worktree_subparsers.add_parser("list", help="List every Git-linked worktree for one repository.")
+    worktree_list.add_argument("--json", action="store_true", help="Emit machine-readable JSON.")
+    add_style_arg(worktree_list)
+    worktree_list.add_argument("--repo", default=".", help="Repository or linked worktree to inspect. Defaults to the current directory.")
     worktree_audit = worktree_subparsers.add_parser("audit", help="Audit disposable agent worktrees under one or more repo or directory roots.")
     worktree_audit.add_argument("--json", action="store_true", help="Emit machine-readable JSON.")
     add_style_arg(worktree_audit)
@@ -10519,6 +10674,10 @@ def main(argv: list[str] | None = None) -> int:
     if args.command == "target" and getattr(args, "target_command", "") == "prune-missing":
         payload, exit_code = target_prune_missing_payload(args)
         render_json(payload) if args.json else render_target_prune_missing(payload, style=render_style(args))
+        return exit_code
+    if args.command == "worktree" and getattr(args, "worktree_command", "") == "list":
+        payload, exit_code = worktree_list_payload(args)
+        render_json(payload) if args.json else render_worktree_list(payload, style=render_style(args))
         return exit_code
     if args.command == "worktree" and getattr(args, "worktree_command", "") == "audit":
         payload, exit_code = worktree_audit_payload(args)

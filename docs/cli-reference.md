@@ -4,7 +4,7 @@ Generated from `kit command-map --json`.
 Do not edit command sections by hand; run `kit cli-reference --write docs/cli-reference.md`.
 
 - Schema version: `1`
-- Command count: `64`
+- Command count: `65`
 
 ## Commands
 
@@ -1681,7 +1681,7 @@ Flags:
 
 ### kit worktree
 
-Audit and prune disposable agent worktrees.
+List, audit, and prune Git worktrees.
 
 - Audience: `human, agent`
 - Mutation: `namespace`
@@ -1695,6 +1695,7 @@ Audit and prune disposable agent worktrees.
 
 Examples:
 
+- `kit worktree list --repo /path/to/repo --json`
 - `kit worktree audit --root /path/to/repo-or-parent --json`
 
 ### kit worktree audit
@@ -1720,6 +1721,30 @@ Flags:
 - `--json` - Emit machine-readable JSON.
 - `--style` - Human output style: auto uses ANSI only on a TTY, plain disables it, pretty forces it unless NO_COLOR is set.
 - `--root` - Repo or directory root to scan. Defaults to the current directory.
+
+### kit worktree list
+
+List every Git-linked worktree for one repository.
+
+- Audience: `human, agent`
+- Mutation: `read-only`
+- Target writes: `never`
+- Sidecar writes: `never`
+- JSON: `yes`
+- Output schema: `worktree_list_payload`
+- Route role: `canonical`
+- Canonical command: `worktree list`
+- Docs: `README.md#installed-commands`
+
+Examples:
+
+- `kit worktree list --repo /Volumes/Myrtle/MiniProjects/MiniCommand --json`
+
+Flags:
+
+- `--json` - Emit machine-readable JSON.
+- `--style` - Human output style: auto uses ANSI only on a TTY, plain disables it, pretty forces it unless NO_COLOR is set.
+- `--repo` - Repository or linked worktree to inspect. Defaults to the current directory.
 
 ### kit worktree prune
 

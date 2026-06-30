@@ -6,7 +6,9 @@ struct SettingsView: View {
     @AppStorage(KitSettingsKeys.kitBinaryPath) private var kitBinaryPath = KitSettings.defaultKitBinaryPath()
     @AppStorage(KitSettingsKeys.automaticallyCheckForUpdates) private var automaticallyCheckForUpdates = true
     @State private var launchAtLogin = LoginItemService.isEnabled
+    @State private var loginItemState = LoginItemService.currentState()
     @State private var loginItemError: String?
+    @State private var isSyncingLaunchAtLogin = false
 
     var body: some View {
         Form {
@@ -23,10 +25,37 @@ struct SettingsView: View {
                 }
             }
 
-            Toggle("Launch at Login", isOn: $launchAtLogin)
-                .onChange(of: launchAtLogin) { _, newValue in
-                    updateLaunchAtLogin(newValue)
+            VStack(alignment: .leading, spacing: 8) {
+                Toggle("Launch at Login", isOn: $launchAtLogin)
+                    .onChange(of: launchAtLogin) { _, newValue in
+                        guard !isSyncingLaunchAtLogin else {
+                            return
+                        }
+                        updateLaunchAtLogin(newValue)
+                    }
+
+                HStack(spacing: 8) {
+                    Label(loginItemState.label, systemImage: loginItemState.needsApproval ? "exclamationmark.triangle" : "power")
+                        .font(.callout.weight(.medium))
+                    Text(loginItemState.message)
+                        .font(.callout)
+                        .foregroundStyle(.secondary)
                 }
+
+                if !loginItemState.isInstalledInApplications {
+                    Label("Install Kit Companion in /Applications before enabling login launch.", systemImage: "folder.badge.gearshape")
+                        .font(.callout)
+                        .foregroundStyle(.secondary)
+                }
+
+                if loginItemState.needsApproval {
+                    Button {
+                        LoginItemService.openSystemSettings()
+                    } label: {
+                        Label("Open Login Items", systemImage: "gearshape")
+                    }
+                }
+            }
 
             Toggle("Automatically Check for Updates", isOn: $automaticallyCheckForUpdates)
                 .onChange(of: automaticallyCheckForUpdates) { _, newValue in
@@ -46,6 +75,12 @@ struct SettingsView: View {
         .formStyle(.grouped)
         .padding(20)
         .frame(width: 520)
+        .onAppear {
+            refreshLaunchAtLogin()
+        }
+        .onReceive(NotificationCenter.default.publisher(for: NSApplication.didBecomeActiveNotification)) { _ in
+            refreshLaunchAtLogin()
+        }
     }
 
     private func chooseKitBinary() {
@@ -61,11 +96,27 @@ struct SettingsView: View {
 
     private func updateLaunchAtLogin(_ enabled: Bool) {
         do {
-            try LoginItemService.setEnabled(enabled)
+            let state = try LoginItemService.setEnabled(enabled)
+            loginItemState = state
+            syncLaunchAtLoginToggle(state.isEnabled)
             loginItemError = nil
         } catch {
-            launchAtLogin = LoginItemService.isEnabled
+            refreshLaunchAtLogin()
             loginItemError = error.localizedDescription
+        }
+    }
+
+    private func refreshLaunchAtLogin() {
+        let state = LoginItemService.currentState()
+        loginItemState = state
+        syncLaunchAtLoginToggle(state.isEnabled)
+    }
+
+    private func syncLaunchAtLoginToggle(_ enabled: Bool) {
+        isSyncingLaunchAtLogin = true
+        launchAtLogin = enabled
+        DispatchQueue.main.async {
+            isSyncingLaunchAtLogin = false
         }
     }
 }

@@ -8,6 +8,11 @@ These settings do not change the required `kit` CLI setup.
 | `kitBinaryPath` | `~/.local/bin/kit` | Selects the launcher used for read-only kit commands in the app. |
 | `automaticallyCheckForUpdates` | `true` | Controls whether Sparkle checks the Kit Companion appcast for app updates. |
 
+Launch at Login uses macOS ServiceManagement state instead of a user default.
+The Settings window reads `SMAppService.mainApp.status`, mirrors only the
+`enabled` state in the toggle, and shows `requiresApproval` with an Open Login
+Items action when macOS needs explicit approval in System Settings.
+
 Sparkle update metadata is embedded in the app bundle:
 
 | Info.plist key | Value |

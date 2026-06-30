@@ -1,4 +1,5 @@
 import Foundation
+import ServiceManagement
 
 enum CheckFailure: Error, CustomStringConvertible {
     case failed(String)
@@ -148,6 +149,16 @@ do {
     try check(
         status.terminalCommand(selectedRepo: "/tmp/example repo") == "kit status --repo '/tmp/example repo' --json",
         "terminal commands should shell-quote repo paths"
+    )
+    try check(LoginItemService.label(for: .enabled) == "Enabled", "login item enabled label should be clear")
+    try check(LoginItemService.label(for: .requiresApproval) == "Needs Approval", "login item approval label should be explicit")
+    try check(
+        LoginItemService.message(for: .requiresApproval).contains("System Settings"),
+        "login item approval message should point to System Settings"
+    )
+    try check(
+        LoginItemService.message(for: .notRegistered).contains("not registered"),
+        "login item off message should describe unregistered state"
     )
 
     print("KitCompanionChecks passed")

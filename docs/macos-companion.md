@@ -52,6 +52,11 @@ optional and only starts the companion app; it does not run kit updates or
 mutate target repos. The app should be installed in `/Applications` before
 enabling Launch at Login for normal use.
 
+If macOS reports that the login item needs approval, the Settings window shows
+that state and includes an Open Login Items button. Approve Kit Companion in
+System Settings > General > Login Items, then return to the app; the setting
+refreshes when the app becomes active again.
+
 Automatic update checking does not silently replace the app. It compares the
 current app version with the Sparkle appcast published in GitHub Releases. When
 an app update is available, Sparkle verifies the update signature, downloads

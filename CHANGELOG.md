@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.6.46 - 2026-07-01
+
+- Fix Kit Companion Launch at Login settings so the toggle reflects the real
+  macOS login-item status, surfaces the `requiresApproval` state, and opens
+  System Settings > Login Items when user approval is needed.
+
 ## 0.6.45 - 2026-06-30
 
 - Add `kit closeout-fix` with read-only preview, JSONL apply mode, Codex

@@ -109,6 +109,7 @@ macos-test:
 	swiftc -o /tmp/KitCompanionChecks \
 		macos/KitCompanion/Sources/KitCompanion/Models/KitPayloads.swift \
 		macos/KitCompanion/Sources/KitCompanion/Models/CommandMap.swift \
+		macos/KitCompanion/Sources/KitCompanion/Services/LoginItemService.swift \
 		macos/KitCompanion/Sources/KitCompanion/Services/KitProcessRunner.swift \
 		macos/KitCompanion/Tests/KitCompanionChecks/main.swift
 	/tmp/KitCompanionChecks

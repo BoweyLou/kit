@@ -5,6 +5,8 @@
 - Block `kit start` local-safe managed updates when the target Git worktree is
   already dirty, reporting `dirty-target-repo` instead of mixing kit changes
   into active product work.
+- Report `kit update --global` results by tool version first, keeping the
+  source-ref transition as secondary provenance.
 
 ## 0.6.42 - 2026-06-30
 

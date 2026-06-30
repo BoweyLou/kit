@@ -92,6 +92,9 @@ Update the global cached tool:
 kit update --global
 ```
 
+The global update summary reports the tool version transition first and keeps
+the source-ref transition as secondary provenance.
+
 Preview a target update:
 
 ```bash

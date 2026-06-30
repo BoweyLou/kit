@@ -270,6 +270,45 @@ class RepoContractKitCliTests(unittest.TestCase):
         self.assertIn("Run `kit options`", output.getvalue())
         self.assertNotIn("Choose an action:", output.getvalue())
 
+    def test_global_update_text_shows_version_before_source_ref(self):
+        module = load_cli_module()
+        payload = {
+            "tool_before": {
+                "root": "/tmp/kit",
+                "version": "0.6.36",
+                "source_ref": "a" * 40,
+                "short_ref": "a" * 12,
+            },
+            "tool_after": {
+                "root": "/tmp/kit",
+                "version": "0.6.37",
+                "source_ref": "b" * 40,
+                "short_ref": "b" * 12,
+            },
+            "tool_update": {
+                "before_version": "0.6.36",
+                "after_version": "0.6.37",
+                "before_ref": "a" * 40,
+                "after_ref": "b" * 40,
+                "before_short_ref": "a" * 12,
+                "after_short_ref": "b" * 12,
+            },
+            "workflow_source_before": {},
+            "workflow_source_after": {},
+            "warnings": [],
+            "steps": [],
+        }
+        output = io.StringIO()
+
+        with contextlib.redirect_stdout(output):
+            module.render_self_update(payload)
+
+        text = output.getvalue()
+        self.assertIn(" - version: 0.6.36 -> 0.6.37", text)
+        self.assertIn(" - source ref: aaaaaaaaaaaa -> bbbbbbbbbbbb", text)
+        self.assertNotIn(" - ref: aaaaaaaaaaaa -> bbbbbbbbbbbb", text)
+        self.assertNotIn("Choose an action:", output.getvalue())
+
     def test_kit_agent_mode_disables_tty_prompt(self):
         module = load_cli_module()
         output = io.StringIO()

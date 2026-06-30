@@ -1389,6 +1389,14 @@ def self_update_payload(args: argparse.Namespace) -> tuple[dict[str, Any], int]:
     tool_steps, tool_after, tool_error, tool_exit = update_checkout(ROOT, args.ref, "repo-contract-kit")
     payload["steps"].extend(tool_steps)
     payload["tool_after"] = tool_after or self_status_payload()["tool"]
+    payload["tool_update"] = {
+        "before_version": before.get("version") or "unknown",
+        "after_version": payload["tool_after"].get("version") or "unknown",
+        "before_ref": before.get("source_ref"),
+        "after_ref": payload["tool_after"].get("source_ref"),
+        "before_short_ref": before.get("short_ref"),
+        "after_short_ref": payload["tool_after"].get("short_ref"),
+    }
     if tool_error:
         payload["error"] = tool_error
         payload["exit_code"] = tool_exit
@@ -1416,9 +1424,19 @@ def self_update_payload(args: argparse.Namespace) -> tuple[dict[str, Any], int]:
 def render_self_update(payload: dict[str, Any]) -> None:
     before = payload["tool_before"]
     after = payload.get("tool_after") or before
+    tool_update = payload.get("tool_update") or {}
     print(f"{PUBLIC_COMMAND} global update:")
     print(f" - root: {before['root']}")
-    print(f" - ref: {before.get('short_ref') or 'unknown'} -> {after.get('short_ref') or 'unknown'}")
+    print(
+        " - version: "
+        f"{tool_update.get('before_version') or before.get('version') or 'unknown'} -> "
+        f"{tool_update.get('after_version') or after.get('version') or 'unknown'}"
+    )
+    print(
+        " - source ref: "
+        f"{tool_update.get('before_short_ref') or before.get('short_ref') or 'unknown'} -> "
+        f"{tool_update.get('after_short_ref') or after.get('short_ref') or 'unknown'}"
+    )
     workflow_before = payload.get("workflow_source_before") or {}
     workflow_after = payload.get("workflow_source_after") or workflow_before
     if workflow_before.get("exists") or workflow_after.get("exists") or workflow_before.get("is_git_checkout") or workflow_after.get("is_git_checkout"):

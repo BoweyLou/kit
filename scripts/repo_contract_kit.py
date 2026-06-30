@@ -66,6 +66,7 @@ import branch_readiness  # noqa: E402
 import changelog_update  # noqa: E402
 import docs_explain  # noqa: E402
 import goal_check  # noqa: E402
+from agent_parallel_coordination import build_parallel_context  # noqa: E402
 import kit_status  # noqa: E402
 import lint_agent_docs  # noqa: E402
 
@@ -3770,13 +3771,14 @@ def compact_task_status(repo: Path, limits: dict[str, int], omissions: list[dict
         for task in tasks
     ]
     hazards = payload.get("hazards", []) if isinstance(payload.get("hazards"), list) else []
+    parallel_context = payload.get("parallel_context") if isinstance(payload.get("parallel_context"), dict) else build_parallel_context(payload)
     warnings = []
     if result.returncode:
         warnings.append(result.stderr.strip() or result.stdout.strip() or "agent-task-status returned non-zero")
-    if hazards:
-        warnings.append("Task status reported coordination hazards.")
-    if payload.get("stale_tasks"):
-        warnings.append("Task status reported stale task metadata.")
+    if parallel_context.get("blockers"):
+        warnings.append("Task status reported write-task coordination blockers.")
+    if parallel_context.get("warnings"):
+        warnings.append("Task status reported write-task coordination warnings.")
     status = "warning" if warnings else "ok"
     return bundle_section(
         status,
@@ -3789,6 +3791,9 @@ def compact_task_status(repo: Path, limits: dict[str, int], omissions: list[dict
             "stale_task_count": len(payload.get("stale_tasks", []) or []),
             "unknown_scope_task_count": len(payload.get("unknown_scope_tasks", []) or []),
             "untracked_agent_worktree_count": len(payload.get("untracked_agent_worktrees", []) or []),
+            "parallel_context": parallel_context,
+            "can_start_write_task": bool(parallel_context.get("can_start_write_task")),
+            "recommended_next_command": parallel_context.get("recommended_next_command"),
             "tasks": bounded_list(compact_tasks, limits["tasks"], omissions, "task_status", "tasks", "task list was truncated"),
         },
         warnings,
@@ -4111,6 +4116,7 @@ def agent_state_ledger_payload(args: argparse.Namespace, repo: Path) -> dict[str
         receipt_paths.append((finalizer_dir, "target-final-receipts", "receipt.json"))
     receipts = scan_json_receipts(receipt_paths)
     tasks, task_blockers, task_warnings = ledger_task_summaries(primary, task_status)
+    parallel_context = task_status.get("parallel_context") if isinstance(task_status.get("parallel_context"), dict) else build_parallel_context(task_status)
     blockers: list[dict[str, Any]] = []
     warnings: list[dict[str, Any]] = []
     blockers.extend(task_blockers)
@@ -4177,8 +4183,12 @@ def agent_state_ledger_payload(args: argparse.Namespace, repo: Path) -> dict[str
             "unknown_scope_tasks": task_status.get("unknown_scope_tasks", []),
             "dirty_worktree_tasks": task_status.get("dirty_worktree_tasks", []),
             "untracked_agent_worktrees": task_status.get("untracked_agent_worktrees", []),
+            "parallel_context": parallel_context,
+            "can_start_write_task": bool(parallel_context.get("can_start_write_task")),
+            "recommended_next_command": parallel_context.get("recommended_next_command"),
             "tasks": tasks,
         },
+        "parallel_context": parallel_context,
         "closeout_state": {
             "source_command": "make agent-task-closeout TASK_CLOSEOUT_JSON=1",
             "exit_code": closeout_code,
@@ -4211,6 +4221,8 @@ def render_agent_state_ledger(payload: dict[str, Any]) -> None:
     print(f" - dirty checkout: {str(dirty.get('dirty')).lower()} ({dirty.get('count', 0)} changed)")
     print(f" - sidecar available: {str((payload.get('sidecar') or {}).get('available')).lower()}")
     print(f" - tasks: {task_summary.get('active_task_count', 0)} active / {task_summary.get('task_count', 0)} total")
+    parallel_context = payload.get("parallel_context") or (payload.get("task_status") or {}).get("parallel_context") or {}
+    print(f" - can start write task: {str(parallel_context.get('can_start_write_task')).lower()}")
     print(f" - closeout candidates: {(payload.get('closeout_state') or {}).get('closeout_candidate_count', 0)}")
     if unresolved.get("blockers"):
         print(" - blockers:")
@@ -4371,6 +4383,7 @@ def closeout_plan_payload(args: argparse.Namespace, repo: Path) -> dict[str, Any
     ledger = agent_state_ledger_payload(args, primary)
     dirty = ledger.get("dirty") or {}
     task_status = ledger.get("task_status") or {}
+    parallel_context = ledger.get("parallel_context") or task_status.get("parallel_context") or {}
     task_summary = task_status.get("summary") or {}
     tasks = task_status.get("tasks") or []
     closeout = ledger.get("closeout_state") or {}
@@ -4462,6 +4475,14 @@ def closeout_plan_payload(args: argparse.Namespace, repo: Path) -> dict[str, Any
                 "code": "blocked_task_state",
                 "message": "Task metadata has missing, stale, or overlapping worktree state.",
                 "count": len(blocked_task_states),
+            }
+        )
+    if parallel_context.get("blockers"):
+        task_ledger_blockers.append(
+            {
+                "code": "parallel_context_blockers",
+                "message": "Parallel coordination reported blockers for starting or closing write-task work.",
+                "count": len(parallel_context.get("blockers") or []),
             }
         )
     if closeout.get("closeout_candidate_count", 0):
@@ -4602,6 +4623,9 @@ def closeout_plan_payload(args: argparse.Namespace, repo: Path) -> dict[str, Any
         "dirty": dirty,
         "dirty_file_groups": closeout_dirty_file_groups(dirty.get("entries") or []),
         "task_summary": task_summary,
+        "parallel_context": parallel_context,
+        "can_start_write_task": bool(parallel_context.get("can_start_write_task")),
+        "recommended_write_task_command": parallel_context.get("recommended_next_command"),
         "active_tasks": active_tasks,
         "terminal_missing_receipts": terminal_missing_receipts,
         "dirty_worktree_tasks": dirty_worktree_tasks,
@@ -4659,6 +4683,10 @@ def render_closeout_plan(payload: dict[str, Any]) -> None:
             f"({worktree_prune_summary.get('dirty', 0)} dirty)"
         )
     print(f" - tasks: {task_summary.get('active_task_count', 0)} active / {task_summary.get('task_count', 0)} total")
+    parallel_context = payload.get("parallel_context") or {}
+    if parallel_context:
+        print(f" - can start write task: {str(parallel_context.get('can_start_write_task')).lower()}")
+        print(f" - write-task next command: {parallel_context.get('recommended_next_command')}")
     print(f" - closeout: {closeout.get('candidate_count', 0)} candidate / {closeout.get('blocked_count', 0)} blocked")
     if payload.get("claim_blockers"):
         print(" - claim blockers:")

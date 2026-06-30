@@ -113,9 +113,15 @@ class AgentStateLedgerTests(unittest.TestCase):
                 repo,
             )
             self.assertEqual(first.returncode, 0, first.stdout + first.stderr)
-            second = run(["make", "agent-task-prepare", "TASK=AGW-098", "SCOPE=docs/README.md", "OVERLAP=ignore"], repo)
-            self.assertEqual(second.returncode, 0, second.stdout + second.stderr)
             metadata = json.loads((repo / ".agent-workflows" / "tasks" / "agw-097.json").read_text(encoding="utf-8"))
+            second_metadata = dict(metadata)
+            second_metadata["task_id"] = "AGW-098"
+            second_metadata["scope"] = ["docs/README.md"]
+            second_metadata["branch"] = "codex/task-agw-098-synthetic"
+            (repo / ".agent-workflows" / "tasks" / "agw-098.json").write_text(
+                json.dumps(second_metadata, indent=2, sort_keys=True) + "\n",
+                encoding="utf-8",
+            )
             worktree = Path(metadata["worktree"])
             (worktree / "README.md").write_text("# Dirty task\n", encoding="utf-8")
             missing = repo / ".agent-workflows" / "tasks" / "agw-099.json"

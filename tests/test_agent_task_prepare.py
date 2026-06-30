@@ -123,9 +123,13 @@ class AgentTaskPrepareTests(unittest.TestCase):
             self.assertEqual(packet["closeout_requirements"]["lifecycle_action"]["action"], "finish")
             self.assertIn("agent-task-finalize", packet["closeout_requirements"]["lifecycle_action"]["command"])
             self.assertEqual(packet["coordination"]["active_task_count"], 0)
+            self.assertEqual(packet["parallel_context"]["active_task_count"], 0)
+            self.assertTrue(packet["parallel_context"]["can_start_write_task"])
+            self.assertEqual(packet["parallel_context"]["blockers"], [])
             self.assertEqual(receipt["review_risk"]["trust_profile"], "write-worker")
             self.assertEqual(receipt["run"]["id"], metadata["run_id"])
             self.assertEqual(receipt["coordination"]["active_task_count"], 0)
+            self.assertTrue(receipt["parallel_context"]["can_start_write_task"])
 
             status = run(["git", "status", "--short"], repo)
             self.assertEqual(status.stdout.strip(), "")
@@ -146,7 +150,49 @@ class AgentTaskPrepareTests(unittest.TestCase):
             )
 
             self.assertNotEqual(second.returncode, 0)
-            self.assertIn("overlaps an in-flight task", second.stderr)
+            self.assertIn("Parallel task coordination blocks this write worktree", second.stdout)
+            self.assertIn("active_scope_overlap", second.stdout)
+
+    def test_prepare_allows_unrelated_expired_task_but_records_warning(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            repo = Path(tmp) / "repo"
+            repo.mkdir()
+            init_repo(repo)
+            install_agentic(repo)
+
+            first = run(["make", "agent-task-prepare", "TASK=AGW-061", "SCOPE=docs"], repo)
+            self.assertEqual(first.returncode, 0, first.stdout + first.stderr)
+            metadata_path = repo / ".agent-workflows" / "tasks" / "agw-061.json"
+            metadata = json.loads(metadata_path.read_text(encoding="utf-8"))
+            metadata["lease_expires_at"] = "2020-01-01T00:00:00+00:00"
+            metadata_path.write_text(json.dumps(metadata, indent=2, sort_keys=True) + "\n", encoding="utf-8")
+
+            second = run(["make", "agent-task-prepare", "TASK=AGW-062", "SCOPE=scripts"], repo)
+
+            self.assertEqual(second.returncode, 0, second.stdout + second.stderr)
+            next_metadata = json.loads((repo / ".agent-workflows" / "tasks" / "agw-062.json").read_text(encoding="utf-8"))
+            packet = json.loads((Path(next_metadata["worktree"]) / next_metadata["task_packet"]).read_text(encoding="utf-8"))
+            self.assertTrue(packet["parallel_context"]["can_start_write_task"])
+            warning_codes = {item["code"] for item in packet["parallel_context"]["warnings"]}
+            self.assertIn("stale_task", warning_codes)
+
+    def test_prepare_blocks_missing_same_scope_worktree(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            repo = Path(tmp) / "repo"
+            repo.mkdir()
+            init_repo(repo)
+            install_agentic(repo)
+
+            first = run(["make", "agent-task-prepare", "TASK=AGW-061", "SCOPE=docs"], repo)
+            self.assertEqual(first.returncode, 0, first.stdout + first.stderr)
+            metadata_path = repo / ".agent-workflows" / "tasks" / "agw-061.json"
+            metadata = json.loads(metadata_path.read_text(encoding="utf-8"))
+            run(["git", "worktree", "remove", "--force", metadata["worktree"]], repo, check=True)
+
+            second = run(["make", "agent-task-prepare", "TASK=AGW-062", "SCOPE=docs/guide.md"], repo)
+
+            self.assertNotEqual(second.returncode, 0)
+            self.assertIn("missing_task_worktree", second.stdout)
 
     def test_status_reports_active_task_worktrees_as_json(self):
         with tempfile.TemporaryDirectory() as tmp:
@@ -192,6 +238,9 @@ class AgentTaskPrepareTests(unittest.TestCase):
             self.assertTrue(report["tasks"][0]["worktree_registered"])
             self.assertFalse(report["tasks"][0]["dirty"])
             self.assertEqual(report["hazards"], [])
+            self.assertIn("parallel_context", report)
+            self.assertTrue(report["parallel_context"]["can_start_write_task"])
+            self.assertEqual(report["parallel_context"]["recommended_next_command"], "make agent-task-prepare TASK=<id> SCOPE=<paths>")
 
             text = run(["make", "agent-task-status"], repo)
             self.assertEqual(text.returncode, 0, text.stdout + text.stderr)
@@ -271,11 +320,15 @@ class AgentTaskPrepareTests(unittest.TestCase):
 
             first = run(["make", "agent-task-prepare", "TASK=AGW-061", "SCOPE=scripts"], repo)
             self.assertEqual(first.returncode, 0, first.stdout + first.stderr)
-            second = run(
-                ["make", "agent-task-prepare", "TASK=AGW-062", "SCOPE=scripts/agent_task_prepare.py", "OVERLAP=ignore"],
-                repo,
+            first_metadata = json.loads((repo / ".agent-workflows" / "tasks" / "agw-061.json").read_text(encoding="utf-8"))
+            second_metadata = dict(first_metadata)
+            second_metadata["task_id"] = "AGW-062"
+            second_metadata["scope"] = ["scripts/agent_task_prepare.py"]
+            second_metadata["branch"] = "codex/task-agw-062-synthetic"
+            (repo / ".agent-workflows" / "tasks" / "agw-062.json").write_text(
+                json.dumps(second_metadata, indent=2, sort_keys=True) + "\n",
+                encoding="utf-8",
             )
-            self.assertEqual(second.returncode, 0, second.stdout + second.stderr)
 
             result = run(["make", "agent-task-status", "TASK_STATUS_STRICT=1"], repo)
 

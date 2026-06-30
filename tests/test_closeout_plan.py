@@ -214,10 +214,36 @@ class CloseoutPlanTests(unittest.TestCase):
             payload = json.loads(result.stdout)
             self.assertFalse(payload["can_claim_done"])
             self.assertEqual(payload["completion_state"], "needs-receipt")
+            self.assertIn("parallel_context", payload)
+            self.assertTrue(payload["parallel_context"]["can_start_write_task"])
             self.assertEqual(payload["active_tasks"][0]["task_id"], "AGW-200")
             task_ledger_codes = {item["code"] for item in payload["task_ledger_blockers"]}
             self.assertIn("active_tasks", task_ledger_codes)
             self.assertIn("make agent-task-ready TASK=AGW-200", payload["next_action"]["command"])
+
+    def test_closeout_plan_reports_parallel_context_blockers(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            repo = Path(tmp) / "repo"
+            repo.mkdir()
+            init_repo(repo)
+            install_agentic(repo)
+            state_home = Path(tmp) / "state"
+            first = run(["make", "agent-task-prepare", "TASK=AGW-201", "SCOPE=docs"], repo)
+            self.assertEqual(first.returncode, 0, first.stdout + first.stderr)
+            metadata_path = repo / ".agent-workflows" / "tasks" / "agw-201.json"
+            metadata = json.loads(metadata_path.read_text(encoding="utf-8"))
+            run(["git", "worktree", "remove", "--force", metadata["worktree"]], repo, check=True)
+
+            result = closeout_plan(repo, state_home, "--strict")
+
+            self.assertEqual(result.returncode, 1, result.stdout + result.stderr)
+            payload = json.loads(result.stdout)
+            self.assertFalse(payload["can_claim_done"])
+            self.assertFalse(payload["parallel_context"]["can_start_write_task"])
+            blocker_codes = {item["code"] for item in payload["parallel_context"]["blockers"]}
+            self.assertIn("missing_task_worktree", blocker_codes)
+            task_ledger_codes = {item["code"] for item in payload["task_ledger_blockers"]}
+            self.assertIn("parallel_context_blockers", task_ledger_codes)
             self.assertFalse(payload["next_action"]["mutating"])
             blocker_codes = {item["code"] for item in payload["claim_blockers"]}
             self.assertIn("active_tasks", blocker_codes)

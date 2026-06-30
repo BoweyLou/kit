@@ -7,6 +7,9 @@
   into active product work.
 - Report `kit update --global` results by tool version first, keeping the
   source-ref transition as secondary provenance.
+- Add balanced `parallel_context` reporting for write-capable task work so
+  same-scope active, dirty, stale, or missing worktrees block new task prep
+  while unrelated stale task metadata remains a warning.
 
 ## 0.6.42 - 2026-06-30
 

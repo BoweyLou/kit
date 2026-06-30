@@ -116,6 +116,16 @@ Before the final response for write-capable work, run
 gate should fail until dirty primary state, active tasks, missing receipts, and
 closeout blockers are resolved.
 
+For parallel write-capable work, use the `parallel_context` object from
+`make agent-task-status TASK_STATUS_JSON=1`, `make agent-state-ledger
+STATE_LEDGER_JSON=1`, `kit agent-context-bundle --json`, or
+`kit closeout-plan --json`. `agent-task-prepare` applies the same balanced
+classifier before creating a worktree: active same-scope work, missing or
+unknown same-scope worktree state, and dirty same-scope task worktrees block;
+unrelated expired task records remain warnings with a cleanup or status command.
+Task packets and receipt templates include the launch-time `parallel_context`
+so sibling task state travels with the worktree.
+
 `closeout-plan` includes a `worktree_prune` section from the same repo-aware
 audit used by `kit worktree audit --root <repo>`. If
 `worktree_prune.summary.would_remove` is positive, the `next_action` prefers the

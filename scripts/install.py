@@ -85,6 +85,7 @@ FILE_MAP = {
 
 CORE_SCRIPTS = [
     "_agent_scope.py",
+    "agent_parallel_coordination.py",
     "agent_task_cleanup.py",
     "agent_task_finalize.py",
     "agent_task_lifecycle.py",

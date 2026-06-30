@@ -205,6 +205,32 @@ class AgentTaskCleanupTests(unittest.TestCase):
             blocked = {item["path"]: item["reasons"] for item in report["closeout_blocked"]}
             self.assertIn("worktree has uncommitted changes", blocked[str(dirty_worktree.resolve())])
             self.assertIn("terminal task has no linked final receipt", blocked[str(no_receipt_worktree.resolve())])
+            dispositions = {item["task_id"]: item["disposition"] for item in report["task_reconciliation"]}
+            self.assertEqual(dispositions["AGW-082"], "dirty-needs-review")
+            self.assertEqual(dispositions["AGW-083"], "blocked-by-receipt")
+            self.assertTrue(no_receipt_worktree.exists())
+
+    def test_cleanup_classifies_missing_worktree_without_mutating_by_default(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            repo = Path(tmp) / "repo"
+            repo.mkdir()
+            init_repo(repo)
+            install_agentic(repo)
+
+            prepare = run(["make", "agent-task-prepare", "TASK=AGW-086", "SCOPE=docs"], repo)
+            self.assertEqual(prepare.returncode, 0, prepare.stdout + prepare.stderr)
+            metadata = json.loads((repo / ".agent-workflows" / "tasks" / "agw-086.json").read_text(encoding="utf-8"))
+            worktree = Path(metadata["worktree"])
+            run(["git", "worktree", "remove", "--force", str(worktree)], repo, check=True)
+
+            result = run(["make", "agent-task-cleanup", "TASK_CLEANUP_JSON=1"], repo)
+
+            self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+            report = json.loads(result.stdout)
+            dispositions = {item["task_id"]: item for item in report["task_reconciliation"]}
+            self.assertEqual(dispositions["AGW-086"]["disposition"], "missing-worktree")
+            self.assertFalse(dispositions["AGW-086"]["apply_supported"])
+            self.assertTrue((repo / ".agent-workflows" / "tasks" / "agw-086.json").exists())
 
     def test_closeout_keep_count_retains_newest_candidate(self):
         with tempfile.TemporaryDirectory() as tmp:

@@ -26,23 +26,20 @@ final class KitCompanionStore: ObservableObject {
     @Published var isRefreshing = false
     @Published var isLoadingDetail = false
     @Published var lastRefresh: Date?
-    @Published var updateCheckResult: UpdateCheckResult?
     @Published var isCheckingForUpdates = false
     @Published var message: String?
     @Published var errorMessage: String?
 
     private let runner: KitProcessRunner
-    private let updateChecker: UpdateCheckService
+    private let updateService: SparkleUpdateService
 
-    init(runner: KitProcessRunner = KitProcessRunner(), updateChecker: UpdateCheckService = UpdateCheckService()) {
+    init(runner: KitProcessRunner = KitProcessRunner(), updateService: SparkleUpdateService? = nil) {
         self.runner = runner
-        self.updateChecker = updateChecker
+        self.updateService = updateService ?? .shared
         if UserDefaults.standard.object(forKey: KitSettingsKeys.automaticallyCheckForUpdates) == nil {
             UserDefaults.standard.set(true, forKey: KitSettingsKeys.automaticallyCheckForUpdates)
         }
-        if UserDefaults.standard.bool(forKey: KitSettingsKeys.automaticallyCheckForUpdates) {
-            checkForUpdates(silent: true)
-        }
+        self.updateService.setAutomaticallyChecksForUpdates(UserDefaults.standard.bool(forKey: KitSettingsKeys.automaticallyCheckForUpdates))
     }
 
     var selectedTarget: KitTarget? {
@@ -168,37 +165,12 @@ final class KitCompanionStore: ObservableObject {
     }
 
     func checkForUpdates(silent: Bool = false) {
-        guard !isCheckingForUpdates else {
-            return
-        }
-        isCheckingForUpdates = true
         if !silent {
-            message = "Checking for updates"
+            message = "Opening app update checker"
             errorMessage = nil
-        }
-
-        Task {
-            let result = await updateChecker.check(currentVersion: Self.appVersion)
-            updateCheckResult = result
-            if result.updateAvailable {
-                message = result.displayText
-            } else if !silent {
-                message = result.displayText
-            }
-            if let error = result.errorMessage, !silent {
-                errorMessage = error
-            }
-            isCheckingForUpdates = false
-        }
-    }
-
-    func openUpdate() {
-        guard let result = updateCheckResult else {
-            checkForUpdates()
-            return
-        }
-        if let url = result.downloadURL ?? result.releaseURL {
-            NSWorkspace.shared.open(url)
+            updateService.checkForUpdates()
+        } else {
+            updateService.checkForUpdatesInBackground()
         }
     }
 
@@ -224,9 +196,5 @@ final class KitCompanionStore: ObservableObject {
         NSPasteboard.general.clearContents()
         NSPasteboard.general.setString(command, forType: .string)
         message = "Copied command"
-    }
-
-    private static var appVersion: String {
-        Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? "0.0.0"
     }
 }

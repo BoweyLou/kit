@@ -3,6 +3,7 @@ import SwiftUI
 
 enum AppTermination {
     static var userRequestedQuit = false
+    static var allowsUpdaterTermination = false
 }
 
 final class AppDelegate: NSObject, NSApplicationDelegate {
@@ -15,7 +16,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     }
 
     func applicationShouldTerminate(_ sender: NSApplication) -> NSApplication.TerminateReply {
-        AppTermination.userRequestedQuit ? .terminateNow : .terminateCancel
+        (AppTermination.userRequestedQuit || AppTermination.allowsUpdaterTermination) ? .terminateNow : .terminateCancel
     }
 }
 

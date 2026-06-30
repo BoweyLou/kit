@@ -79,10 +79,6 @@ private struct DetailPane: View {
                 UpdatePreviewView(preview: preview)
             }
 
-            if let result = store.updateCheckResult {
-                AppUpdateView(store: store, result: result)
-            }
-
             Spacer()
         }
         .padding(22)
@@ -213,28 +209,6 @@ private struct UpdatePreviewView: View {
                 Text("\(target.name ?? target.repo ?? "target"): \(target.status ?? "unknown")")
                     .font(.caption)
                     .foregroundStyle(.secondary)
-            }
-        }
-    }
-}
-
-private struct AppUpdateView: View {
-    @ObservedObject var store: KitCompanionStore
-    let result: UpdateCheckResult
-
-    var body: some View {
-        VStack(alignment: .leading, spacing: 6) {
-            Divider()
-            Text("App Update")
-                .font(.headline)
-            Text(result.displayText)
-                .foregroundStyle(result.updateAvailable ? .primary : .secondary)
-            if result.updateAvailable {
-                Button {
-                    store.openUpdate()
-                } label: {
-                    Label("Download Update", systemImage: "arrow.down.circle")
-                }
             }
         }
     }

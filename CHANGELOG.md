@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.6.42 - 2026-06-30
+
+- Add Sparkle 2 app updates for the optional Kit Companion macOS app, including
+  a signed appcast, update zip packaging, and in-app update checks that no
+  longer require manually replacing the app from a DMG.
+
 ## 0.6.41 - 2026-06-30
 
 - Fix `kit status` import compatibility when the launcher is executed with

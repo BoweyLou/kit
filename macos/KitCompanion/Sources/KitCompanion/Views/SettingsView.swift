@@ -29,6 +29,9 @@ struct SettingsView: View {
                 }
 
             Toggle("Automatically Check for Updates", isOn: $automaticallyCheckForUpdates)
+                .onChange(of: automaticallyCheckForUpdates) { _, newValue in
+                    SparkleUpdateService.shared.setAutomaticallyChecksForUpdates(newValue)
+                }
 
             if let loginItemError {
                 Text(loginItemError)
@@ -36,7 +39,7 @@ struct SettingsView: View {
                     .foregroundStyle(.red)
             }
 
-            Text("The companion app is optional. It only runs read-only kit commands in-app; mutating commands stay in Terminal.")
+            Text("The companion app is optional. It only runs read-only kit commands in-app; mutating commands stay in Terminal. App updates are verified and installed by Sparkle.")
                 .font(.callout)
                 .foregroundStyle(.secondary)
         }

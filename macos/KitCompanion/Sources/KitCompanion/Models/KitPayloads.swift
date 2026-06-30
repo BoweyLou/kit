@@ -221,35 +221,6 @@ struct RepoDetail {
     var closeout: CloseoutPayload?
 }
 
-struct UpdateCheckResult {
-    let currentVersion: String
-    let latestVersion: String?
-    let releaseURL: URL?
-    let downloadURL: URL?
-    let checkedAt: Date
-    let errorMessage: String?
-
-    var updateAvailable: Bool {
-        guard let latestVersion else {
-            return false
-        }
-        return VersionComparator.isVersion(latestVersion, newerThan: currentVersion)
-    }
-
-    var displayText: String {
-        if let errorMessage {
-            return errorMessage
-        }
-        guard let latestVersion else {
-            return "No release information found"
-        }
-        if updateAvailable {
-            return "Kit Companion \(latestVersion) is available"
-        }
-        return "Kit Companion is current"
-    }
-}
-
 enum VersionComparator {
     static func isVersion(_ candidate: String, newerThan current: String) -> Bool {
         normalizedParts(candidate).lexicographicallyPrecedes(normalizedParts(current)) == false

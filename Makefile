@@ -1,4 +1,4 @@
-.PHONY: help workflow-help test cli-ux-fixtures docs-freshness docs-check version-check workflow-source-check workflow-source-export macos-build macos-test macos-dmg macos-package-check
+.PHONY: help workflow-help test cli-ux-fixtures docs-freshness docs-check version-check workflow-source-check workflow-source-export macos-build macos-test macos-dmg macos-sparkle macos-package-check
 
 help: workflow-help
 
@@ -110,6 +110,9 @@ macos-test:
 
 macos-dmg:
 	./script/package_macos_dmg.sh
+
+macos-sparkle:
+	./script/package_macos_sparkle.sh
 
 macos-package-check:
 	codesign --verify --deep --strict --verbose=2 dist/KitCompanion.app

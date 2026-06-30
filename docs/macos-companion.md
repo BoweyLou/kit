@@ -35,8 +35,9 @@ mutate target repos. The app should be installed in `/Applications` before
 enabling Launch at Login for normal use.
 
 Automatic update checking does not silently replace the app. It compares the
-current app version with the latest GitHub release and opens the release DMG
-when the user chooses to download it.
+current app version with the Sparkle appcast published in GitHub Releases. When
+an app update is available, Sparkle verifies the update signature, downloads
+the app archive, and replaces the installed app after user confirmation.
 
 ## Safety Boundary
 
@@ -68,9 +69,20 @@ system Python just because the app was not started from a terminal shell.
 
 ```bash
 make macos-dmg
+make macos-sparkle
 make macos-package-check
 ```
 
 The DMG is written under `dist/` and uses ad hoc signing for local trusted-Mac
 installs. It is not notarized in this private lane, so macOS may require
 Control-click > Open or Privacy & Security > Open Anyway on first launch.
+
+Sparkle update assets are written under `dist/sparkle/`:
+
+- `KitCompanion-<version>-macos-<arch>.zip`
+- `KitCompanion-appcast.xml`
+- `SHA256SUMS-sparkle`
+
+The Sparkle appcast is signed with the local Keychain item for
+`com.boweylou.KitCompanion` by default. Automation can instead pass the private
+EdDSA key through `SPARKLE_ED_PRIVATE_KEY`; do not commit that private key.

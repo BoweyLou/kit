@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.6.40 - 2026-06-30
+
+- Harden Kit Companion lifecycle handling so the menu-bar app refuses
+  unintended termination requests while still allowing the explicit Quit action.
+
 ## 0.6.39 - 2026-06-30
 
 - Harden Kit Companion command handling so non-zero kit exits can still render

@@ -55,6 +55,7 @@ struct MenuBarView: View {
         }
 
         Button {
+            AppTermination.userRequestedQuit = true
             NSApplication.shared.terminate(nil)
         } label: {
             Label("Quit", systemImage: "power")

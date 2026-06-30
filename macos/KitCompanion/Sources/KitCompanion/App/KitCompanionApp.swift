@@ -1,6 +1,10 @@
 import AppKit
 import SwiftUI
 
+enum AppTermination {
+    static var userRequestedQuit = false
+}
+
 final class AppDelegate: NSObject, NSApplicationDelegate {
     func applicationDidFinishLaunching(_ notification: Notification) {
         NSApp.setActivationPolicy(.accessory)
@@ -8,6 +12,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
     func applicationShouldTerminateAfterLastWindowClosed(_ sender: NSApplication) -> Bool {
         false
+    }
+
+    func applicationShouldTerminate(_ sender: NSApplication) -> NSApplication.TerminateReply {
+        AppTermination.userRequestedQuit ? .terminateNow : .terminateCancel
     }
 }
 

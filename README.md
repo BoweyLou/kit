@@ -188,6 +188,26 @@ Depending on the preset, kit can install:
 
 Read [docs/capabilities.md](docs/capabilities.md) for the capability map.
 
+## Optional macOS Companion
+
+Kit Companion is a separate, optional menu-bar app for local status visibility.
+It is not required for setup, updates, reviews, agents, or any normal kit
+workflow. The CLI remains complete and authoritative without it.
+
+The app runs read-only JSON commands such as `kit target dirty-report --json`
+and `kit closeout-plan --json`, shows registered repo health, and copies next
+commands for terminal use. Mutating actions stay in Terminal.
+
+Build it only when wanted:
+
+```bash
+make macos-build
+make macos-dmg
+```
+
+Read [docs/macos-companion.md](docs/macos-companion.md) for the optional install
+and safety boundary.
+
 ## Maintainers
 
 This repository owns both the install layer and the canonical workflow source:

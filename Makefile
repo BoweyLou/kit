@@ -1,4 +1,4 @@
-.PHONY: help workflow-help test cli-ux-fixtures docs-freshness docs-check version-check workflow-source-check workflow-source-export
+.PHONY: help workflow-help test cli-ux-fixtures docs-freshness docs-check version-check workflow-source-check workflow-source-export macos-build macos-test macos-dmg macos-package-check
 
 help: workflow-help
 
@@ -73,7 +73,12 @@ workflow-help:
 		"   make cli-ux-fixtures" \
 		"   make docs-freshness" \
 		"   make docs-check" \
-		"   make version-check"
+		"   make version-check" \
+		"" \
+		"Optional macOS companion:" \
+		"   make macos-build" \
+		"   make macos-test" \
+		"   make macos-dmg"
 
 test:
 	@PYTHONDONTWRITEBYTECODE=1 python3 -m unittest discover -s tests
@@ -96,3 +101,17 @@ docs-freshness:
 
 version-check:
 	@PYTHONDONTWRITEBYTECODE=1 python3 scripts/version.py check
+
+macos-build:
+	./script/build_macos_app.sh
+
+macos-test:
+	swift build --package-path macos/KitCompanion
+
+macos-dmg:
+	./script/package_macos_dmg.sh
+
+macos-package-check:
+	codesign --verify --deep --strict --verbose=2 dist/KitCompanion.app
+	codesign -dvvv --entitlements :- dist/KitCompanion.app
+	spctl -a -vv --type execute dist/KitCompanion.app || true

@@ -1,5 +1,14 @@
 # Changelog
 
+## 0.6.37 - 2026-06-30
+
+- Add an optional macOS Kit Companion menu-bar app that reads existing kit JSON
+  contracts for target status, dirty reports, closeout state, and dry-run update
+  previews while keeping all write workflows in the CLI.
+- Add a generated app icon, local build/test/private DMG packaging, package
+  validation targets, and documentation that the app is never required for
+  normal kit usage.
+
 ## 0.6.36 - 2026-06-30
 
 - Add repo-aware disposable-worktree diagnostics to `kit closeout-plan`,

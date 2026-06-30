@@ -13,9 +13,18 @@ struct MenuBarView: View {
         }
 
         Button {
+            store.dashboardSection = .overview
             openWindow(id: "dashboard")
         } label: {
             Label("Open Dashboard", systemImage: "rectangle.3.group")
+        }
+
+        Button {
+            store.dashboardSection = .commands
+            store.loadCommandMap()
+            openWindow(id: "dashboard")
+        } label: {
+            Label("Command Browser", systemImage: "terminal")
         }
 
         Divider()
@@ -37,6 +46,7 @@ struct MenuBarView: View {
         Divider()
 
         Button {
+            store.dashboardSection = .batch
             store.previewBatchUpdate()
             openWindow(id: "dashboard")
         } label: {

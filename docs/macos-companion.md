@@ -11,6 +11,7 @@ also remain available through terminal commands.
 
 The companion app reads the same JSON contracts used by agents and scripts:
 
+- `kit command-map --json`
 - `kit target dirty-report --json`
 - `kit status --repo <repo> --json`
 - `kit start --repo <repo> --no-update --json`
@@ -18,7 +19,22 @@ The companion app reads the same JSON contracts used by agents and scripts:
 - `kit update --all --dry-run --json`
 
 The app shows registered targets, dirty repo counts, drift state, selected repo
-closeout state, and copyable next commands.
+closeout state, workflow checks, batch dry-run previews, and copyable next
+commands.
+
+The command browser is generated from `kit command-map --json`. It shows the
+full global CLI surface, including agent-facing and Terminal-only commands, and
+classifies each command into one of these app actions:
+
+- Native: already shown in the target overview.
+- Run: read-only JSON command that can run in the app.
+- Preview: potentially mutating workflow with a safe app argument set such as
+  `--dry-run` or `--no-update`.
+- Terminal: command is visible and copyable, but execution belongs in a
+  terminal.
+
+This gives the app feature parity with the global CLI as a navigation and
+status surface without making it a write-capable replacement for the CLI.
 
 ## Settings
 
@@ -41,8 +57,10 @@ the app archive, and replaces the installed app after user confirmation.
 
 ## Safety Boundary
 
-The app runs read-only commands in-app. It blocks mutating command flags such as
-`--apply`, `--write`, `--write-sidecar`, and `--global`.
+The app runs read-only commands and explicit preview commands in-app. Preview
+commands use CLI-supported no-write flags such as `--dry-run` and
+`--no-update`. The runner blocks mutating command flags such as `--apply`,
+`--write`, `--write-sidecar`, and `--global`.
 
 When a workflow needs a write, use the terminal. This keeps review, update, and
 repo mutation behavior visible and consistent with the CLI.
@@ -54,8 +72,10 @@ make macos-build
 make macos-test
 ```
 
-`make macos-test` currently performs a SwiftPM build check because the local
-Command Line Tools environment used for this project does not provide XCTest.
+`make macos-test` builds a small Swift check executable from the app's command
+model, payload model, runner, and test harness source. The local Command Line
+Tools environment used for this project does not provide XCTest or Swift
+Testing, so this target uses `swiftc` assertions instead of `swift test`.
 
 The app defaults to `~/.local/bin/kit`. If the launcher lives elsewhere, set it
 in Settings or launch with `KIT_COMPANION_KIT_PATH=/path/to/kit`.

@@ -10,6 +10,14 @@
 - Add balanced `parallel_context` reporting for write-capable task work so
   same-scope active, dirty, stale, or missing worktrees block new task prep
   while unrelated stale task metadata remains a warning.
+- Add command-map-backed parity coverage to the optional Kit Companion macOS app
+  with searchable global CLI commands, read-only in-app runs, safe dry-run or
+  no-update previews, and Terminal handoffs for write workflows.
+- Add workflow and batch dashboard sections for common status checks and
+  all-target previews.
+- Replace the macOS app test target with a Swift source check harness that
+  verifies command classification, safe arguments, runner guardrails, and
+  Terminal command quoting without requiring XCTest.
 
 ## 0.6.42 - 2026-06-30
 

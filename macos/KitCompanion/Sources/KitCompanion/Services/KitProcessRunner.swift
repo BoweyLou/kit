@@ -76,6 +76,34 @@ final class KitProcessRunner {
         }
     }
 
+    func runJSONText(arguments: [String], kitPath: String, workingDirectory: String? = nil) async throws -> String {
+        try Self.validateReadOnlyCommand(arguments)
+        let result = try await run(arguments: arguments, kitPath: kitPath, workingDirectory: workingDirectory)
+        let command = renderedCommand(arguments)
+        let jsonData: Data
+        do {
+            jsonData = try jsonObjectData(from: result.stdout, command: command)
+        } catch {
+            if !result.succeeded {
+                let diagnostic = result.stderr.isEmpty ? Self.outputExcerpt(result.stdout) : result.stderr
+                throw RunnerError.commandFailed(command, result.exitCode, diagnostic)
+            }
+            throw error
+        }
+
+        if !result.succeeded {
+            let diagnostic = [
+                result.stderr,
+                Self.outputExcerpt(result.stdout)
+            ]
+            .filter { !$0.isEmpty }
+            .joined(separator: " ")
+            throw RunnerError.commandFailed(command, result.exitCode, diagnostic)
+        }
+
+        return Self.prettyPrintedJSON(jsonData)
+    }
+
     func run(arguments: [String], kitPath: String, workingDirectory: String? = nil) async throws -> KitCommandResult {
         let binary = try resolvedBinaryURL(kitPath: kitPath)
         return try await withCheckedThrowingContinuation { continuation in
@@ -144,6 +172,17 @@ final class KitProcessRunner {
         switch first {
         case "install", "setup", "migrate-config":
             throw RunnerError.blockedMutatingCommand(command)
+        case "sidecar-init", "docs-propose", "changelog-update":
+            throw RunnerError.blockedMutatingCommand(command)
+        case "automation-handoff":
+            if !arguments.contains("--dry-run") {
+                throw RunnerError.blockedMutatingCommand(command)
+            }
+        case "feedback":
+            let readOnly = arguments.contains("--list") || arguments.contains("--export-json")
+            if !readOnly {
+                throw RunnerError.blockedMutatingCommand(command)
+            }
         case "start":
             let checkOnly = arguments.contains("--no-update")
                 || command.contains("--update-policy check-only")
@@ -163,7 +202,8 @@ final class KitProcessRunner {
             let subcommand = arguments.dropFirst().first ?? ""
             let dryRunAllowed = arguments.contains("--dry-run") && ["import", "prune-missing", "update", "update-all"].contains(subcommand)
             let readOnly = ["list", "dirty-report", "doctor", "status"].contains(subcommand)
-            if !readOnly && !dryRunAllowed {
+            let previewOnly = !arguments.contains("--apply") && subcommand == "repair-source-clone"
+            if !readOnly && !dryRunAllowed && !previewOnly {
                 throw RunnerError.blockedMutatingCommand(command)
             }
         case "worktree":
@@ -176,7 +216,7 @@ final class KitProcessRunner {
     }
 
     private func renderedCommand(_ arguments: [String]) -> String {
-        (["kit"] + arguments).joined(separator: " ")
+        KitCommandLine.render(arguments: arguments)
     }
 
     private static func processEnvironment() -> [String: String] {
@@ -213,5 +253,15 @@ final class KitProcessRunner {
             return value
         }
         return String(value.prefix(240)) + "..."
+    }
+
+    private static func prettyPrintedJSON(_ data: Data) -> String {
+        guard let object = try? JSONSerialization.jsonObject(with: data),
+              JSONSerialization.isValidJSONObject(object),
+              let prettyData = try? JSONSerialization.data(withJSONObject: object, options: [.prettyPrinted, .sortedKeys]),
+              let pretty = String(data: prettyData, encoding: .utf8) else {
+            return String(data: data, encoding: .utf8) ?? ""
+        }
+        return pretty
     }
 }

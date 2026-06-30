@@ -31,6 +31,9 @@ struct DashboardView: View {
             if store.targets.isEmpty {
                 store.refreshTargets()
             }
+            if store.commandMap == nil {
+                store.loadCommandMap()
+            }
         }
     }
 }
@@ -69,14 +72,22 @@ private struct DetailPane: View {
                     .foregroundStyle(.secondary)
             }
 
-            if let detail = store.detail {
-                RepoDetailView(store: store, detail: detail)
-            } else {
-                ContentUnavailableView("Select a target", systemImage: "folder.badge.gearshape")
-            }
-
-            if let preview = store.updatePreview {
-                UpdatePreviewView(preview: preview)
+            switch store.dashboardSection {
+            case .overview:
+                if let detail = store.detail {
+                    RepoDetailView(store: store, detail: detail)
+                    if let preview = store.updatePreview {
+                        UpdatePreviewView(preview: preview)
+                    }
+                } else {
+                    ContentUnavailableView("Select a target", systemImage: "folder.badge.gearshape")
+                }
+            case .commands:
+                CommandBrowserView(store: store)
+            case .workflows:
+                WorkflowPanelsView(store: store, mode: .workflows)
+            case .batch:
+                WorkflowPanelsView(store: store, mode: .batch)
             }
 
             Spacer()
@@ -95,6 +106,14 @@ private struct DetailPane: View {
             }
 
             Spacer()
+
+            Picker("Section", selection: $store.dashboardSection) {
+                ForEach(DashboardSection.allCases) { section in
+                    Text(section.label).tag(section)
+                }
+            }
+            .pickerStyle(.segmented)
+            .frame(width: 360)
 
             Button {
                 store.openSelectedInFinder()
@@ -195,7 +214,7 @@ private struct RepoDetailView: View {
     }
 }
 
-private struct UpdatePreviewView: View {
+struct UpdatePreviewView: View {
     let preview: UpdatePreviewPayload
 
     var body: some View {

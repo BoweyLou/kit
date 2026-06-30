@@ -17,14 +17,43 @@ enum KitSettings {
     }
 }
 
+enum DashboardSection: String, CaseIterable, Identifiable {
+    case overview
+    case commands
+    case workflows
+    case batch
+
+    var id: String { rawValue }
+
+    var label: String {
+        switch self {
+        case .overview:
+            return "Overview"
+        case .commands:
+            return "Commands"
+        case .workflows:
+            return "Workflows"
+        case .batch:
+            return "Batch"
+        }
+    }
+}
+
 @MainActor
 final class KitCompanionStore: ObservableObject {
     @Published var targets: [KitTarget] = []
     @Published var selectedTargetID: String?
     @Published var detail: RepoDetail?
     @Published var updatePreview: UpdatePreviewPayload?
+    @Published var commandMap: CommandMapPayload?
+    @Published var selectedCommandID: String?
+    @Published var commandSearch = ""
+    @Published var commandOutput: String?
+    @Published var dashboardSection: DashboardSection = .overview
     @Published var isRefreshing = false
     @Published var isLoadingDetail = false
+    @Published var isLoadingCommandMap = false
+    @Published var isRunningCommand = false
     @Published var lastRefresh: Date?
     @Published var isCheckingForUpdates = false
     @Published var message: String?
@@ -44,6 +73,22 @@ final class KitCompanionStore: ObservableObject {
 
     var selectedTarget: KitTarget? {
         targets.first { $0.id == selectedTargetID } ?? targets.first
+    }
+
+    var visibleCommands: [CommandEntry] {
+        commandMap?.visibleCommands ?? []
+    }
+
+    var filteredCommands: [CommandEntry] {
+        visibleCommands.filter { $0.matches(commandSearch) }
+    }
+
+    var selectedCommand: CommandEntry? {
+        if let selectedCommandID,
+           let command = visibleCommands.first(where: { $0.id == selectedCommandID }) {
+            return command
+        }
+        return filteredCommands.first
     }
 
     var dirtyCount: Int {
@@ -93,6 +138,9 @@ final class KitCompanionStore: ObservableObject {
                 message = "\(targets.count) target repos, \(dirtyCount) dirty"
                 if let selectedTarget {
                     loadDetail(for: selectedTarget)
+                }
+                if commandMap == nil {
+                    loadCommandMap()
                 }
             } catch {
                 errorMessage = error.localizedDescription
@@ -144,6 +192,83 @@ final class KitCompanionStore: ObservableObject {
             }
             isLoadingDetail = false
         }
+    }
+
+    func loadCommandMap() {
+        guard !isLoadingCommandMap else {
+            return
+        }
+        isLoadingCommandMap = true
+        errorMessage = nil
+
+        Task {
+            do {
+                let payload = try await runner.runJSON(
+                    CommandMapPayload.self,
+                    arguments: ["command-map", "--json"],
+                    kitPath: KitSettings.kitBinaryPath()
+                )
+                commandMap = payload
+                if selectedCommandID == nil {
+                    selectedCommandID = payload.visibleCommands.first?.id
+                }
+            } catch {
+                errorMessage = error.localizedDescription
+            }
+            isLoadingCommandMap = false
+        }
+    }
+
+    func selectCommand(_ command: CommandEntry) {
+        selectedCommandID = command.id
+        commandOutput = nil
+    }
+
+    func runCommand(_ command: CommandEntry? = nil) {
+        let command = command ?? selectedCommand
+        guard let command else {
+            return
+        }
+        guard let arguments = command.safeArguments(selectedRepo: selectedTarget?.root) else {
+            copyCommand(command)
+            return
+        }
+
+        isRunningCommand = true
+        errorMessage = nil
+        commandOutput = nil
+        message = "Running \(command.displayName)"
+
+        Task {
+            do {
+                commandOutput = try await runner.runJSONText(
+                    arguments: arguments,
+                    kitPath: KitSettings.kitBinaryPath(),
+                    workingDirectory: selectedTarget?.root
+                )
+                message = "Finished \(command.displayName)"
+            } catch {
+                errorMessage = error.localizedDescription
+                message = nil
+            }
+            isRunningCommand = false
+        }
+    }
+
+    func copyCommand(_ command: CommandEntry? = nil) {
+        let command = command ?? selectedCommand
+        guard let command else {
+            return
+        }
+        copy(command.terminalCommand(selectedRepo: selectedTarget?.root))
+    }
+
+    func openTerminal(for command: CommandEntry? = nil) {
+        copyCommand(command)
+        let root = selectedTarget?.root ?? NSHomeDirectory()
+        let url = URL(fileURLWithPath: root, isDirectory: true)
+        NSWorkspace.shared.open([url], withApplicationAt: URL(fileURLWithPath: "/System/Applications/Utilities/Terminal.app"), configuration: NSWorkspace.OpenConfiguration())
+        message = "Copied command and opened Terminal"
     }
 
     func previewBatchUpdate() {

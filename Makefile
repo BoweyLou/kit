@@ -106,7 +106,12 @@ macos-build:
 	./script/build_macos_app.sh
 
 macos-test:
-	swift build --package-path macos/KitCompanion
+	swiftc -o /tmp/KitCompanionChecks \
+		macos/KitCompanion/Sources/KitCompanion/Models/KitPayloads.swift \
+		macos/KitCompanion/Sources/KitCompanion/Models/CommandMap.swift \
+		macos/KitCompanion/Sources/KitCompanion/Services/KitProcessRunner.swift \
+		macos/KitCompanion/Tests/KitCompanionChecks/main.swift
+	/tmp/KitCompanionChecks
 
 macos-dmg:
 	./script/package_macos_dmg.sh

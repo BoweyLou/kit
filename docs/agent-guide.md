@@ -116,6 +116,26 @@ Before the final response for write-capable work, run
 gate should fail until dirty primary state, active tasks, missing receipts, and
 closeout blockers are resolved.
 
+Use `kit closeout-fix` only when the requested task is to close out a dirty repo
+as a supervised workflow:
+
+```bash
+kit closeout-fix --repo /path/to/repo --json
+kit closeout-fix --repo /path/to/repo --apply --jsonl
+```
+
+Preview mode is read-only. Apply mode writes a sidecar job directory, launches a
+headless agent, expects semantic lane commits, prunes only clean disposable
+worktrees through kit, verifies final strict closeout, and pushes successful
+branches unless `--no-push` is supplied. The default runner is local
+`codex exec`; custom runners require explicit `--agent custom --agent-command
+<command>`. Do not infer a runner from instruction-only adapters.
+
+The launched closeout agent must not run force-push, reset, clean, destructive
+checkout, stash/drop, dirty-worktree deletion, or source-file deletion. A
+`result` of `applied` is valid only when the final strict closeout payload
+passes.
+
 For parallel write-capable work, use the `parallel_context` object from
 `make agent-task-status TASK_STATUS_JSON=1`, `make agent-state-ledger
 STATE_LEDGER_JSON=1`, `kit agent-context-bundle --json`, or

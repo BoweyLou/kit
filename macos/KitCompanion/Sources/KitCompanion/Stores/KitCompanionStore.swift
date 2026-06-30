@@ -45,6 +45,8 @@ final class KitCompanionStore: ObservableObject {
     @Published var selectedTargetID: String?
     @Published var detail: RepoDetail?
     @Published var updatePreview: UpdatePreviewPayload?
+    @Published var closeoutFixPayload: CloseoutFixPayload?
+    @Published var closeoutFixEvents: [CloseoutFixEvent] = []
     @Published var commandMap: CommandMapPayload?
     @Published var selectedCommandID: String?
     @Published var commandSearch = ""
@@ -54,6 +56,7 @@ final class KitCompanionStore: ObservableObject {
     @Published var isLoadingDetail = false
     @Published var isLoadingCommandMap = false
     @Published var isRunningCommand = false
+    @Published var isRunningCloseoutFix = false
     @Published var lastRefresh: Date?
     @Published var isCheckingForUpdates = false
     @Published var message: String?
@@ -252,6 +255,41 @@ final class KitCompanionStore: ObservableObject {
                 message = nil
             }
             isRunningCommand = false
+        }
+    }
+
+    func runCloseoutFix() {
+        guard let selectedTarget else {
+            return
+        }
+        guard !isRunningCloseoutFix else {
+            return
+        }
+
+        isRunningCloseoutFix = true
+        closeoutFixPayload = nil
+        closeoutFixEvents = []
+        errorMessage = nil
+        message = "Running closeout fix"
+
+        Task {
+            do {
+                let payload = try await runner.runCloseoutFix(
+                    arguments: ["closeout-fix", "--repo", selectedTarget.root, "--apply", "--jsonl"],
+                    kitPath: KitSettings.kitBinaryPath(),
+                    workingDirectory: selectedTarget.root
+                ) { event in
+                    self.closeoutFixEvents.append(event)
+                }
+                closeoutFixPayload = payload
+                message = payload.result == "applied" ? "Closeout fix applied" : "Closeout fix blocked"
+                loadDetail(for: selectedTarget)
+                refreshTargets()
+            } catch {
+                errorMessage = error.localizedDescription
+                message = nil
+            }
+            isRunningCloseoutFix = false
         }
     }
 

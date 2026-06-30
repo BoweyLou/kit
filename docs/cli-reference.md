@@ -4,7 +4,7 @@ Generated from `kit command-map --json`.
 Do not edit command sections by hand; run `kit cli-reference --write docs/cli-reference.md`.
 
 - Schema version: `1`
-- Command count: `65`
+- Command count: `66`
 
 ## Commands
 
@@ -462,6 +462,37 @@ Flags:
 - `--json` - Emit machine-readable JSON.
 - `--check` - Compare generated Markdown with a reference file.
 - `--write` - Write generated Markdown to a reference file.
+
+### kit closeout-fix
+
+Launch a supervised headless agent to close out dirty repo state.
+
+- Audience: `human, agent, app`
+- Mutation: `launches-write-agent`
+- Target writes: `via launched agent in --apply mode`
+- Sidecar writes: `with --apply`
+- JSON: `yes`
+- Output schema: `closeout_fix_payload`
+- Route role: `canonical`
+- Canonical command: `closeout-fix`
+- Docs: `README.md, docs/agent-guide.md, docs/human-guide.md, docs/macos-companion.md, docs/cli-reference.md`
+
+Examples:
+
+- `kit closeout-fix --repo /path/to/repo --json`
+- `kit closeout-fix --repo /path/to/repo --apply --jsonl`
+- `kit closeout-fix --repo /path/to/repo --apply --no-push --json`
+
+Flags:
+
+- `--repo` - Target git repository. Defaults to the current directory.
+- `--json` - Emit machine-readable JSON.
+- `--apply` - Run the write-capable closeout job. Preview is the default.
+- `--jsonl` - Stream sanitized JSONL job events and the final payload.
+- `--agent` - Headless runner to launch. auto defaults to local codex exec.
+- `--agent-command` - Explicit command for --agent custom. No runner is inferred from adapters.
+- `--timeout-seconds` - Maximum seconds for each supervised closeout step.
+- `--no-push` - Leave successful commits local instead of pushing the current branch.
 
 ### kit closeout-plan
 

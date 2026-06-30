@@ -171,6 +171,26 @@ Run `kit closeout-plan --json` before claiming implementation work is done. If
 `can_claim_done` is false, report the `completion_state` and `next_action`
 instead of saying the work is closed out.
 
+When a dirty repo needs supervised closeout instead of a manual plan, preview
+the one-click closeout job first:
+
+```bash
+kit closeout-fix --repo /path/to/repo --json
+```
+
+Apply mode launches a headless closeout agent, writes sidecar job receipts,
+expects logical Git commits, prunes only eligible clean disposable worktrees,
+verifies `kit closeout-plan --strict --json`, and pushes the current branch
+without force:
+
+```bash
+kit closeout-fix --repo /path/to/repo --apply --jsonl
+```
+
+Use `--no-push` for local-only CLI runs. Custom non-Codex runners require an
+explicit `--agent custom --agent-command <command>`; kit does not infer custom
+runners from prompt adapters or repo instructions.
+
 `closeout-plan` also embeds the repo-aware disposable-worktree audit. When
 `worktree_prune.summary.would_remove` is non-zero, run the reported
 `kit worktree prune --root <repo> --dry-run --json` path before working through
@@ -213,8 +233,10 @@ The app loads `kit command-map --json` to show the full global CLI surface,
 runs read-only JSON commands such as `kit target dirty-report --json` and
 `kit closeout-plan --json`, previews supported no-write flows with
 `--dry-run` or `--no-update`, checks for app updates, supports optional Launch
-at Login, and copies Terminal handoff commands. Mutating actions stay in
-Terminal.
+at Login, and copies Terminal handoff commands. The dedicated "Fix Dirty Repo"
+button is the only write-capable in-app exception; it runs
+`kit closeout-fix --repo <selected> --apply --jsonl` through a narrow allowlist
+and shows commits, pushes, receipts, pruned worktrees, and blockers.
 
 Build it only when wanted:
 

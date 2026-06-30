@@ -74,6 +74,19 @@ do {
         "update should use selected repo dry-run arguments"
     )
 
+    let closeoutFix = makeCommand(
+        name: "closeout-fix",
+        mutation: "launches-write-agent",
+        targetRepoWrite: "via launched agent in --apply mode",
+        sidecarWrite: "with --apply",
+        flags: ["--repo", "--json", "--apply", "--jsonl", "--agent", "--timeout-seconds"]
+    )
+    try check(closeoutFix.appCoverage == .native, "closeout-fix should have a native one-click app surface")
+    try check(
+        closeoutFix.safeArguments(selectedRepo: "/tmp/example") == ["closeout-fix", "--repo", "/tmp/example", "--json"],
+        "command-browser closeout-fix should preview only"
+    )
+
     let targetImport = makeCommand(
         name: "target import",
         path: ["target", "import"],
@@ -103,6 +116,29 @@ do {
         try KitProcessRunner.validateReadOnlyCommand(["automation-handoff", "--repo", "/tmp/repo", "--json"])
     }
     try KitProcessRunner.validateReadOnlyCommand(["automation-handoff", "--repo", "/tmp/repo", "--dry-run", "--json"])
+    try expectThrows("generic closeout-fix apply should be blocked") {
+        try KitProcessRunner.validateReadOnlyCommand(["closeout-fix", "--repo", "/tmp/repo", "--apply", "--jsonl"])
+    }
+    try KitProcessRunner.validateReadOnlyCommand(["closeout-fix", "--repo", "/tmp/repo", "--json"])
+    try KitProcessRunner.validateCloseoutFixCommand(["closeout-fix", "--repo", "/tmp/repo", "--apply", "--jsonl"])
+    try KitProcessRunner.validateCloseoutFixCommand(["closeout-fix", "--repo", "/tmp/repo", "--apply", "--jsonl", "--agent", "codex"])
+    try expectThrows("closeout-fix dedicated runner should reject custom agent commands") {
+        try KitProcessRunner.validateCloseoutFixCommand([
+            "closeout-fix",
+            "--repo",
+            "/tmp/repo",
+            "--apply",
+            "--jsonl",
+            "--agent-command",
+            "danger"
+        ])
+    }
+    let finalLine = """
+    {"event":"final-payload","payload":{"command":"closeout-fix","result":"applied","commits":[{"short_sha":"abc123","subject":"Add lane"}],"receipts":[{"path":"/tmp/receipt.json","kind":"closeout-fix"}],"branches_pushed":[],"worktrees_pruned":[],"blockers":[],"exit_code":0}}
+    """
+    let finalPayload = try JSONDecoder().decode(CloseoutFixFinalPayloadLine.self, from: Data(finalLine.utf8))
+    try check(finalPayload.payload?.result == "applied", "closeout-fix final JSONL payload should decode")
+    try check(finalPayload.payload?.commits?.first?.subject == "Add lane", "closeout-fix commits should decode")
 
     let status = makeCommand(
         name: "status",

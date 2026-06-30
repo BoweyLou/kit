@@ -142,6 +142,7 @@ class RepoContractKitCliTests(unittest.TestCase):
             payload["cli"]["mutating_commands"],
             [
                 "agent-self-heal --apply",
+                "closeout-fix --apply",
                 "install",
                 "setup",
                 "start",
@@ -162,6 +163,7 @@ class RepoContractKitCliTests(unittest.TestCase):
         self.assertIn("sidecar-init", payload["cli"]["sidecar_write_commands"])
         self.assertIn("feedback", payload["cli"]["sidecar_write_commands"])
         self.assertIn("agent-self-heal --apply", payload["cli"]["sidecar_write_commands"])
+        self.assertIn("closeout-fix --apply", payload["cli"]["sidecar_write_commands"])
         self.assertIn("agent-preflight --write-sidecar", payload["cli"]["sidecar_write_commands"])
         self.assertIn("target import --apply", payload["cli"]["sidecar_write_commands"])
         self.assertIn("target prune-missing --apply", payload["cli"]["sidecar_write_commands"])
@@ -739,6 +741,7 @@ class RepoContractKitCliTests(unittest.TestCase):
             "update",
             "target update",
             "target update-all",
+            "closeout-fix",
             "worktree list",
             "task-packet",
             "mode-check",
@@ -771,6 +774,14 @@ class RepoContractKitCliTests(unittest.TestCase):
         self.assertEqual(update["mutation"], "writes-target-by-default")
         self.assertEqual(update["sidecar_write"], "never")
         self.assertIn("kit update --dry-run --json", update["examples"])
+
+        closeout_fix = commands["closeout-fix"]
+        self.assertEqual(closeout_fix["mutation"], "launches-write-agent")
+        self.assertEqual(closeout_fix["output_schema"], "closeout_fix_payload")
+        self.assertEqual(closeout_fix["sidecar_write"], "with --apply")
+        self.assertEqual(closeout_fix["target_repo_write"], "via launched agent in --apply mode")
+        self.assertIn("kit closeout-fix --repo /path/to/repo --apply --jsonl", closeout_fix["examples"])
+        self.assertIn("commits", closeout_fix["json_contract"]["stable_payload_fields"])
 
         worktree_list = commands["worktree list"]
         self.assertEqual(worktree_list["mutation"], "read-only")

@@ -76,6 +76,9 @@ private struct DetailPane: View {
             case .overview:
                 if let detail = store.detail {
                     RepoDetailView(store: store, detail: detail)
+                    if store.isRunningCloseoutFix || store.closeoutFixPayload != nil || !store.closeoutFixEvents.isEmpty {
+                        CloseoutFixJobView(payload: store.closeoutFixPayload, events: store.closeoutFixEvents, isRunning: store.isRunningCloseoutFix)
+                    }
                     if let preview = store.updatePreview {
                         UpdatePreviewView(preview: preview)
                     }
@@ -128,6 +131,13 @@ private struct DetailPane: View {
                 Label("Terminal", systemImage: "terminal")
             }
             .disabled(store.selectedTarget == nil)
+
+            Button {
+                store.runCloseoutFix()
+            } label: {
+                Label("Fix Dirty Repo", systemImage: "wand.and.stars")
+            }
+            .disabled(store.selectedTarget == nil || store.isRunningCloseoutFix)
 
             Button {
                 store.previewBatchUpdate()
@@ -208,6 +218,96 @@ private struct RepoDetailView: View {
                         Image(systemName: "doc.on.doc")
                     }
                     .help("Copy command")
+                }
+            }
+        }
+    }
+}
+
+private struct CloseoutFixJobView: View {
+    let payload: CloseoutFixPayload?
+    let events: [CloseoutFixEvent]
+    let isRunning: Bool
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            Divider()
+            HStack {
+                Text("Closeout Fix")
+                    .font(.headline)
+                if isRunning {
+                    ProgressView()
+                        .controlSize(.small)
+                }
+                Spacer()
+                Text(payload?.result ?? "running")
+                    .foregroundStyle(payload?.result == "applied" ? .green : .secondary)
+            }
+
+            if let jobDir = payload?.jobDir {
+                Text(KitDisplay.shortPath(jobDir))
+                    .font(.caption.monospaced())
+                    .foregroundStyle(.secondary)
+                    .lineLimit(1)
+            }
+
+            ForEach(events.suffix(4)) { event in
+                Text(event.displayText)
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                    .lineLimit(2)
+            }
+
+            if let commits = payload?.commits, !commits.isEmpty {
+                Text("Commits")
+                    .font(.subheadline.weight(.semibold))
+                ForEach(commits.prefix(5)) { commit in
+                    Text("\(commit.shortSha ?? "") \(commit.subject ?? "commit")")
+                        .font(.caption.monospaced())
+                        .lineLimit(1)
+                }
+            }
+
+            if let pushes = payload?.branchesPushed, !pushes.isEmpty {
+                Text("Pushes")
+                    .font(.subheadline.weight(.semibold))
+                ForEach(pushes) { push in
+                    Text("\(push.branch ?? "branch"): \(push.exitCode == 0 ? "pushed" : "blocked")")
+                        .font(.caption)
+                        .foregroundStyle(push.exitCode == 0 ? .green : .orange)
+                }
+            }
+
+            if let worktrees = payload?.worktreesPruned, !worktrees.isEmpty {
+                Text("Pruned Worktrees")
+                    .font(.subheadline.weight(.semibold))
+                ForEach(worktrees.prefix(5)) { worktree in
+                    Text(KitDisplay.shortPath(worktree.path ?? "worktree"))
+                        .font(.caption.monospaced())
+                        .foregroundStyle(.secondary)
+                        .lineLimit(1)
+                }
+            }
+
+            if let receipts = payload?.receipts, !receipts.isEmpty {
+                Text("Receipts")
+                    .font(.subheadline.weight(.semibold))
+                ForEach(receipts.prefix(5)) { receipt in
+                    Text(KitDisplay.shortPath(receipt.path ?? "receipt"))
+                        .font(.caption.monospaced())
+                        .foregroundStyle(.secondary)
+                        .lineLimit(1)
+                }
+            }
+
+            if let blockers = payload?.blockers, !blockers.isEmpty {
+                Text("Blockers")
+                    .font(.subheadline.weight(.semibold))
+                ForEach(blockers.prefix(5), id: \.self) { blocker in
+                    Text(blocker)
+                        .font(.caption)
+                        .foregroundStyle(.orange)
+                        .lineLimit(2)
                 }
             }
         }

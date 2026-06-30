@@ -104,6 +104,41 @@ final class KitProcessRunner {
         return Self.prettyPrintedJSON(jsonData)
     }
 
+    func runCloseoutFix(
+        arguments: [String],
+        kitPath: String,
+        workingDirectory: String? = nil,
+        onEvent: @escaping (CloseoutFixEvent) -> Void
+    ) async throws -> CloseoutFixPayload {
+        try Self.validateCloseoutFixCommand(arguments)
+        let result = try await run(arguments: arguments, kitPath: kitPath, workingDirectory: workingDirectory)
+        let command = renderedCommand(arguments)
+        let decoder = JSONDecoder()
+        var finalPayload: CloseoutFixPayload?
+
+        for line in result.stdout.split(whereSeparator: \.isNewline) {
+            let data = Data(String(line).utf8)
+            if let finalLine = try? decoder.decode(CloseoutFixFinalPayloadLine.self, from: data),
+               finalLine.event == "final-payload" {
+                finalPayload = finalLine.payload
+                continue
+            }
+            if let event = try? decoder.decode(CloseoutFixEvent.self, from: data) {
+                onEvent(event)
+            }
+        }
+
+        if let finalPayload {
+            return finalPayload
+        }
+
+        let diagnostic = result.stderr.isEmpty ? Self.outputExcerpt(result.stdout) : result.stderr
+        if !result.succeeded {
+            throw RunnerError.commandFailed(command, result.exitCode, diagnostic)
+        }
+        throw RunnerError.invalidJSON(command, Self.outputExcerpt(result.stdout))
+    }
+
     func run(arguments: [String], kitPath: String, workingDirectory: String? = nil) async throws -> KitCommandResult {
         let binary = try resolvedBinaryURL(kitPath: kitPath)
         return try await withCheckedThrowingContinuation { continuation in
@@ -156,6 +191,51 @@ final class KitProcessRunner {
         }
 
         throw RunnerError.missingBinary
+    }
+
+    static func validateCloseoutFixCommand(_ arguments: [String]) throws {
+        let command = arguments.joined(separator: " ")
+        guard arguments.first == "closeout-fix" else {
+            throw RunnerError.blockedMutatingCommand(command)
+        }
+
+        var sawRepo = false
+        var sawApply = false
+        var sawJSONL = false
+        var index = 1
+        while index < arguments.count {
+            let argument = arguments[index]
+            switch argument {
+            case "--repo":
+                guard index + 1 < arguments.count else {
+                    throw RunnerError.blockedMutatingCommand(command)
+                }
+                sawRepo = true
+                index += 2
+            case "--apply":
+                sawApply = true
+                index += 1
+            case "--jsonl":
+                sawJSONL = true
+                index += 1
+            case "--agent":
+                guard index + 1 < arguments.count, ["auto", "codex"].contains(arguments[index + 1]) else {
+                    throw RunnerError.blockedMutatingCommand(command)
+                }
+                index += 2
+            case "--timeout-seconds":
+                guard index + 1 < arguments.count, Int(arguments[index + 1]) != nil else {
+                    throw RunnerError.blockedMutatingCommand(command)
+                }
+                index += 2
+            default:
+                throw RunnerError.blockedMutatingCommand(command)
+            }
+        }
+
+        if !sawRepo || !sawApply || !sawJSONL {
+            throw RunnerError.blockedMutatingCommand(command)
+        }
     }
 
     static func validateReadOnlyCommand(_ arguments: [String]) throws {

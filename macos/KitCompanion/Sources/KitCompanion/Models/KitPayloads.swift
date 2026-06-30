@@ -180,6 +180,135 @@ struct CloseoutPayload: Codable {
     }
 }
 
+struct CloseoutFixEvent: Codable, Identifiable {
+    var id = UUID()
+    let event: String
+    let jobId: String?
+    let createdAt: String?
+    let text: String?
+    let result: String?
+    let receipt: String?
+    let exitCode: Int?
+    let count: Int?
+    let branch: String?
+
+    enum CodingKeys: String, CodingKey {
+        case event
+        case jobId = "job_id"
+        case createdAt = "created_at"
+        case text
+        case result
+        case receipt
+        case exitCode = "exit_code"
+        case count
+        case branch
+    }
+
+    var displayText: String {
+        switch event {
+        case "job-started":
+            return "Job started"
+        case "runner-started":
+            return "Runner started"
+        case "agent-output":
+            return text ?? "Agent event"
+        case "agent-stderr":
+            return text ?? "Agent stderr"
+        case "worktrees-pruned":
+            return "\(count ?? 0) worktrees pruned"
+        case "branch-pushed":
+            return "Pushed \(branch ?? "branch")"
+        case "job-completed":
+            return "Job \(result ?? "completed")"
+        default:
+            return event
+        }
+    }
+}
+
+struct CloseoutFixPayload: Codable {
+    let command: String?
+    let mode: String?
+    let jobId: String?
+    let jobDir: String?
+    let repo: String?
+    let result: String?
+    let commits: [CloseoutFixCommit]?
+    let branchesPushed: [CloseoutFixBranchPush]?
+    let worktreesPruned: [CloseoutFixWorktree]?
+    let receipts: [CloseoutFixReceipt]?
+    let blockers: [String]?
+    let exitCode: Int?
+    let noPush: Bool?
+
+    enum CodingKeys: String, CodingKey {
+        case command
+        case mode
+        case jobId = "job_id"
+        case jobDir = "job_dir"
+        case repo
+        case result
+        case commits
+        case branchesPushed = "branches_pushed"
+        case worktreesPruned = "worktrees_pruned"
+        case receipts
+        case blockers
+        case exitCode = "exit_code"
+        case noPush = "no_push"
+    }
+}
+
+struct CloseoutFixCommit: Codable, Identifiable {
+    var id: String { sha ?? shortSha ?? subject ?? UUID().uuidString }
+
+    let sha: String?
+    let shortSha: String?
+    let subject: String?
+    let files: [String]?
+
+    enum CodingKeys: String, CodingKey {
+        case sha
+        case shortSha = "short_sha"
+        case subject
+        case files
+    }
+}
+
+struct CloseoutFixBranchPush: Codable, Identifiable {
+    var id: String { branch ?? command ?? UUID().uuidString }
+
+    let branch: String?
+    let command: String?
+    let exitCode: Int?
+    let stderr: String?
+
+    enum CodingKeys: String, CodingKey {
+        case branch
+        case command
+        case exitCode = "exit_code"
+        case stderr
+    }
+}
+
+struct CloseoutFixWorktree: Codable, Identifiable {
+    var id: String { path ?? branch ?? UUID().uuidString }
+
+    let path: String?
+    let branch: String?
+}
+
+struct CloseoutFixReceipt: Codable, Identifiable {
+    var id: String { path ?? kind ?? UUID().uuidString }
+
+    let path: String?
+    let kind: String?
+}
+
+struct CloseoutFixFinalPayloadLine: Codable {
+    let event: String
+    let payload: CloseoutFixPayload?
+}
+
 struct UpdatePreviewPayload: Codable {
     let command: String?
     let mode: String?

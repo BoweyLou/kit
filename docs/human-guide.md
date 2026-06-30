@@ -164,6 +164,22 @@ worktrees under `agent-worktrees` paths.
 next action points at the prune dry-run first and still reports dirty blocked
 worktrees plus task-ledger blockers separately.
 
+For a supervised one-click closeout, use `closeout-fix`:
+
+```bash
+kit closeout-fix --repo /path/to/repo --json
+kit closeout-fix --repo /path/to/repo --apply --jsonl
+```
+
+Preview is read-only. Apply mode launches a headless closeout agent for that
+repo, writes sidecar job receipts, groups dirty work into logical commits,
+prunes only eligible clean disposable worktrees, verifies final strict
+closeout, and pushes the branch. Add `--no-push` for a local-only CLI run.
+
+In Kit Companion, the "Fix Dirty Repo" button runs the apply-and-push job for
+the selected target and shows the resulting commits, pushed branches, receipts,
+pruned worktrees, and blockers.
+
 Review proposed replacements under `.doc-contract-kit/updates/` instead of
 copying them blindly over target-owned decisions.
 

@@ -1,5 +1,15 @@
 # Changelog
 
+## 0.6.45 - 2026-06-30
+
+- Add `kit closeout-fix` with read-only preview, JSONL apply mode, Codex
+  default runner support, sidecar job receipts, strict final closeout gating,
+  supervised clean disposable-worktree pruning, and non-force branch pushing.
+- Add the Kit Companion "Fix Dirty Repo" button as the only write-capable app
+  exception, backed by a narrow `closeout-fix --apply --jsonl` allowlist.
+- Document the closeout-fix contract and add ADR 0003 for the app write
+  exception.
+
 ## 0.6.44 - 2026-06-30
 
 - Add read-only `kit worktree list --repo <path> --json` so operators and apps

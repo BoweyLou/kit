@@ -102,6 +102,7 @@ CORE_SCRIPTS = [
     "changelog_update.py",
     "classify_review_risk.py",
     "check_doc_impact.py",
+    "closeout_fix.py",
     "docs_explain.py",
     "goal_check.py",
     "kit_status.py",

@@ -97,6 +97,7 @@ struct CommandEntry: Codable, Identifiable, Hashable {
 
         switch displayName {
         case "start",
+             "closeout-fix",
              "update",
              "target import",
              "target prune-missing",
@@ -121,7 +122,7 @@ struct CommandEntry: Codable, Identifiable, Hashable {
     }
 
     var appCoverage: CommandCoverage {
-        if ["target dirty-report", "status", "start", "closeout-plan", "update"].contains(displayName) {
+        if ["target dirty-report", "status", "start", "closeout-plan", "closeout-fix", "update"].contains(displayName) {
             return .native
         }
         if safeRunKind == .readOnly {
@@ -189,6 +190,11 @@ struct CommandEntry: Codable, Identifiable, Hashable {
                 return nil
             }
             args.append("--no-update")
+            appendJSON()
+        case "closeout-fix":
+            guard appendRepo() else {
+                return nil
+            }
             appendJSON()
         case "update":
             if let selectedRepo {

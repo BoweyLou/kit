@@ -16,11 +16,12 @@ The companion app reads the same JSON contracts used by agents and scripts:
 - `kit status --repo <repo> --json`
 - `kit start --repo <repo> --no-update --json`
 - `kit closeout-plan --repo <repo> --json`
+- `kit closeout-fix --repo <repo> --apply --jsonl`
 - `kit update --all --dry-run --json`
 
 The app shows registered targets, dirty repo counts, drift state, selected repo
-closeout state, workflow checks, batch dry-run previews, and copyable next
-commands.
+closeout state, workflow checks, closeout-fix job status, batch dry-run
+previews, and copyable next commands.
 
 The command browser is generated from `kit command-map --json`. It shows the
 full global CLI surface, including agent-facing and Terminal-only commands, and
@@ -34,7 +35,8 @@ classifies each command into one of these app actions:
   terminal.
 
 This gives the app feature parity with the global CLI as a navigation and
-status surface without making it a write-capable replacement for the CLI.
+status surface without making the command browser a write-capable replacement
+for the CLI.
 
 ## Settings
 
@@ -62,8 +64,17 @@ commands use CLI-supported no-write flags such as `--dry-run` and
 `--no-update`. The runner blocks mutating command flags such as `--apply`,
 `--write`, `--write-sidecar`, and `--global`.
 
-When a workflow needs a write, use the terminal. This keeps review, update, and
-repo mutation behavior visible and consistent with the CLI.
+The dedicated "Fix Dirty Repo" button is the only write-capable app exception.
+It uses a separate allowlisted runner for exactly:
+
+```bash
+kit closeout-fix --repo <selected-target> --apply --jsonl
+```
+
+That runner rejects custom agent commands and arbitrary mutating command
+shapes. The job streams JSONL status into the app and shows commits, pushes,
+receipt paths, pruned worktrees, and blockers. All other write workflows remain
+Terminal handoffs.
 
 ## Build Locally
 

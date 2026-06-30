@@ -64,6 +64,7 @@ import check_docs_as_tests  # noqa: E402
 import check_token_budget  # noqa: E402
 import branch_readiness  # noqa: E402
 import changelog_update  # noqa: E402
+import closeout_fix  # noqa: E402
 import docs_explain  # noqa: E402
 import goal_check  # noqa: E402
 from agent_parallel_coordination import build_parallel_context  # noqa: E402
@@ -1311,6 +1312,7 @@ def cli_metadata() -> dict[str, Any]:
         "writes_target_repo_by_default": False,
         "mutating_commands": [
             "agent-self-heal --apply",
+            "closeout-fix --apply",
             "install",
             "setup",
             "start",
@@ -1330,6 +1332,7 @@ def cli_metadata() -> dict[str, Any]:
         "sidecar_write_commands": [
             "sidecar-init",
             "agent-self-heal --apply",
+            "closeout-fix --apply",
             "automation-handoff",
             "agent-preflight --write-sidecar",
             "agent-doctor --write-sidecar",
@@ -1797,6 +1800,47 @@ def command_map_annotations() -> dict[tuple[str, ...], dict[str, Any]]:
                 "completion_state",
                 "next_action",
                 "claim_blockers",
+                "exit_code",
+            ],
+        },
+        ("closeout-fix",): {
+            "audience": ["human", "agent", "app"],
+            "mutation": "launches-write-agent",
+            "sidecar_write": "with --apply",
+            "target_repo_write": "via launched agent in --apply mode",
+            "route_role": "canonical",
+            "canonical_command": "closeout-fix",
+            "alias_group": "task-closeout",
+            "route_note": "`kit closeout-fix` supervises a headless closeout agent for one repo: preview is read-only, while --apply writes sidecar job receipts, lets the agent make logical commits, prunes only eligible clean disposable worktrees, verifies strict closeout, and pushes without force.",
+            "examples": [
+                public_command("closeout-fix", "--repo", "/path/to/repo", "--json"),
+                public_command("closeout-fix", "--repo", "/path/to/repo", "--apply", "--jsonl"),
+                public_command("closeout-fix", "--repo", "/path/to/repo", "--apply", "--no-push", "--json"),
+            ],
+            "output_schema": "closeout_fix_payload",
+            "docs": [
+                "README.md",
+                "docs/agent-guide.md",
+                "docs/human-guide.md",
+                "docs/macos-companion.md",
+                "docs/cli-reference.md",
+            ],
+            "stable_payload_fields": [
+                "schema_version",
+                "command",
+                "job_id",
+                "job_dir",
+                "runner",
+                "initial_closeout",
+                "commits",
+                "branches_pushed",
+                "worktrees_pruned",
+                "receipts",
+                "final_closeout",
+                "blockers",
+                "result",
+                "target_repo_writes",
+                "sidecar_writes",
                 "exit_code",
             ],
         },
@@ -9108,6 +9152,7 @@ def render_options(include_advanced: bool = False) -> None:
     print(f"  {PUBLIC_COMMAND} update --all --dry-run  Preview updates for registered target repos")
     print(f"  {PUBLIC_COMMAND} doctor                  Diagnose dirty state and task blockers")
     print(f"  {PUBLIC_COMMAND} closeout-plan           Decide whether work is actually closed out")
+    print(f"  {PUBLIC_COMMAND} closeout-fix --json     Preview supervised dirty-repo closeout")
     print(f"  {PUBLIC_COMMAND} palette                 Search commands in a TTY")
     print(f"  {PUBLIC_COMMAND} completion zsh          Print shell completion code")
     print("")
@@ -10062,6 +10107,23 @@ def build_parser() -> argparse.ArgumentParser:
     closeout_plan.add_argument("--format", choices=["text", "json"], default=None)
     closeout_plan.add_argument("--strict", action="store_true", help="Exit non-zero when completion cannot be claimed cleanly.")
 
+    closeout_fix_parser = subparsers.add_parser(
+        "closeout-fix",
+        help="Launch a supervised headless agent to close out dirty repo state.",
+    )
+    add_common_repo_args(closeout_fix_parser)
+    closeout_fix_parser.add_argument("--apply", action="store_true", help="Run the write-capable closeout job. Preview is the default.")
+    closeout_fix_parser.add_argument("--jsonl", action="store_true", help="Stream sanitized JSONL job events and the final payload.")
+    closeout_fix_parser.add_argument(
+        "--agent",
+        choices=("auto", "codex", "custom"),
+        default="auto",
+        help="Headless runner to launch. auto defaults to local codex exec.",
+    )
+    closeout_fix_parser.add_argument("--agent-command", help="Explicit command for --agent custom. No runner is inferred from adapters.")
+    closeout_fix_parser.add_argument("--timeout-seconds", type=int, default=3600, help="Maximum seconds for each supervised closeout step.")
+    closeout_fix_parser.add_argument("--no-push", action="store_true", help="Leave successful commits local instead of pushing the current branch.")
+
     self_cmd = subparsers.add_parser("self", help="Inspect or update the global repo-contract-kit tool checkout.")
     self_subparsers = self_cmd.add_subparsers(dest="self_command", required=True, parser_class=KitArgumentParser)
     self_status = self_subparsers.add_parser("status", help="Show global tool checkout status.")
@@ -10743,6 +10805,24 @@ def main(argv: list[str] | None = None) -> int:
         output_format = args.format or ("json" if args.json else "text")
         render_json(payload) if output_format == "json" else render_closeout_plan(payload)
         return payload["exit_code"]
+    if args.command == "closeout-fix":
+        event_sink = None
+        if args.jsonl:
+            def event_sink(event: dict[str, Any]) -> None:
+                print(json.dumps(event, sort_keys=True), flush=True)
+
+        if args.apply:
+            payload, exit_code = closeout_fix.apply_payload(args, repo, CLI_ENTRYPOINT, event_sink=event_sink)
+        else:
+            payload, exit_code = closeout_fix.preview_payload(args, repo, CLI_ENTRYPOINT)
+
+        if args.jsonl:
+            print(json.dumps({"event": "final-payload", "payload": payload}, sort_keys=True), flush=True)
+        elif args.json:
+            render_json(payload)
+        else:
+            print(closeout_fix.render_text(payload))
+        return exit_code
     if args.command == "branch-readiness":
         payload, exit_code = branch_readiness.build_report(args, repo)
         output_format = args.format or ("json" if args.json else "text")

@@ -111,7 +111,7 @@ private struct CommandDetailView: View {
                     Button {
                         store.runCommand(command)
                     } label: {
-                        Label(runLabel(for: command), systemImage: command.appCoverage == .previewInApp ? "doc.text.magnifyingglass" : "play.fill")
+                        Label(runLabel(for: command), systemImage: command.safeRunKind == .preview ? "doc.text.magnifyingglass" : "play.fill")
                     }
                     .disabled(command.safeArguments(selectedRepo: store.selectedTarget?.root) == nil || store.isRunningCommand)
 

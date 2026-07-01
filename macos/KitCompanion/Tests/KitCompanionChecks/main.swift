@@ -61,6 +61,8 @@ func makeCommand(
     targetRepoWrite: String = "never",
     sidecarWrite: String = "never",
     jsonSupported: Bool = true,
+    audience: [String] = ["human", "agent"],
+    routeRole: String? = nil,
     flags: [String] = ["--json"],
     examples: [String] = []
 ) -> CommandEntry {
@@ -68,12 +70,12 @@ func makeCommand(
         name: name,
         path: path ?? name.split(separator: " ").map(String.init),
         summary: "Test command",
-        audience: ["human", "agent"],
+        audience: audience,
         mutation: mutation,
         targetRepoWrite: targetRepoWrite,
         sidecarWrite: sidecarWrite,
         jsonSupported: jsonSupported,
-        routeRole: nil,
+        routeRole: routeRole,
         canonicalCommand: name,
         aliasOf: nil,
         outputSchema: "test_payload",
@@ -136,6 +138,34 @@ do {
         "doctor should omit optional sidecar write flag"
     )
 
+    let status = makeCommand(
+        name: "status",
+        flags: ["--repo", "--json"],
+        examples: ["kit status --repo /path/to/repo --json"]
+    )
+
+    let agentOnly = makeCommand(
+        name: "agent-note",
+        audience: ["agent"],
+        routeRole: "agent-only",
+        flags: ["--repo", "--json"]
+    )
+    try check(CommandBrowserScope.recommended.includes(status), "status should be recommended")
+    try check(CommandBrowserScope.readOnly.includes(doctor), "doctor should appear in read-only commands")
+    try check(CommandBrowserScope.preview.includes(update), "update should appear in preview commands")
+    try check(!CommandBrowserScope.recommended.includes(agentOnly), "agent-only commands should stay out of recommended")
+    try check(CommandBrowserScope.agentTools.includes(agentOnly), "agent-only commands should appear in the agent scope")
+
+    let commandMap = CommandMapPayload(cli: nil, commands: [agentOnly, update, doctor, status])
+    try check(
+        commandMap.visibleCommands(in: .recommended).map(\.displayName).contains("status"),
+        "recommended command map should include status"
+    )
+    try check(
+        !commandMap.visibleCommands(in: .recommended).map(\.displayName).contains("agent-note"),
+        "recommended command map should not include agent-only commands"
+    )
+
     try expectThrows("unsafe update should be blocked") {
         try KitProcessRunner.validateReadOnlyCommand(["update", "--repo", "/tmp/repo"])
     }
@@ -168,11 +198,6 @@ do {
     try check(finalPayload.payload?.result == "applied", "closeout-fix final JSONL payload should decode")
     try check(finalPayload.payload?.commits?.first?.subject == "Add lane", "closeout-fix commits should decode")
 
-    let status = makeCommand(
-        name: "status",
-        flags: ["--repo", "--json"],
-        examples: ["kit status --repo /path/to/repo --json"]
-    )
     try check(
         status.terminalCommand(selectedRepo: "/tmp/example repo") == "kit status --repo '/tmp/example repo' --json",
         "terminal commands should shell-quote repo paths"

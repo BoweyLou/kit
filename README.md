@@ -229,14 +229,16 @@ Kit Companion is a separate, optional menu-bar app for local status visibility.
 It is not required for setup, updates, reviews, agents, or any normal kit
 workflow. The CLI remains complete and authoritative without it.
 
-The app loads `kit command-map --json` to show the full global CLI surface,
-runs read-only JSON commands such as `kit target dirty-report --json` and
-`kit closeout-plan --json`, previews supported no-write flows with
-`--dry-run` or `--no-update`, checks for app updates, supports optional Launch
-at Login, and copies Terminal handoff commands. The dedicated "Fix Dirty Repo"
-button is the only write-capable in-app exception; it runs
-`kit closeout-fix --repo <selected> --apply --jsonl` through a narrow allowlist
-and shows commits, pushes, receipts, pruned worktrees, and blockers.
+The app opens to a selected-repo overview with worktree, closeout, kit drift,
+and mode status. It loads `kit command-map --json` to group CLI commands into
+recommended, read-only, preview, Terminal, and agent scopes; runs read-only JSON
+commands such as `kit target dirty-report --json` and `kit closeout-plan
+--json`; previews supported no-write flows with `--dry-run` or `--no-update`;
+checks for app updates; supports optional Launch at Login; and copies Terminal
+handoff commands. Guided closeout is the only write-capable in-app exception:
+after confirmation, it runs `kit closeout-fix --repo <selected> --apply
+--jsonl` through a narrow allowlist and shows commits, pushes, receipts, pruned
+worktrees, and blockers.
 
 Build it only when wanted:
 

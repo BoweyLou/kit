@@ -176,9 +176,10 @@ repo, writes sidecar job receipts, groups dirty work into logical commits,
 prunes only eligible clean disposable worktrees, verifies final strict
 closeout, and pushes the branch. Add `--no-push` for a local-only CLI run.
 
-In Kit Companion, the "Fix Dirty Repo" button runs the apply-and-push job for
-the selected target and shows the resulting commits, pushed branches, receipts,
-pruned worktrees, and blockers.
+In Kit Companion, Guided Closeout is the only write-capable in-app exception.
+After confirmation, it runs the apply-and-push job for the selected target and
+shows the resulting commits, pushed branches, receipts, pruned worktrees, and
+blockers.
 
 Review proposed replacements under `.doc-contract-kit/updates/` instead of
 copying them blindly over target-owned decisions.

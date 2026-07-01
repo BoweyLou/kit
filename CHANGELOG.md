@@ -1,5 +1,14 @@
 # Changelog
 
+## 0.6.49 - 2026-07-01
+
+- Redesign Kit Companion around an overview-first control room with clearer
+  target, batch, and app update actions.
+- Move dirty-repo repair behind a guided closeout confirmation while preserving
+  the narrow `closeout-fix --apply --jsonl` allowlist.
+- Group the command browser into recommended, read-only, preview, Terminal, and
+  agent scopes, with human-readable output summaries before raw JSON.
+
 ## 0.6.48 - 2026-07-01
 
 - Stream `kit closeout-fix --apply --jsonl` agent output while the headless

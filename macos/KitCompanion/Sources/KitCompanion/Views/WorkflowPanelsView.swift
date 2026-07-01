@@ -12,16 +12,31 @@ struct WorkflowPanelsView: View {
 
     var body: some View {
         ScrollView {
-            LazyVGrid(columns: [GridItem(.adaptive(minimum: 260), spacing: 12)], alignment: .leading, spacing: 12) {
-                ForEach(commands) { command in
-                    WorkflowCommandTile(store: store, command: command)
+            VStack(alignment: .leading, spacing: 12) {
+                HStack {
+                    Label(mode.title, systemImage: mode.systemImage)
+                        .font(.headline)
+                    Spacer()
+                    if mode == .batch {
+                        Button {
+                            store.previewBatchUpdate()
+                        } label: {
+                            Label("Preview All Targets", systemImage: "doc.text.magnifyingglass")
+                        }
+                    }
                 }
-            }
-            .frame(maxWidth: .infinity, alignment: .leading)
 
-            if mode == .batch, let preview = store.updatePreview {
-                UpdatePreviewView(preview: preview)
-                    .padding(.top, 14)
+                LazyVGrid(columns: [GridItem(.adaptive(minimum: 260), spacing: 12)], alignment: .leading, spacing: 12) {
+                    ForEach(commands) { command in
+                        WorkflowCommandTile(store: store, command: command)
+                    }
+                }
+                .frame(maxWidth: .infinity, alignment: .leading)
+
+                if mode == .batch, let preview = store.updatePreview {
+                    UpdatePreviewView(preview: preview)
+                        .padding(.top, 4)
+                }
             }
         }
         .onAppear {
@@ -35,6 +50,24 @@ struct WorkflowPanelsView: View {
 enum WorkflowPanelMode: Equatable {
     case workflows
     case batch
+
+    var title: String {
+        switch self {
+        case .workflows:
+            return "Common Workflows"
+        case .batch:
+            return "Batch Targets"
+        }
+    }
+
+    var systemImage: String {
+        switch self {
+        case .workflows:
+            return "checklist"
+        case .batch:
+            return "square.stack.3d.up"
+        }
+    }
 
     var commandNames: [String] {
         switch self {

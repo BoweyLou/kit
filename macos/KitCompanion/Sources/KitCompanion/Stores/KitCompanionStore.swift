@@ -49,6 +49,7 @@ final class KitCompanionStore: ObservableObject {
     @Published var closeoutFixEvents: [CloseoutFixEvent] = []
     @Published var commandMap: CommandMapPayload?
     @Published var selectedCommandID: String?
+    @Published var commandScope: CommandBrowserScope = .recommended
     @Published var commandSearch = ""
     @Published var commandOutput: String?
     @Published var dashboardSection: DashboardSection = .overview
@@ -57,6 +58,7 @@ final class KitCompanionStore: ObservableObject {
     @Published var isLoadingCommandMap = false
     @Published var isRunningCommand = false
     @Published var isRunningCloseoutFix = false
+    @Published var isConfirmingCloseoutFix = false
     @Published var lastRefresh: Date?
     @Published var isCheckingForUpdates = false
     @Published var message: String?
@@ -82,13 +84,24 @@ final class KitCompanionStore: ObservableObject {
         commandMap?.visibleCommands ?? []
     }
 
+    var scopedCommands: [CommandEntry] {
+        visibleCommands
+            .filter { commandScope.includes($0) }
+            .sorted { lhs, rhs in
+                if lhs.commandBrowserRank != rhs.commandBrowserRank {
+                    return lhs.commandBrowserRank < rhs.commandBrowserRank
+                }
+                return lhs.displayName.localizedCaseInsensitiveCompare(rhs.displayName) == .orderedAscending
+            }
+    }
+
     var filteredCommands: [CommandEntry] {
-        visibleCommands.filter { $0.matches(commandSearch) }
+        scopedCommands.filter { $0.matches(commandSearch) }
     }
 
     var selectedCommand: CommandEntry? {
         if let selectedCommandID,
-           let command = visibleCommands.first(where: { $0.id == selectedCommandID }) {
+           let command = filteredCommands.first(where: { $0.id == selectedCommandID }) {
             return command
         }
         return filteredCommands.first
@@ -213,7 +226,7 @@ final class KitCompanionStore: ObservableObject {
                 )
                 commandMap = payload
                 if selectedCommandID == nil {
-                    selectedCommandID = payload.visibleCommands.first?.id
+                    selectedCommandID = payload.visibleCommands(in: commandScope).first?.id ?? payload.visibleCommands.first?.id
                 }
             } catch {
                 errorMessage = error.localizedDescription
@@ -224,6 +237,16 @@ final class KitCompanionStore: ObservableObject {
 
     func selectCommand(_ command: CommandEntry) {
         selectedCommandID = command.id
+        commandOutput = nil
+    }
+
+    func selectCommandScope(_ scope: CommandBrowserScope) {
+        commandScope = scope
+        if let selectedCommandID,
+           filteredCommands.contains(where: { $0.id == selectedCommandID }) {
+            return
+        }
+        selectedCommandID = filteredCommands.first?.id
         commandOutput = nil
     }
 
@@ -266,6 +289,7 @@ final class KitCompanionStore: ObservableObject {
             return
         }
 
+        isConfirmingCloseoutFix = false
         isRunningCloseoutFix = true
         closeoutFixPayload = nil
         closeoutFixEvents = []
@@ -295,6 +319,13 @@ final class KitCompanionStore: ObservableObject {
         }
     }
 
+    func requestCloseoutFixConfirmation() {
+        guard selectedTarget != nil, !isRunningCloseoutFix else {
+            return
+        }
+        isConfirmingCloseoutFix = true
+    }
+
     func copyCommand(_ command: CommandEntry? = nil) {
         let command = command ?? selectedCommand
         guard let command else {
@@ -322,6 +353,29 @@ final class KitCompanionStore: ObservableObject {
                     kitPath: KitSettings.kitBinaryPath()
                 )
                 message = "Update preview complete"
+            } catch {
+                errorMessage = error.localizedDescription
+                message = nil
+            }
+        }
+    }
+
+    func previewSelectedTargetUpdate() {
+        guard let selectedTarget else {
+            previewBatchUpdate()
+            return
+        }
+        errorMessage = nil
+        message = "Previewing target update"
+        Task {
+            do {
+                updatePreview = try await runner.runJSON(
+                    UpdatePreviewPayload.self,
+                    arguments: ["update", "--repo", selectedTarget.root, "--dry-run", "--json"],
+                    kitPath: KitSettings.kitBinaryPath(),
+                    workingDirectory: selectedTarget.root
+                )
+                message = "Target update preview complete"
             } catch {
                 errorMessage = error.localizedDescription
                 message = nil

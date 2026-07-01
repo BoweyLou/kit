@@ -19,13 +19,24 @@ The companion app reads the same JSON contracts used by agents and scripts:
 - `kit closeout-fix --repo <repo> --apply --jsonl`
 - `kit update --all --dry-run --json`
 
-The app shows registered targets, dirty repo counts, drift state, selected repo
-closeout state, workflow checks, closeout-fix job status, batch dry-run
-previews, and copyable next commands.
+The app opens to a selected-repo overview. The overview shows worktree status,
+closeout state, kit drift, selected mode, one recommended action, closeout
+blockers, copyable next commands, and collapsed technical activity for
+closeout-fix jobs and update previews. The header keeps target actions, batch
+previews, and app update checks separate so a target update dry-run is not
+confused with a Sparkle app update check.
 
-The command browser is generated from `kit command-map --json`. It shows the
-full global CLI surface, including agent-facing and Terminal-only commands, and
-classifies each command into one of these app actions:
+The command browser is generated from `kit command-map --json`. It groups the
+global CLI surface into scoped views:
+
+- Recommended: common operator checks and native app surfaces.
+- Read-only: JSON commands that can run in the app without write flags.
+- Previews: workflows that the app can run only with no-write flags such as
+  `--dry-run` or `--no-update`.
+- Terminal: commands visible for copy or Terminal handoff.
+- Agent: agent-facing commands kept out of the recommended operator view.
+
+Each command still has one app action classification:
 
 - Native: already shown in the target overview.
 - Run: read-only JSON command that can run in the app.
@@ -69,8 +80,10 @@ commands use CLI-supported no-write flags such as `--dry-run` and
 `--no-update`. The runner blocks mutating command flags such as `--apply`,
 `--write`, `--write-sidecar`, and `--global`.
 
-The dedicated "Fix Dirty Repo" button is the only write-capable app exception.
-It uses a separate allowlisted runner for exactly:
+Guided Closeout is the only write-capable app exception. It is shown from the
+selected target overview when the repo is dirty or closeout has blockers, and
+requires confirmation before starting. It uses a separate allowlisted runner
+for exactly:
 
 ```bash
 kit closeout-fix --repo <selected-target> --apply --jsonl
@@ -78,7 +91,8 @@ kit closeout-fix --repo <selected-target> --apply --jsonl
 
 That runner rejects custom agent commands and arbitrary mutating command
 shapes. The job streams JSONL status into the app and shows commits, pushes,
-receipt paths, pruned worktrees, and blockers. All other write workflows remain
+receipt paths, pruned worktrees, and blockers. The generic command browser
+continues to run `closeout-fix` preview-only. All other write workflows remain
 Terminal handoffs.
 
 ## Build Locally

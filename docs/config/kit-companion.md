@@ -23,3 +23,7 @@ Sparkle update metadata is embedded in the app bundle:
 The private Sparkle signing key must stay outside the repository. Local release
 builds use the `com.boweylou.KitCompanion` Keychain account by default, while
 automation can pass the key through `SPARKLE_ED_PRIVATE_KEY`.
+
+The selected command-browser scope, selected target, and dashboard section are
+session UI state only. They are not persisted as configuration and do not alter
+CLI behavior.

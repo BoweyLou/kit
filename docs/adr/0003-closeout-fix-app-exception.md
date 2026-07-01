@@ -35,7 +35,7 @@ authoritative implementation. `closeout-fix` preview stays read-only with
 
 ## Consequences
 
-Kit Companion gains a one-click dirty-repo closeout workflow without making the
+Kit Companion gains a confirmed guided closeout workflow without making the
 command browser a general mutation surface.
 
 The closeout job still relies on CLI receipts, sidecar artifacts, strict

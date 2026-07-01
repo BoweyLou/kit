@@ -18,6 +18,10 @@ struct CommandMapPayload: Codable {
                 lhs.displayName.localizedCaseInsensitiveCompare(rhs.displayName) == .orderedAscending
             }
     }
+
+    func visibleCommands(in scope: CommandBrowserScope) -> [CommandEntry] {
+        visibleCommands.filter { scope.includes($0) }
+    }
 }
 
 struct CommandFlag: Codable, Hashable {
@@ -135,6 +139,25 @@ struct CommandEntry: Codable, Identifiable, Hashable {
             return .terminalHandoff
         }
         return .unsupported
+    }
+
+    var commandBrowserRank: Int {
+        if CommandBrowserScope.recommendedCommandNames.contains(displayName) {
+            return 0
+        }
+        if appCoverage == .native {
+            return 1
+        }
+        if safeRunKind == .readOnly {
+            return 2
+        }
+        if safeRunKind == .preview {
+            return 3
+        }
+        if isAgentFocused {
+            return 5
+        }
+        return 4
     }
 
     func matches(_ query: String) -> Bool {
@@ -266,6 +289,79 @@ struct CommandEntry: Codable, Identifiable, Hashable {
 enum CommandRunKind: String {
     case readOnly
     case preview
+}
+
+enum CommandBrowserScope: String, CaseIterable, Identifiable {
+    case recommended
+    case readOnly
+    case preview
+    case terminal
+    case agentTools
+
+    static let recommendedCommandNames: Set<String> = [
+        "start",
+        "status",
+        "doctor",
+        "mode-check",
+        "goal-check",
+        "backlog-status",
+        "branch-readiness",
+        "closeout-plan",
+        "doc-impact",
+        "verify",
+        "worktree audit",
+        "target dirty-report",
+        "target list",
+        "update"
+    ]
+
+    var id: String { rawValue }
+
+    var label: String {
+        switch self {
+        case .recommended:
+            return "Recommended"
+        case .readOnly:
+            return "Read-only"
+        case .preview:
+            return "Previews"
+        case .terminal:
+            return "Terminal"
+        case .agentTools:
+            return "Agent"
+        }
+    }
+
+    var systemImage: String {
+        switch self {
+        case .recommended:
+            return "star"
+        case .readOnly:
+            return "checkmark.shield"
+        case .preview:
+            return "doc.text.magnifyingglass"
+        case .terminal:
+            return "terminal"
+        case .agentTools:
+            return "gearshape.2"
+        }
+    }
+
+    func includes(_ command: CommandEntry) -> Bool {
+        switch self {
+        case .recommended:
+            return !command.isAgentFocused
+                && (Self.recommendedCommandNames.contains(command.displayName) || command.appCoverage == .native)
+        case .readOnly:
+            return !command.isAgentFocused && command.safeRunKind == .readOnly
+        case .preview:
+            return !command.isAgentFocused && command.safeRunKind == .preview
+        case .terminal:
+            return !command.isAgentFocused && command.appCoverage == .terminalHandoff
+        case .agentTools:
+            return command.isAgentFocused
+        }
+    }
 }
 
 enum CommandCoverage: String, CaseIterable {

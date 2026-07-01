@@ -1,5 +1,137 @@
 import Foundation
 
+private struct CloseoutFixStreamSnapshot {
+    let stdout: String
+    let stderr: String
+    let finalPayload: CloseoutFixPayload?
+}
+
+private final class CloseoutFixJSONLStream {
+    private let decoder = JSONDecoder()
+    private let lock = NSLock()
+    private var stdoutBuffer = ""
+    private var stdoutText = ""
+    private var stderrText = ""
+    private var finalPayload: CloseoutFixPayload?
+
+    func appendStdout(_ data: Data, onEvent: @escaping (CloseoutFixEvent) -> Void) {
+        let chunk = String(decoding: data, as: UTF8.self)
+        guard !chunk.isEmpty else {
+            return
+        }
+        let lines = appendStdoutChunk(chunk)
+        for line in lines {
+            handleLine(line, onEvent: onEvent)
+        }
+    }
+
+    func appendStderr(_ data: Data) {
+        let chunk = String(decoding: data, as: UTF8.self)
+        guard !chunk.isEmpty else {
+            return
+        }
+        lock.lock()
+        stderrText += chunk
+        lock.unlock()
+    }
+
+    func finishStdout(onEvent: @escaping (CloseoutFixEvent) -> Void) {
+        let line: String?
+        lock.lock()
+        if stdoutBuffer.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+            line = nil
+        } else {
+            line = stdoutBuffer
+        }
+        stdoutBuffer = ""
+        lock.unlock()
+
+        if let line {
+            handleLine(line, onEvent: onEvent)
+        }
+    }
+
+    func snapshot() -> CloseoutFixStreamSnapshot {
+        lock.lock()
+        defer { lock.unlock() }
+        return CloseoutFixStreamSnapshot(stdout: stdoutText, stderr: stderrText, finalPayload: finalPayload)
+    }
+
+    private func appendStdoutChunk(_ chunk: String) -> [String] {
+        lock.lock()
+        defer { lock.unlock() }
+
+        stdoutText += chunk
+        stdoutBuffer += chunk
+
+        var lines: [String] = []
+        while let newline = stdoutBuffer.firstIndex(of: "\n") {
+            var line = String(stdoutBuffer[..<newline])
+            if line.last == "\r" {
+                line.removeLast()
+            }
+            stdoutBuffer.removeSubrange(...newline)
+            if !line.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+                lines.append(line)
+            }
+        }
+        return lines
+    }
+
+    private func handleLine(_ line: String, onEvent: @escaping (CloseoutFixEvent) -> Void) {
+        let data = Data(line.utf8)
+        if let finalLine = try? decoder.decode(CloseoutFixFinalPayloadLine.self, from: data),
+           finalLine.event == "final-payload",
+           let payload = finalLine.payload {
+            lock.lock()
+            finalPayload = payload
+            lock.unlock()
+            return
+        }
+        if let event = try? decoder.decode(CloseoutFixEvent.self, from: data) {
+            onEvent(event)
+        }
+    }
+}
+
+private final class CloseoutFixContinuationBox: @unchecked Sendable {
+    private let lock = NSLock()
+    private var didResume = false
+    private let stdoutHandle: FileHandle
+    private let stderrHandle: FileHandle
+    private let continuation: CheckedContinuation<CloseoutFixPayload, Error>
+
+    init(
+        stdoutHandle: FileHandle,
+        stderrHandle: FileHandle,
+        continuation: CheckedContinuation<CloseoutFixPayload, Error>
+    ) {
+        self.stdoutHandle = stdoutHandle
+        self.stderrHandle = stderrHandle
+        self.continuation = continuation
+    }
+
+    func finish(_ result: Result<CloseoutFixPayload, Error>) {
+        lock.lock()
+        if didResume {
+            lock.unlock()
+            return
+        }
+        didResume = true
+        lock.unlock()
+
+        stdoutHandle.readabilityHandler = nil
+        stderrHandle.readabilityHandler = nil
+
+        switch result {
+        case .success(let payload):
+            continuation.resume(returning: payload)
+        case .failure(let error):
+            continuation.resume(throwing: error)
+        }
+    }
+}
+
 final class KitProcessRunner {
     enum RunnerError: LocalizedError {
         case missingBinary
@@ -111,32 +243,78 @@ final class KitProcessRunner {
         onEvent: @escaping (CloseoutFixEvent) -> Void
     ) async throws -> CloseoutFixPayload {
         try Self.validateCloseoutFixCommand(arguments)
-        let result = try await run(arguments: arguments, kitPath: kitPath, workingDirectory: workingDirectory)
+        let binary = try resolvedBinaryURL(kitPath: kitPath)
         let command = renderedCommand(arguments)
-        let decoder = JSONDecoder()
-        var finalPayload: CloseoutFixPayload?
 
-        for line in result.stdout.split(whereSeparator: \.isNewline) {
-            let data = Data(String(line).utf8)
-            if let finalLine = try? decoder.decode(CloseoutFixFinalPayloadLine.self, from: data),
-               finalLine.event == "final-payload" {
-                finalPayload = finalLine.payload
-                continue
+        return try await withCheckedThrowingContinuation { continuation in
+            let process = Process()
+            process.executableURL = binary
+            process.arguments = arguments
+            process.environment = Self.processEnvironment()
+            if let workingDirectory {
+                process.currentDirectoryURL = URL(fileURLWithPath: workingDirectory, isDirectory: true)
             }
-            if let event = try? decoder.decode(CloseoutFixEvent.self, from: data) {
-                onEvent(event)
+
+            let stdoutPipe = Pipe()
+            let stderrPipe = Pipe()
+            let stdoutHandle = stdoutPipe.fileHandleForReading
+            let stderrHandle = stderrPipe.fileHandleForReading
+            let stream = CloseoutFixJSONLStream()
+            let finisher = CloseoutFixContinuationBox(
+                stdoutHandle: stdoutHandle,
+                stderrHandle: stderrHandle,
+                continuation: continuation
+            )
+
+            stdoutHandle.readabilityHandler = { handle in
+                let data = handle.availableData
+                if !data.isEmpty {
+                    stream.appendStdout(data, onEvent: onEvent)
+                }
+            }
+            stderrHandle.readabilityHandler = { handle in
+                let data = handle.availableData
+                if !data.isEmpty {
+                    stream.appendStderr(data)
+                }
+            }
+
+            process.standardOutput = stdoutPipe
+            process.standardError = stderrPipe
+            process.terminationHandler = { terminated in
+                stdoutHandle.readabilityHandler = nil
+                stderrHandle.readabilityHandler = nil
+
+                let remainingStdout = stdoutHandle.availableData
+                if !remainingStdout.isEmpty {
+                    stream.appendStdout(remainingStdout, onEvent: onEvent)
+                }
+                let remainingStderr = stderrHandle.availableData
+                if !remainingStderr.isEmpty {
+                    stream.appendStderr(remainingStderr)
+                }
+                stream.finishStdout(onEvent: onEvent)
+
+                let snapshot = stream.snapshot()
+                if let finalPayload = snapshot.finalPayload {
+                    finisher.finish(.success(finalPayload))
+                    return
+                }
+
+                let diagnostic = snapshot.stderr.isEmpty ? Self.outputExcerpt(snapshot.stdout) : snapshot.stderr
+                if terminated.terminationStatus != 0 {
+                    finisher.finish(.failure(RunnerError.commandFailed(command, terminated.terminationStatus, diagnostic)))
+                    return
+                }
+                finisher.finish(.failure(RunnerError.invalidJSON(command, Self.outputExcerpt(snapshot.stdout))))
+            }
+
+            do {
+                try process.run()
+            } catch {
+                finisher.finish(.failure(error))
             }
         }
-
-        if let finalPayload {
-            return finalPayload
-        }
-
-        let diagnostic = result.stderr.isEmpty ? Self.outputExcerpt(result.stdout) : result.stderr
-        if !result.succeeded {
-            throw RunnerError.commandFailed(command, result.exitCode, diagnostic)
-        }
-        throw RunnerError.invalidJSON(command, Self.outputExcerpt(result.stdout))
     }
 
     func run(arguments: [String], kitPath: String, workingDirectory: String? = nil) async throws -> KitCommandResult {

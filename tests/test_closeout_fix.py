@@ -4,6 +4,7 @@ import subprocess
 import sys
 import tempfile
 import textwrap
+import time
 import unittest
 from pathlib import Path
 
@@ -259,6 +260,44 @@ class CloseoutFixCliTests(unittest.TestCase):
             self.assertIn("agent-output", [event["event"] for event in events])
             self.assertEqual(events[-1]["event"], "final-payload")
             self.assertEqual(events[-1]["payload"]["result"], "applied")
+
+    def test_run_agent_emits_output_before_process_exits(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            repo = root / "repo"
+            repo.mkdir()
+            job_dir = root / "job"
+            job_dir.mkdir()
+            agent = write_agent(
+                root,
+                """
+                import json
+                import sys
+                import time
+
+                sys.stdin.read()
+                print(json.dumps({"event": "early", "status": "visible"}), flush=True)
+                time.sleep(0.7)
+                """,
+            )
+            events: list[tuple[float, dict]] = []
+
+            result = closeout_fix.run_agent(
+                [str(agent)],
+                repo,
+                "mission",
+                job_dir,
+                timeout=5,
+                event_sink=lambda event: events.append((time.monotonic(), event)),
+                job_id="job",
+            )
+            finished_at = time.monotonic()
+
+            self.assertEqual(result["exit_code"], 0)
+            output_events = [(seen_at, event) for seen_at, event in events if event["event"] == "agent-output"]
+            self.assertTrue(output_events)
+            self.assertLess(output_events[0][0], finished_at - 0.25)
+            self.assertIn('"event": "early"', output_events[0][1]["text"])
 
     def test_apply_blocks_when_custom_runner_is_not_configured(self):
         with tempfile.TemporaryDirectory() as tmp:

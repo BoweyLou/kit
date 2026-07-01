@@ -27,6 +27,33 @@ func expectThrows(_ message: String, _ body: () throws -> Void) throws {
     throw CheckFailure.failed(message)
 }
 
+final class StreamingTimestampRecorder {
+    private let lock = NSLock()
+    private var eventAt: Date?
+    private var doneAt: Date?
+
+    func recordEventIfNeeded(signal semaphore: DispatchSemaphore) {
+        lock.lock()
+        if eventAt == nil {
+            eventAt = Date()
+            semaphore.signal()
+        }
+        lock.unlock()
+    }
+
+    func recordDone() {
+        lock.lock()
+        doneAt = Date()
+        lock.unlock()
+    }
+
+    func snapshot() -> (eventAt: Date?, doneAt: Date?) {
+        lock.lock()
+        defer { lock.unlock() }
+        return (eventAt, doneAt)
+    }
+}
+
 func makeCommand(
     name: String,
     path: [String]? = nil,
@@ -191,6 +218,63 @@ do {
         throw CheckFailure.failed("large-output command failed: \(error)")
     case .none:
         throw CheckFailure.failed("large-output command did not report a result")
+    }
+
+    let streamingCommand = tempDir.appendingPathComponent("streaming-kit")
+    try """
+    #!/usr/bin/env python3
+    import json
+    import time
+
+    print(json.dumps({"event":"job-started","job_id":"job","text":"live start"}), flush=True)
+    time.sleep(0.7)
+    print(json.dumps({"event":"final-payload","payload":{"command":"closeout-fix","mode":"apply","result":"applied","commits":[],"branches_pushed":[],"worktrees_pruned":[],"receipts":[],"blockers":[],"exit_code":0}}), flush=True)
+    """.write(to: streamingCommand, atomically: true, encoding: .utf8)
+    try FileManager.default.setAttributes([.posixPermissions: 0o755], ofItemAtPath: streamingCommand.path)
+
+    let streamEventSemaphore = DispatchSemaphore(value: 0)
+    let streamDoneSemaphore = DispatchSemaphore(value: 0)
+    let streamTimestamps = StreamingTimestampRecorder()
+    var streamResult: Result<CloseoutFixPayload, Error>?
+    Task {
+        do {
+            streamResult = .success(
+                try await KitProcessRunner().runCloseoutFix(
+                    arguments: ["closeout-fix", "--repo", tempDir.path, "--apply", "--jsonl"],
+                    kitPath: streamingCommand.path
+                ) { event in
+                    if event.event == "job-started" {
+                        streamTimestamps.recordEventIfNeeded(signal: streamEventSemaphore)
+                    }
+                }
+            )
+        } catch {
+            streamResult = .failure(error)
+        }
+        streamTimestamps.recordDone()
+        streamDoneSemaphore.signal()
+    }
+    if streamEventSemaphore.wait(timeout: .now() + 1) == .timedOut {
+        throw CheckFailure.failed("closeout-fix runner should stream JSONL events before command exit")
+    }
+    if streamDoneSemaphore.wait(timeout: .now() + 5) == .timedOut {
+        throw CheckFailure.failed("closeout-fix streaming command should finish")
+    }
+    switch streamResult {
+    case .success(let payload):
+        try check(payload.result == "applied", "closeout-fix streaming final payload should decode")
+    case .failure(let error):
+        throw CheckFailure.failed("closeout-fix streaming command failed: \(error)")
+    case .none:
+        throw CheckFailure.failed("closeout-fix streaming command did not report a result")
+    }
+    let timestamps = streamTimestamps.snapshot()
+    let eventAt = timestamps.eventAt
+    let doneAt = timestamps.doneAt
+    if let eventAt, let doneAt {
+        try check(doneAt.timeIntervalSince(eventAt) > 0.25, "closeout-fix event should arrive before final payload")
+    } else {
+        throw CheckFailure.failed("closeout-fix streaming timestamps were not recorded")
     }
     try? FileManager.default.removeItem(at: tempDir)
 

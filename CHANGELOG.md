@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.6.48 - 2026-07-01
+
+- Stream `kit closeout-fix --apply --jsonl` agent output while the headless
+  runner is still active, and update Kit Companion's "Fix Dirty Repo" job pane
+  from live JSONL events instead of waiting for process exit.
+
 ## 0.6.47 - 2026-07-01
 
 - Fix `kit closeout-fix` Codex runner setup for current `codex exec` builds by

@@ -279,7 +279,9 @@ final class KitCompanionStore: ObservableObject {
                     kitPath: KitSettings.kitBinaryPath(),
                     workingDirectory: selectedTarget.root
                 ) { event in
-                    self.closeoutFixEvents.append(event)
+                    Task { @MainActor in
+                        self.closeoutFixEvents.append(event)
+                    }
                 }
                 closeoutFixPayload = payload
                 message = payload.result == "applied" ? "Closeout fix applied" : "Closeout fix blocked"

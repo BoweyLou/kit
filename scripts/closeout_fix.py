@@ -10,6 +10,7 @@ import shlex
 import shutil
 import subprocess
 import sys
+import threading
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Callable
@@ -406,11 +407,9 @@ def preview_payload(args: Any, repo: Path, cli_path: Path) -> tuple[dict[str, An
 
 def sanitized_agent_event(job_id: str, line: str) -> dict[str, Any]:
     parsed = extract_json_object(line)
-    payload: dict[str, Any] = {"event": "agent-output", "job_id": job_id}
+    payload: dict[str, Any] = {"event": "agent-output", "job_id": job_id, "text": safe_excerpt(line)}
     if parsed:
         payload["payload"] = parsed
-    else:
-        payload["text"] = safe_excerpt(line)
     return payload
 
 
@@ -433,31 +432,103 @@ def run_agent(
         "KIT_CLOSEOUT_FIX_JOB_DIR": str(job_dir),
     }
     emit(event_sink, {"event": "runner-started", "job_id": job_id, "command": [command[0], *command[1:3]]})
+    stderr_lines: list[str] = []
+    emit_lock = threading.Lock()
+
+    def emit_threadsafe(event: dict[str, Any]) -> None:
+        with emit_lock:
+            emit(event_sink, event)
+
     try:
-        result = run_command(command, repo, timeout=timeout, input_text=prompt, env=env)
-    except subprocess.TimeoutExpired as exc:
-        write_text_file(raw_stdout, exc.stdout or "")
-        write_text_file(raw_stderr, exc.stderr or "")
+        process = subprocess.Popen(
+            command,
+            cwd=repo,
+            stdin=subprocess.PIPE,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+            text=True,
+            encoding="utf-8",
+            errors="replace",
+            bufsize=1,
+            env=env,
+        )
+    except OSError as exc:
+        message = str(exc)
+        write_text_file(raw_stdout, "")
+        write_text_file(raw_stderr, message)
+        emit(event_sink, {"event": "agent-stderr", "job_id": job_id, "text": safe_excerpt(message)})
         return {
-            "exit_code": 124,
-            "timed_out": True,
+            "exit_code": 127,
+            "timed_out": False,
             "stdout_path": str(raw_stdout),
             "stderr_path": str(raw_stderr),
-            "stderr": "closeout-fix agent timed out",
+            "stderr": safe_excerpt(message),
         }
-    write_text_file(raw_stdout, result.stdout)
-    write_text_file(raw_stderr, result.stderr)
-    for line in result.stdout.splitlines():
-        if line.strip():
-            emit(event_sink, sanitized_agent_event(job_id, line))
-    if result.stderr.strip():
-        emit(event_sink, {"event": "agent-stderr", "job_id": job_id, "text": safe_excerpt(result.stderr)})
+
+    def capture_stdout() -> None:
+        assert process.stdout is not None
+        stream = process.stdout
+        with raw_stdout.open("w", encoding="utf-8", errors="replace") as target:
+            for line in stream:
+                target.write(line)
+                target.flush()
+                if line.strip():
+                    emit_threadsafe(sanitized_agent_event(job_id, line))
+        stream.close()
+
+    def capture_stderr() -> None:
+        assert process.stderr is not None
+        stream = process.stderr
+        with raw_stderr.open("w", encoding="utf-8", errors="replace") as target:
+            for line in stream:
+                target.write(line)
+                target.flush()
+                stderr_lines.append(line)
+                if line.strip():
+                    emit_threadsafe({"event": "agent-stderr", "job_id": job_id, "text": safe_excerpt(line)})
+        stream.close()
+
+    stdout_thread = threading.Thread(target=capture_stdout, name="closeout-fix-agent-stdout", daemon=True)
+    stderr_thread = threading.Thread(target=capture_stderr, name="closeout-fix-agent-stderr", daemon=True)
+    stdout_thread.start()
+    stderr_thread.start()
+
+    try:
+        if process.stdin is not None:
+            try:
+                process.stdin.write(prompt)
+                process.stdin.close()
+            except BrokenPipeError:
+                pass
+        returncode = process.wait(timeout=timeout)
+        timed_out = False
+    except subprocess.TimeoutExpired:
+        process.kill()
+        try:
+            process.wait(timeout=5)
+        except subprocess.TimeoutExpired:
+            pass
+        returncode = 124
+        timed_out = True
+    finally:
+        stdout_thread.join(timeout=5)
+        stderr_thread.join(timeout=5)
+
+    stderr = "".join(stderr_lines)
+    if timed_out:
+        timeout_message = "closeout-fix agent timed out"
+        with raw_stderr.open("a", encoding="utf-8", errors="replace") as target:
+            if stderr and not stderr.endswith("\n"):
+                target.write("\n")
+            target.write(timeout_message + "\n")
+        emit(event_sink, {"event": "agent-stderr", "job_id": job_id, "text": timeout_message})
+        stderr = "\n".join([value for value in [stderr.strip(), timeout_message] if value])
     return {
-        "exit_code": result.returncode,
-        "timed_out": False,
+        "exit_code": returncode,
+        "timed_out": timed_out,
         "stdout_path": str(raw_stdout),
         "stderr_path": str(raw_stderr),
-        "stderr": safe_excerpt(result.stderr),
+        "stderr": safe_excerpt(stderr),
     }
 
 

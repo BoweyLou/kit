@@ -150,28 +150,47 @@ final class KitProcessRunner {
                 process.currentDirectoryURL = URL(fileURLWithPath: workingDirectory, isDirectory: true)
             }
 
-            let stdoutPipe = Pipe()
-            let stderrPipe = Pipe()
-            process.standardOutput = stdoutPipe
-            process.standardError = stderrPipe
+            let fileManager = self.fileManager
+            let token = UUID().uuidString
+            let stdoutURL = fileManager.temporaryDirectory.appendingPathComponent("KitCompanion-\(token)-stdout.txt")
+            let stderrURL = fileManager.temporaryDirectory.appendingPathComponent("KitCompanion-\(token)-stderr.txt")
+            _ = fileManager.createFile(atPath: stdoutURL.path, contents: nil)
+            _ = fileManager.createFile(atPath: stderrURL.path, contents: nil)
 
             do {
-                try process.run()
+                let stdoutHandle = try FileHandle(forWritingTo: stdoutURL)
+                let stderrHandle = try FileHandle(forWritingTo: stderrURL)
+                process.standardOutput = stdoutHandle
+                process.standardError = stderrHandle
+
+                process.terminationHandler = { terminated in
+                    stdoutHandle.closeFile()
+                    stderrHandle.closeFile()
+                    let stdout = (try? Data(contentsOf: stdoutURL)) ?? Data()
+                    let stderr = (try? Data(contentsOf: stderrURL)) ?? Data()
+                    try? FileManager.default.removeItem(at: stdoutURL)
+                    try? FileManager.default.removeItem(at: stderrURL)
+                    continuation.resume(
+                        returning: KitCommandResult(
+                            stdout: String(data: stdout, encoding: .utf8) ?? "",
+                            stderr: String(data: stderr, encoding: .utf8) ?? "",
+                            exitCode: terminated.terminationStatus
+                        )
+                    )
+                }
+
+                do {
+                    try process.run()
+                } catch {
+                    stdoutHandle.closeFile()
+                    stderrHandle.closeFile()
+                    throw error
+                }
             } catch {
+                try? fileManager.removeItem(at: stdoutURL)
+                try? fileManager.removeItem(at: stderrURL)
                 continuation.resume(throwing: error)
                 return
-            }
-
-            process.terminationHandler = { terminated in
-                let stdout = stdoutPipe.fileHandleForReading.readDataToEndOfFile()
-                let stderr = stderrPipe.fileHandleForReading.readDataToEndOfFile()
-                continuation.resume(
-                    returning: KitCommandResult(
-                        stdout: String(data: stdout, encoding: .utf8) ?? "",
-                        stderr: String(data: stderr, encoding: .utf8) ?? "",
-                        exitCode: terminated.terminationStatus
-                    )
-                )
             }
         }
     }

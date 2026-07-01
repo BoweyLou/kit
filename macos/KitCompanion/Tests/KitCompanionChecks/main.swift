@@ -161,6 +161,39 @@ do {
         "login item off message should describe unregistered state"
     )
 
+    let tempDir = FileManager.default.temporaryDirectory.appendingPathComponent("KitCompanionChecks-\(UUID().uuidString)", isDirectory: true)
+    try FileManager.default.createDirectory(at: tempDir, withIntermediateDirectories: true)
+    let noisyCommand = tempDir.appendingPathComponent("noisy-kit")
+    try """
+    #!/usr/bin/env python3
+    print("x" * 200000)
+    """.write(to: noisyCommand, atomically: true, encoding: .utf8)
+    try FileManager.default.setAttributes([.posixPermissions: 0o755], ofItemAtPath: noisyCommand.path)
+
+    let semaphore = DispatchSemaphore(value: 0)
+    var noisyResult: Result<KitCommandResult, Error>?
+    Task {
+        do {
+            noisyResult = .success(try await KitProcessRunner().run(arguments: [], kitPath: noisyCommand.path))
+        } catch {
+            noisyResult = .failure(error)
+        }
+        semaphore.signal()
+    }
+    if semaphore.wait(timeout: .now() + 5) == .timedOut {
+        throw CheckFailure.failed("runner should drain command output larger than the default pipe buffer")
+    }
+    switch noisyResult {
+    case .success(let result):
+        try check(result.succeeded, "large-output command should succeed")
+        try check(result.stdout.count > 100000, "large-output command stdout should be captured")
+    case .failure(let error):
+        throw CheckFailure.failed("large-output command failed: \(error)")
+    case .none:
+        throw CheckFailure.failed("large-output command did not report a result")
+    }
+    try? FileManager.default.removeItem(at: tempDir)
+
     print("KitCompanionChecks passed")
 } catch {
     fputs("KitCompanionChecks failed: \(error)\n", stderr)

@@ -10,6 +10,8 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
 CLI = ROOT / "scripts" / "repo_contract_kit.py"
+sys.path.insert(0, str(ROOT / "scripts"))
+import closeout_fix  # noqa: E402
 
 
 def run(command: list[str], *, cwd: Path, env: dict[str, str] | None = None) -> subprocess.CompletedProcess[str]:
@@ -44,6 +46,21 @@ def write_agent(path: Path, body: str) -> Path:
     return script
 
 
+def write_fake_codex(path: Path, help_text: str) -> Path:
+    script = path / "codex"
+    script.write_text(
+        "#!/usr/bin/env python3\n"
+        "import sys\n"
+        "if sys.argv[1:3] == ['exec', '--help']:\n"
+        f"    print({help_text!r})\n"
+        "    raise SystemExit(0)\n"
+        "print('fake codex')\n",
+        encoding="utf-8",
+    )
+    script.chmod(0o755)
+    return script
+
+
 def cli(args: list[str], *, cwd: Path, state_home: Path) -> subprocess.CompletedProcess[str]:
     return run([sys.executable, str(CLI), *args], cwd=cwd, env={**os.environ, "XDG_STATE_HOME": str(state_home)})
 
@@ -56,6 +73,38 @@ def json_payload(result: subprocess.CompletedProcess[str]) -> dict:
 
 
 class CloseoutFixCliTests(unittest.TestCase):
+    def test_codex_runner_uses_current_noninteractive_flag_when_advertised(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            codex = write_fake_codex(root, "--dangerously-bypass-approvals-and-sandbox\n--sandbox")
+            old_path = os.environ.get("PATH", "")
+            os.environ["PATH"] = f"{root}{os.pathsep}{old_path}"
+            try:
+                runner, blockers = closeout_fix.resolve_runner("codex", None)
+            finally:
+                os.environ["PATH"] = old_path
+
+            self.assertEqual(blockers, [])
+            self.assertEqual(runner["binary"], str(codex))
+            self.assertIn("--dangerously-bypass-approvals-and-sandbox", runner["command"])
+            self.assertNotIn("--ask-for-approval", runner["command"])
+
+    def test_codex_runner_keeps_legacy_approval_flags_when_needed(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            codex = write_fake_codex(root, "--sandbox\n--ask-for-approval")
+            old_path = os.environ.get("PATH", "")
+            os.environ["PATH"] = f"{root}{os.pathsep}{old_path}"
+            try:
+                runner, blockers = closeout_fix.resolve_runner("codex", None)
+            finally:
+                os.environ["PATH"] = old_path
+
+            self.assertEqual(blockers, [])
+            self.assertEqual(runner["binary"], str(codex))
+            self.assertIn("--ask-for-approval", runner["command"])
+            self.assertIn("never", runner["command"])
+
     def test_preview_reports_plan_without_target_or_sidecar_writes(self):
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)

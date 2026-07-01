@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.6.47 - 2026-07-01
+
+- Fix `kit closeout-fix` Codex runner setup for current `codex exec` builds by
+  using the advertised non-interactive approval-bypass flag instead of the
+  removed `--ask-for-approval` option.
+- Fix Kit Companion command execution for large JSON payloads so the Workflows
+  pane can load `kit command-map --json` without deadlocking on stdout.
+
 ## 0.6.46 - 2026-07-01
 
 - Fix Kit Companion Launch at Login settings so the toggle reflects the real

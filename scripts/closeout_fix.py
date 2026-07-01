@@ -253,6 +253,25 @@ def worktree_prune(cli_path: Path, repo: Path, timeout: int | None = None) -> tu
     return run_cli_json(cli_path, repo, ["worktree", "prune", "--root", str(repo), "--apply", "--json"], timeout=timeout)
 
 
+def codex_exec_automation_flags(binary: str) -> list[str]:
+    try:
+        result = subprocess.run(
+            [binary, "exec", "--help"],
+            capture_output=True,
+            text=True,
+            check=False,
+            timeout=5,
+        )
+        help_text = f"{result.stdout}\n{result.stderr}"
+    except (OSError, subprocess.SubprocessError):
+        help_text = ""
+    if "--dangerously-bypass-approvals-and-sandbox" in help_text:
+        return ["--dangerously-bypass-approvals-and-sandbox"]
+    if "--ask-for-approval" in help_text:
+        return ["--sandbox", "danger-full-access", "--ask-for-approval", "never"]
+    return ["--sandbox", "danger-full-access"]
+
+
 def resolve_runner(agent: str, agent_command: str | None) -> tuple[dict[str, Any], list[str]]:
     blockers: list[str] = []
     if agent == "custom":
@@ -272,6 +291,7 @@ def resolve_runner(agent: str, agent_command: str | None) -> tuple[dict[str, Any
         binary = shutil.which("codex")
         if not binary:
             return {"kind": "codex", "command": None, "available": False}, ["codex executable was not found on PATH."]
+        automation_flags = codex_exec_automation_flags(binary)
         return {
             "kind": "codex",
             "command": [
@@ -279,10 +299,7 @@ def resolve_runner(agent: str, agent_command: str | None) -> tuple[dict[str, Any
                 "exec",
                 "--cd",
                 "<repo>",
-                "--sandbox",
-                "danger-full-access",
-                "--ask-for-approval",
-                "never",
+                *automation_flags,
                 "--json",
                 "-",
             ],
@@ -636,4 +653,3 @@ def render_text(payload: dict[str, Any]) -> str:
     if payload.get("mode") == "preview":
         lines.append(f" - apply: {payload.get('next_command')}")
     return "\n".join(lines)
-

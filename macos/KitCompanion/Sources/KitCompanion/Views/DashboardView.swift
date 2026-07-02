@@ -5,13 +5,10 @@ struct DashboardView: View {
 
     var body: some View {
         NavigationSplitView {
-            List(selection: $store.selectedTargetID) {
+            List(selection: targetSelection) {
                 ForEach(store.targets) { target in
                     TargetRow(target: target)
                         .tag(target.id)
-                        .onTapGesture {
-                            store.select(target)
-                        }
                 }
             }
             .listStyle(.sidebar)
@@ -30,11 +27,20 @@ struct DashboardView: View {
         .task {
             if store.targets.isEmpty {
                 store.refreshTargets()
+            } else if store.detail == nil {
+                store.loadSelectedDetail()
             }
             if store.commandMap == nil {
                 store.loadCommandMap()
             }
         }
+    }
+
+    private var targetSelection: Binding<String?> {
+        Binding(
+            get: { store.selectedTargetID },
+            set: { store.selectTargetID($0) }
+        )
     }
 }
 

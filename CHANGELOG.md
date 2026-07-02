@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.6.50 - 2026-07-02
+
+- Fix Kit Companion target selection so the dashboard detail reloads for the
+  selected repo and ignores stale async detail results.
+- Bring the Kit Companion dashboard to the front when opened from the menu bar,
+  then return to menu-bar accessory mode when the dashboard closes.
+
 ## 0.6.49 - 2026-07-01
 
 - Redesign Kit Companion around an overview-first control room with clearer

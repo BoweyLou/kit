@@ -66,6 +66,7 @@ final class KitCompanionStore: ObservableObject {
 
     private let runner: KitProcessRunner
     private let updateService: SparkleUpdateService
+    private var detailLoadGeneration = 0
 
     init(runner: KitProcessRunner = KitProcessRunner(), updateService: SparkleUpdateService? = nil) {
         self.runner = runner
@@ -149,6 +150,8 @@ final class KitCompanionStore: ObservableObject {
                 targets = payload.targets.sorted { $0.name.localizedCaseInsensitiveCompare($1.name) == .orderedAscending }
                 if selectedTargetID == nil {
                     selectedTargetID = targets.first?.id
+                } else if let selectedTargetID, !targets.contains(where: { $0.id == selectedTargetID }) {
+                    self.selectedTargetID = targets.first?.id
                 }
                 lastRefresh = Date()
                 message = "\(targets.count) target repos, \(dirtyCount) dirty"
@@ -167,7 +170,30 @@ final class KitCompanionStore: ObservableObject {
     }
 
     func select(_ target: KitTarget) {
-        selectedTargetID = target.id
+        selectTargetID(target.id)
+    }
+
+    func selectTargetID(_ targetID: String?) {
+        if selectedTargetID == targetID {
+            if detail == nil, let target = targets.first(where: { $0.id == targetID }) {
+                loadDetail(for: target)
+            }
+            return
+        }
+
+        selectedTargetID = targetID
+        detail = nil
+        updatePreview = nil
+        isConfirmingCloseoutFix = false
+        commandOutput = nil
+        if !isRunningCloseoutFix {
+            closeoutFixPayload = nil
+            closeoutFixEvents = []
+        }
+
+        guard let target = targets.first(where: { $0.id == targetID }) else {
+            return
+        }
         loadDetail(for: target)
     }
 
@@ -179,9 +205,8 @@ final class KitCompanionStore: ObservableObject {
     }
 
     func loadDetail(for target: KitTarget) {
-        guard !isLoadingDetail else {
-            return
-        }
+        detailLoadGeneration += 1
+        let generation = detailLoadGeneration
         isLoadingDetail = true
         errorMessage = nil
 
@@ -202,9 +227,19 @@ final class KitCompanionStore: ObservableObject {
                     arguments: ["closeout-plan", "--repo", target.root, "--json"],
                     kitPath: KitSettings.kitBinaryPath()
                 )
-                detail = try await RepoDetail(target: target, status: status, start: start, closeout: closeout)
+                let loadedDetail = try await RepoDetail(target: target, status: status, start: start, closeout: closeout)
+                guard generation == detailLoadGeneration, selectedTargetID == target.id else {
+                    return
+                }
+                detail = loadedDetail
             } catch {
+                guard generation == detailLoadGeneration else {
+                    return
+                }
                 errorMessage = error.localizedDescription
+            }
+            guard generation == detailLoadGeneration else {
+                return
             }
             isLoadingDetail = false
         }

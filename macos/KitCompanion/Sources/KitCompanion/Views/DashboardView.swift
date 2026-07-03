@@ -108,6 +108,32 @@ private struct DetailPane: View {
         } message: {
             Text("Kit will run closeout-fix with --apply for the selected target and stream commits, pushes, receipts, and blockers back into this window.")
         }
+        .confirmationDialog(
+            "Run batch guided closeout?",
+            isPresented: $store.isConfirmingBatchCloseout,
+            titleVisibility: .visible
+        ) {
+            Button("Run \(store.batchCloseoutCandidates.count) closeout job\(store.batchCloseoutCandidates.count == 1 ? "" : "s")", role: .destructive) {
+                store.runBatchGuidedCloseout()
+            }
+            Button("Cancel", role: .cancel) {}
+        } message: {
+            Text("Kit will run guided closeout for dirty target repos with a concurrency limit of two jobs. Each target gets its own job card and receipt.")
+        }
+        .confirmationDialog(
+            store.pendingWriteAction?.title ?? "Apply write?",
+            isPresented: $store.isConfirmingWriteAction,
+            titleVisibility: .visible
+        ) {
+            Button("Apply", role: .destructive) {
+                store.confirmPendingWriteAction()
+            }
+            Button("Cancel", role: .cancel) {
+                store.cancelPendingWriteAction()
+            }
+        } message: {
+            Text(store.pendingWriteAction?.confirmation ?? "Kit will run an allowlisted write command.")
+        }
     }
 
     private var header: some View {
@@ -173,7 +199,7 @@ private struct RepoOverviewView: View {
     let detail: RepoDetail
 
     private var hasCloseoutActivity: Bool {
-        store.isRunningCloseoutFix || store.closeoutFixPayload != nil || !store.closeoutFixEvents.isEmpty
+        !store.closeoutJobs(for: detail.target).isEmpty
     }
 
     var body: some View {
@@ -182,19 +208,15 @@ private struct RepoOverviewView: View {
                 statusStrip
                 RecommendedActionPanel(store: store, detail: detail)
 
-                if let blockers = detail.closeout?.claimBlockers, !blockers.isEmpty {
+                if let blockers = closeoutBlockers(detail), !blockers.isEmpty {
                     BlockersPanel(blockers: blockers)
                 }
 
                 NextCommandsPanel(store: store, steps: detail.start?.nextSteps ?? [])
 
                 if hasCloseoutActivity {
-                    DisclosureGroup("Closeout Fix Activity") {
-                        CloseoutFixJobView(
-                            payload: store.closeoutFixPayload,
-                            events: store.closeoutFixEvents,
-                            isRunning: store.isRunningCloseoutFix
-                        )
+                    DisclosureGroup("Closeout Jobs") {
+                        CloseoutJobsPanel(jobs: store.closeoutJobs(for: detail.target))
                         .padding(.top, 8)
                     }
                 }
@@ -208,6 +230,13 @@ private struct RepoOverviewView: View {
             }
             .frame(maxWidth: .infinity, alignment: .leading)
         }
+    }
+
+    private func closeoutBlockers(_ detail: RepoDetail) -> [CloseoutPayload.Blocker]? {
+        if let explanations = detail.closeout?.blockerExplanations, !explanations.isEmpty {
+            return explanations
+        }
+        return detail.closeout?.claimBlockers
     }
 
     private var statusStrip: some View {
@@ -308,11 +337,18 @@ private struct RecommendedActionPanel: View {
     }
 
     private var blockers: [CloseoutPayload.Blocker] {
-        detail.closeout?.claimBlockers ?? []
+        if let explanations = detail.closeout?.blockerExplanations, !explanations.isEmpty {
+            return explanations
+        }
+        return detail.closeout?.claimBlockers ?? []
     }
 
     private var nextAction: CloseoutPayload.NextAction? {
         detail.closeout?.nextAction
+    }
+
+    private var summary: CloseoutPayload.HumanSummary? {
+        detail.closeout?.humanSummary
     }
 
     private var driftWarns: Bool {
@@ -326,6 +362,18 @@ private struct RecommendedActionPanel: View {
             Text(message)
                 .foregroundStyle(.secondary)
                 .fixedSize(horizontal: false, vertical: true)
+            if let why = summary?.whyItBlocks, !blockers.isEmpty {
+                Text(why)
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+            if let action = summary?.recommendedAction, !blockers.isEmpty {
+                Text(action)
+                    .font(.caption.weight(.semibold))
+                    .foregroundStyle(.secondary)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
 
             HStack(spacing: 8) {
                 if isDirty || !blockers.isEmpty {
@@ -334,7 +382,7 @@ private struct RecommendedActionPanel: View {
                     } label: {
                         Label("Run Guided Closeout", systemImage: "wand.and.stars")
                     }
-                    .disabled(store.selectedTarget == nil || store.isRunningCloseoutFix)
+                    .disabled(store.selectedTarget == nil || store.isCloseoutRunning(for: detail.target))
                 }
 
                 if let command = nextAction?.command {
@@ -368,7 +416,7 @@ private struct RecommendedActionPanel: View {
             return "Dirty repo closeout"
         }
         if !blockers.isEmpty {
-            return "Closeout blockers"
+            return summary?.title ?? "Closeout blockers"
         }
         if driftWarns {
             return "Kit update available"
@@ -384,7 +432,7 @@ private struct RecommendedActionPanel: View {
             return "\(dirtyCount) changed file\(dirtyCount == 1 ? "" : "s") reported. Guided closeout is available after confirmation."
         }
         if let blocker = blockers.first {
-            return blocker.message ?? blocker.code ?? "Closeout has blockers."
+            return summary?.plainReason ?? blocker.plainReason ?? blocker.message ?? blocker.code ?? "Closeout has blockers."
         }
         if driftWarns {
             return detail.status?.kitDrift?.reason ?? "Preview the target update before applying it in Terminal."
@@ -421,11 +469,24 @@ private struct BlockersPanel: View {
                     Image(systemName: "exclamationmark.circle")
                         .foregroundStyle(.orange)
                     VStack(alignment: .leading, spacing: 2) {
-                        Text(blocker.code ?? "blocker")
+                        Text(blocker.title ?? blocker.code ?? "blocker")
                             .font(.callout.weight(.semibold))
-                        Text(blocker.message ?? "")
-                            .foregroundStyle(.secondary)
-                            .fixedSize(horizontal: false, vertical: true)
+                        if let plainReason = blocker.plainReason ?? blocker.message {
+                            Text(plainReason)
+                                .foregroundStyle(.secondary)
+                                .fixedSize(horizontal: false, vertical: true)
+                        }
+                        if let recommendedAction = blocker.recommendedAction {
+                            Text(recommendedAction)
+                                .font(.caption)
+                                .foregroundStyle(.secondary)
+                                .fixedSize(horizontal: false, vertical: true)
+                        }
+                        if let code = blocker.code {
+                            Text(code)
+                                .font(.caption.monospaced())
+                                .foregroundStyle(.tertiary)
+                        }
                     }
                 }
             }
@@ -472,23 +533,59 @@ private struct NextCommandsPanel: View {
     }
 }
 
+struct CloseoutJobsPanel: View {
+    let jobs: [CloseoutFixJob]
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            if jobs.isEmpty {
+                Text("No closeout jobs yet.")
+                    .foregroundStyle(.secondary)
+            } else {
+                ForEach(jobs) { job in
+                    CloseoutFixJobView(job: job)
+                }
+            }
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+    }
+}
+
 private struct CloseoutFixJobView: View {
-    let payload: CloseoutFixPayload?
-    let events: [CloseoutFixEvent]
-    let isRunning: Bool
+    let job: CloseoutFixJob
+
+    private var payload: CloseoutFixPayload? {
+        job.payload
+    }
+
+    private var events: [CloseoutFixEvent] {
+        job.events
+    }
+
+    private var isRunning: Bool {
+        job.isRunning
+    }
 
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
             HStack {
-                Text("Closeout Fix")
+                VStack(alignment: .leading, spacing: 2) {
+                    Text(job.targetName)
+                        .font(.headline)
+                    Text(KitDisplay.shortPath(job.targetRoot))
+                        .font(.caption.monospaced())
+                        .foregroundStyle(.secondary)
+                        .lineLimit(1)
+                        .truncationMode(.middle)
+                }
+                Spacer()
+                Text(job.statusText)
                     .font(.headline)
+                    .foregroundStyle(payload?.result == "applied" ? .green : .secondary)
                 if isRunning {
                     ProgressView()
                         .controlSize(.small)
                 }
-                Spacer()
-                Text(payload?.result ?? "running")
-                    .foregroundStyle(payload?.result == "applied" ? .green : .secondary)
             }
 
             if let jobDir = payload?.jobDir {
@@ -497,6 +594,25 @@ private struct CloseoutFixJobView: View {
                     .foregroundStyle(.secondary)
                     .lineLimit(1)
                     .truncationMode(.middle)
+            }
+
+            if let summary = payload?.humanSummary {
+                VStack(alignment: .leading, spacing: 4) {
+                    Text(summary.title ?? "Closeout result")
+                        .font(.subheadline.weight(.semibold))
+                    if let plainReason = summary.plainReason {
+                        Text(plainReason)
+                            .font(.callout)
+                            .foregroundStyle(.secondary)
+                            .fixedSize(horizontal: false, vertical: true)
+                    }
+                    if let recommendedAction = summary.recommendedAction {
+                        Text(recommendedAction)
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                            .fixedSize(horizontal: false, vertical: true)
+                    }
+                }
             }
 
             ForEach(events.suffix(4)) { event in
@@ -550,7 +666,21 @@ private struct CloseoutFixJobView: View {
                 }
             }
 
-            if let blockers = payload?.blockers, !blockers.isEmpty {
+            if let explanations = payload?.blockerExplanations, !explanations.isEmpty {
+                Text("Blockers")
+                    .font(.subheadline.weight(.semibold))
+                ForEach(explanations.prefix(5)) { blocker in
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text(blocker.title ?? blocker.code ?? "blocker")
+                            .font(.caption.weight(.semibold))
+                            .foregroundStyle(.orange)
+                        Text(blocker.recommendedAction ?? blocker.plainReason ?? blocker.message ?? "")
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                            .lineLimit(2)
+                    }
+                }
+            } else if let blockers = payload?.blockers, !blockers.isEmpty {
                 Text("Blockers")
                     .font(.subheadline.weight(.semibold))
                 ForEach(blockers.prefix(5), id: \.self) { blocker in
@@ -560,6 +690,20 @@ private struct CloseoutFixJobView: View {
                         .lineLimit(2)
                 }
             }
+
+            if let error = job.errorMessage {
+                Text(error)
+                    .font(.caption)
+                    .foregroundStyle(.red)
+                    .lineLimit(3)
+            }
+        }
+        .padding(10)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(Color(nsColor: .controlBackgroundColor), in: RoundedRectangle(cornerRadius: 8))
+        .overlay {
+            RoundedRectangle(cornerRadius: 8)
+                .stroke(Color(nsColor: .separatorColor), lineWidth: 0.5)
         }
     }
 }

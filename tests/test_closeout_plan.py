@@ -120,6 +120,10 @@ class CloseoutPlanTests(unittest.TestCase):
             self.assertEqual(payload["next_action"]["command"], "git status --short")
             blocker_codes = {item["code"] for item in payload["claim_blockers"]}
             self.assertIn("dirty_primary_checkout", blocker_codes)
+            self.assertEqual(payload["human_summary"]["title"], "Closeout blocked: source changes need integration")
+            self.assertIn("preserve real work", payload["human_summary"]["recommended_action"])
+            explanation_codes = {item["code"] for item in payload["blocker_explanations"]}
+            self.assertIn("dirty_primary_checkout", explanation_codes)
             self.assertEqual(payload["dirty_file_groups"][0]["group"], "(root)")
             self.assertEqual(payload["dirty_file_groups"][0]["files"][0]["path"], "README.md")
 
@@ -161,6 +165,7 @@ class CloseoutPlanTests(unittest.TestCase):
             self.assertEqual(payload["completion_state"], "needs-kit-review")
             blocker_codes = {item["code"] for item in payload["claim_blockers"]}
             self.assertIn("kit_managed_review", blocker_codes)
+            self.assertIn("managed-file proposals", payload["human_summary"]["plain_reason"])
 
     def test_closeout_plan_prioritizes_repo_aware_worktree_prune(self):
         with tempfile.TemporaryDirectory() as tmp:
@@ -273,6 +278,11 @@ class CloseoutPlanTests(unittest.TestCase):
             )
             blocker_codes = {item["code"] for item in payload["claim_blockers"]}
             self.assertIn("missing_final_receipts", blocker_codes)
+            missing_receipt = next(
+                item for item in payload["blocker_explanations"] if item["code"] == "missing_final_receipts"
+            )
+            self.assertEqual(missing_receipt["title"], "Missing task receipts")
+            self.assertIn("durable receipts", payload["human_summary"]["recommended_action"])
 
 
 if __name__ == "__main__":

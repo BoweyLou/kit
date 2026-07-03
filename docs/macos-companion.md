@@ -18,11 +18,18 @@ The companion app reads the same JSON contracts used by agents and scripts:
 - `kit closeout-plan --repo <repo> --json`
 - `kit closeout-fix --repo <repo> --apply --jsonl`
 - `kit update --all --dry-run --json`
+- `kit target import --root <selected-target> --apply --json`
+- `kit target prune-missing --apply --json`
+- `kit worktree prune --root <selected-target> --apply --json`
+- `kit target update-all --apply --json`
 
 The app opens to a selected-repo overview. The overview shows worktree status,
 closeout state, kit drift, selected mode, one recommended action, closeout
 blockers, copyable next commands, and collapsed technical activity for
-closeout-fix jobs and update previews. The header keeps target actions, batch
+closeout-fix jobs and update previews. The Batch tab can run dirty-repo guided
+closeout jobs with a concurrency limit of two, and it exposes explicit
+allowlisted apply buttons for target registry cleanup, clean-target updates,
+and clean disposable worktree pruning. The header keeps target actions, batch
 previews, and app update checks separate so a target update dry-run is not
 confused with a Sparkle app update check.
 
@@ -80,25 +87,45 @@ commands use CLI-supported no-write flags such as `--dry-run` and
 `--no-update`. The runner blocks mutating command flags such as `--apply`,
 `--write`, `--write-sidecar`, and `--global`.
 
-Guided Closeout is the only write-capable app exception. It is shown from the
-selected target overview when the repo is dirty or closeout has blockers, and
-requires confirmation before starting. It uses a separate allowlisted runner
-for exactly:
+Guided Closeout and Batch Maintenance are the only write-capable app
+exceptions. Guided Closeout is shown from the selected target overview when the
+repo is dirty or closeout has blockers, and requires confirmation before
+starting. The Batch tab can run guided closeout for multiple dirty targets with
+at most two concurrent jobs. Each repo gets its own job card, streamed events,
+result payload, receipt path, and blocker explanations.
+
+The closeout runner accepts exactly:
 
 ```bash
 kit closeout-fix --repo <selected-target> --apply --jsonl
 ```
 
 That runner rejects custom agent commands and arbitrary mutating command
-shapes. The job streams JSONL status into the app and shows commits, pushes,
-receipt paths, pruned worktrees, and blockers. The generic command browser
-continues to run `closeout-fix` preview-only. All other write workflows remain
-Terminal handoffs.
+shapes. A blocked guided closeout is rendered as a workflow result with a human
+reason and next action, not as a generic process error. The generic command
+browser continues to run `closeout-fix` preview-only.
+
+Batch Maintenance uses a second allowlisted write runner for exactly:
+
+```bash
+kit target import --root <selected-target> --apply --json
+kit target prune-missing --apply --json
+kit worktree prune --root <selected-target> --apply --json
+kit target update-all --apply --json
+```
+
+These actions still require app confirmation. `target update-all --apply`
+relies on the CLI's clean-target gate and skips dirty, missing, or
+no-longer-enrolled targets. `worktree prune --apply` removes only eligible clean
+linked worktrees under agent-worktrees paths. Setup, install, global tool
+updates, self updates, custom closeout agents, arbitrary target writes, and
+`--write-sidecar` commands remain Terminal handoffs.
 
 ## Build Locally
 
 ```bash
 make macos-build
+make macos-install
 make macos-test
 ```
 
@@ -109,6 +136,17 @@ Testing, so this target uses `swiftc` assertions instead of `swift test`.
 
 The app defaults to `~/.local/bin/kit`. If the launcher lives elsewhere, set it
 in Settings or launch with `KIT_COMPANION_KIT_PATH=/path/to/kit`.
+
+`make macos-install` rebuilds the app, replaces the installed bundle at
+`/Applications/KitCompanion.app` by default, and relaunches it when it was
+already running. Set `KIT_COMPANION_INSTALL_PATH=~/Applications/KitCompanion.app`
+to use a per-user install path.
+
+When `kit update --global` or `kit self update` runs on macOS, the updater also
+refreshes the installed Kit Companion app if it finds the bundle in
+`/Applications` or `~/Applications`. Machines without the optional app skip that
+step. Set `KIT_COMPANION_UPDATE_ON_GLOBAL_UPDATE=0` to disable the automatic app
+refresh for one global update.
 
 When launched from Finder or Login Items, the app supplies a stable command
 search path that prefers Homebrew and Python framework locations before

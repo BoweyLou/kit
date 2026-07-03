@@ -1,4 +1,4 @@
-.PHONY: help workflow-help test cli-ux-fixtures docs-freshness docs-check version-check workflow-source-check workflow-source-export macos-build macos-test macos-dmg macos-sparkle macos-package-check
+.PHONY: help workflow-help test cli-ux-fixtures docs-freshness docs-check version-check workflow-source-check workflow-source-export macos-build macos-install macos-test macos-dmg macos-sparkle macos-package-check
 
 help: workflow-help
 
@@ -77,6 +77,7 @@ workflow-help:
 		"" \
 		"Optional macOS companion:" \
 		"   make macos-build" \
+		"   make macos-install" \
 		"   make macos-test" \
 		"   make macos-dmg"
 
@@ -104,6 +105,9 @@ version-check:
 
 macos-build:
 	./script/build_macos_app.sh
+
+macos-install:
+	./script/install_macos_app.sh
 
 macos-test:
 	swiftc -o /tmp/KitCompanionChecks \

@@ -45,8 +45,7 @@ final class KitCompanionStore: ObservableObject {
     @Published var selectedTargetID: String?
     @Published var detail: RepoDetail?
     @Published var updatePreview: UpdatePreviewPayload?
-    @Published var closeoutFixPayload: CloseoutFixPayload?
-    @Published var closeoutFixEvents: [CloseoutFixEvent] = []
+    @Published var closeoutFixJobs: [CloseoutFixJob] = []
     @Published var commandMap: CommandMapPayload?
     @Published var selectedCommandID: String?
     @Published var commandScope: CommandBrowserScope = .recommended
@@ -57,8 +56,12 @@ final class KitCompanionStore: ObservableObject {
     @Published var isLoadingDetail = false
     @Published var isLoadingCommandMap = false
     @Published var isRunningCommand = false
-    @Published var isRunningCloseoutFix = false
+    @Published var isBatchCloseoutRunning = false
     @Published var isConfirmingCloseoutFix = false
+    @Published var isConfirmingBatchCloseout = false
+    @Published var isConfirmingWriteAction = false
+    @Published var pendingWriteAction: KitWriteAction?
+    @Published var isRunningWriteCommand = false
     @Published var lastRefresh: Date?
     @Published var isCheckingForUpdates = false
     @Published var message: String?
@@ -67,6 +70,8 @@ final class KitCompanionStore: ObservableObject {
     private let runner: KitProcessRunner
     private let updateService: SparkleUpdateService
     private var detailLoadGeneration = 0
+    private var batchCloseoutQueue: [KitTarget] = []
+    private let closeoutConcurrencyLimit = 2
 
     init(runner: KitProcessRunner = KitProcessRunner(), updateService: SparkleUpdateService? = nil) {
         self.runner = runner
@@ -110,6 +115,16 @@ final class KitCompanionStore: ObservableObject {
 
     var dirtyCount: Int {
         targets.filter(\.isDirty).count
+    }
+
+    var isRunningCloseoutFix: Bool {
+        closeoutFixJobs.contains { $0.isRunning }
+    }
+
+    var batchCloseoutCandidates: [KitTarget] {
+        targets.filter { target in
+            target.isDirty && !isCloseoutRunning(for: target)
+        }
     }
 
     var menuTitle: String {
@@ -185,11 +200,9 @@ final class KitCompanionStore: ObservableObject {
         detail = nil
         updatePreview = nil
         isConfirmingCloseoutFix = false
+        isConfirmingBatchCloseout = false
+        isConfirmingWriteAction = false
         commandOutput = nil
-        if !isRunningCloseoutFix {
-            closeoutFixPayload = nil
-            closeoutFixEvents = []
-        }
 
         guard let target = targets.first(where: { $0.id == targetID }) else {
             return
@@ -320,45 +333,215 @@ final class KitCompanionStore: ObservableObject {
         guard let selectedTarget else {
             return
         }
-        guard !isRunningCloseoutFix else {
+        runCloseoutFix(for: selectedTarget)
+    }
+
+    func runBatchGuidedCloseout() {
+        let candidates = batchCloseoutCandidates
+        guard !candidates.isEmpty else {
+            return
+        }
+
+        isConfirmingBatchCloseout = false
+        isBatchCloseoutRunning = true
+        batchCloseoutQueue = candidates
+        errorMessage = nil
+        message = "Running guided closeout for \(candidates.count) target\(candidates.count == 1 ? "" : "s")"
+        launchNextBatchCloseoutsIfNeeded()
+    }
+
+    func requestCloseoutFixConfirmation() {
+        guard let selectedTarget, !isCloseoutRunning(for: selectedTarget) else {
+            return
+        }
+        isConfirmingCloseoutFix = true
+    }
+
+    func requestBatchCloseoutConfirmation() {
+        guard !batchCloseoutCandidates.isEmpty else {
+            return
+        }
+        isConfirmingBatchCloseout = true
+    }
+
+    func isCloseoutRunning(for target: KitTarget) -> Bool {
+        closeoutFixJobs.contains { $0.targetRoot == target.root && $0.isRunning }
+    }
+
+    func closeoutJobs(for target: KitTarget) -> [CloseoutFixJob] {
+        closeoutFixJobs.filter { $0.targetRoot == target.root }
+    }
+
+    private func launchNextBatchCloseoutsIfNeeded() {
+        while isBatchCloseoutRunning,
+              closeoutFixJobs.filter(\.isRunning).count < closeoutConcurrencyLimit,
+              !batchCloseoutQueue.isEmpty {
+            let next = batchCloseoutQueue.removeFirst()
+            runCloseoutFix(for: next, scheduledFromBatch: true)
+        }
+
+        if isBatchCloseoutRunning,
+           batchCloseoutQueue.isEmpty,
+           !isRunningCloseoutFix {
+            isBatchCloseoutRunning = false
+            message = "Batch guided closeout finished"
+            refreshTargets()
+        }
+    }
+
+    private func runCloseoutFix(for target: KitTarget, scheduledFromBatch: Bool = false) {
+        guard !isCloseoutRunning(for: target) else {
             return
         }
 
         isConfirmingCloseoutFix = false
-        isRunningCloseoutFix = true
-        closeoutFixPayload = nil
-        closeoutFixEvents = []
+        let jobID = UUID().uuidString
+        let job = CloseoutFixJob(
+            id: jobID,
+            targetName: target.name,
+            targetRoot: target.root,
+            startedAt: Date(),
+            isRunning: true,
+            events: [],
+            payload: nil,
+            errorMessage: nil
+        )
+        closeoutFixJobs.insert(job, at: 0)
         errorMessage = nil
-        message = "Running closeout fix"
+        message = "Running closeout fix for \(target.name)"
 
         Task {
             do {
                 let payload = try await runner.runCloseoutFix(
-                    arguments: ["closeout-fix", "--repo", selectedTarget.root, "--apply", "--jsonl"],
+                    arguments: ["closeout-fix", "--repo", target.root, "--apply", "--jsonl"],
                     kitPath: KitSettings.kitBinaryPath(),
-                    workingDirectory: selectedTarget.root
+                    workingDirectory: target.root
                 ) { event in
                     Task { @MainActor in
-                        self.closeoutFixEvents.append(event)
+                        self.appendCloseoutEvent(event, to: jobID)
                     }
                 }
-                closeoutFixPayload = payload
-                message = payload.result == "applied" ? "Closeout fix applied" : "Closeout fix blocked"
-                loadDetail(for: selectedTarget)
+                updateCloseoutJob(jobID) { job in
+                    job.payload = payload
+                    job.isRunning = false
+                }
+                message = "\(target.name): \(payload.result == "applied" ? "closeout fix applied" : "closeout fix blocked")"
+                if selectedTargetID == target.id {
+                    loadDetail(for: target)
+                }
+            } catch {
+                updateCloseoutJob(jobID) { job in
+                    job.errorMessage = error.localizedDescription
+                    job.isRunning = false
+                }
+                errorMessage = error.localizedDescription
+            }
+            if scheduledFromBatch {
+                launchNextBatchCloseoutsIfNeeded()
+            } else {
+                refreshTargets()
+            }
+        }
+    }
+
+    private func appendCloseoutEvent(_ event: CloseoutFixEvent, to jobID: String) {
+        updateCloseoutJob(jobID) { job in
+            job.events.append(event)
+        }
+    }
+
+    private func updateCloseoutJob(_ jobID: String, mutate: (inout CloseoutFixJob) -> Void) {
+        guard let index = closeoutFixJobs.firstIndex(where: { $0.id == jobID }) else {
+            return
+        }
+        mutate(&closeoutFixJobs[index])
+    }
+
+    func requestTargetImportApply() {
+        guard let selectedTarget else {
+            return
+        }
+        pendingWriteAction = KitWriteAction(
+            id: "target-import",
+            title: "Apply Target Import",
+            confirmation: "Kit will import primary repos under the selected target root into the local batch registry. Agent worktrees and archive paths remain excluded by the CLI.",
+            arguments: ["target", "import", "--root", selectedTarget.root, "--apply", "--json"],
+            workingDirectory: selectedTarget.root,
+            successMessage: "Target import applied"
+        )
+        isConfirmingWriteAction = true
+    }
+
+    func requestTargetPruneMissingApply() {
+        pendingWriteAction = KitWriteAction(
+            id: "target-prune-missing",
+            title: "Apply Registry Prune",
+            confirmation: "Kit will remove stale missing target entries from the local batch registry. It will not mutate target repos.",
+            arguments: ["target", "prune-missing", "--apply", "--json"],
+            workingDirectory: nil,
+            successMessage: "Missing target prune applied"
+        )
+        isConfirmingWriteAction = true
+    }
+
+    func requestWorktreePruneApply() {
+        guard let selectedTarget else {
+            return
+        }
+        pendingWriteAction = KitWriteAction(
+            id: "worktree-prune",
+            title: "Apply Worktree Prune",
+            confirmation: "Kit will remove only eligible clean linked worktrees under agent-worktrees paths for the selected root. Dirty and standalone repos are reported, not removed.",
+            arguments: ["worktree", "prune", "--root", selectedTarget.root, "--apply", "--json"],
+            workingDirectory: selectedTarget.root,
+            successMessage: "Worktree prune applied"
+        )
+        isConfirmingWriteAction = true
+    }
+
+    func requestTargetUpdateAllApply() {
+        pendingWriteAction = KitWriteAction(
+            id: "target-update-all",
+            title: "Apply Clean Target Updates",
+            confirmation: "Kit will apply updates to clean registered targets and skip dirty, missing, or no-longer-enrolled targets.",
+            arguments: ["target", "update-all", "--apply", "--json"],
+            workingDirectory: nil,
+            successMessage: "Clean target updates applied"
+        )
+        isConfirmingWriteAction = true
+    }
+
+    func confirmPendingWriteAction() {
+        guard let action = pendingWriteAction else {
+            return
+        }
+        pendingWriteAction = nil
+        isConfirmingWriteAction = false
+        isRunningWriteCommand = true
+        errorMessage = nil
+        commandOutput = nil
+        message = "Running \(action.title)"
+
+        Task {
+            do {
+                commandOutput = try await runner.runAllowedWriteJSONText(
+                    arguments: action.arguments,
+                    kitPath: KitSettings.kitBinaryPath(),
+                    workingDirectory: action.workingDirectory
+                )
+                message = action.successMessage
                 refreshTargets()
             } catch {
                 errorMessage = error.localizedDescription
                 message = nil
             }
-            isRunningCloseoutFix = false
+            isRunningWriteCommand = false
         }
     }
 
-    func requestCloseoutFixConfirmation() {
-        guard selectedTarget != nil, !isRunningCloseoutFix else {
-            return
-        }
-        isConfirmingCloseoutFix = true
+    func cancelPendingWriteAction() {
+        pendingWriteAction = nil
+        isConfirmingWriteAction = false
     }
 
     func copyCommand(_ command: CommandEntry? = nil) {

@@ -236,6 +236,24 @@ final class KitProcessRunner {
         return Self.prettyPrintedJSON(jsonData)
     }
 
+    func runAllowedWriteJSONText(arguments: [String], kitPath: String, workingDirectory: String? = nil) async throws -> String {
+        try Self.validateAllowedWriteCommand(arguments)
+        let result = try await run(arguments: arguments, kitPath: kitPath, workingDirectory: workingDirectory)
+        let command = renderedCommand(arguments)
+        let jsonData: Data
+        do {
+            jsonData = try jsonObjectData(from: result.stdout, command: command)
+        } catch {
+            if !result.succeeded {
+                let diagnostic = result.stderr.isEmpty ? Self.outputExcerpt(result.stdout) : result.stderr
+                throw RunnerError.commandFailed(command, result.exitCode, diagnostic)
+            }
+            throw error
+        }
+
+        return Self.prettyPrintedJSON(jsonData)
+    }
+
     func runCloseoutFix(
         arguments: [String],
         kitPath: String,
@@ -433,6 +451,55 @@ final class KitProcessRunner {
         if !sawRepo || !sawApply || !sawJSONL {
             throw RunnerError.blockedMutatingCommand(command)
         }
+    }
+
+    static func validateAllowedWriteCommand(_ arguments: [String]) throws {
+        let command = arguments.joined(separator: " ")
+
+        func reject() throws -> Never {
+            throw RunnerError.blockedMutatingCommand(command)
+        }
+
+        guard !arguments.contains("--global"),
+              !arguments.contains("--write"),
+              !arguments.contains("--write-sidecar"),
+              !arguments.contains("--force") else {
+            try reject()
+        }
+
+        guard arguments.contains("--apply"), arguments.contains("--json") else {
+            try reject()
+        }
+
+        if arguments.count == 6,
+           arguments[0] == "target",
+           arguments[1] == "import",
+           arguments[2] == "--root",
+           !arguments[3].isEmpty,
+           arguments[4] == "--apply",
+           arguments[5] == "--json" {
+            return
+        }
+
+        if arguments == ["target", "prune-missing", "--apply", "--json"] {
+            return
+        }
+
+        if arguments == ["target", "update-all", "--apply", "--json"] {
+            return
+        }
+
+        if arguments.count == 6,
+           arguments[0] == "worktree",
+           arguments[1] == "prune",
+           arguments[2] == "--root",
+           !arguments[3].isEmpty,
+           arguments[4] == "--apply",
+           arguments[5] == "--json" {
+            return
+        }
+
+        try reject()
     }
 
     static func validateReadOnlyCommand(_ arguments: [String]) throws {

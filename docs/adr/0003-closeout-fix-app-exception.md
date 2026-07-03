@@ -2,7 +2,7 @@
 
 ## Status
 
-Accepted
+Accepted; extended by [ADR 0004](0004-batch-maintenance-app-write-exceptions.md)
 
 ## Context
 

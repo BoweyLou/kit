@@ -483,6 +483,10 @@ Examples:
 - `kit closeout-fix --repo /path/to/repo --apply --jsonl`
 - `kit closeout-fix --repo /path/to/repo --apply --no-push --json`
 
+Behavior notes:
+
+- Blocked apply runs are first-class workflow outcomes. The final JSON/JSONL payload includes result=blocked, human_summary, blocker_explanations, and result_path; the shell exit code is distinct from supervisor or tool failure.
+
 Flags:
 
 - `--repo` - Target git repository. Defaults to the current directory.
@@ -512,6 +516,10 @@ Examples:
 
 - `kit closeout-plan --repo /path/to/repo --json`
 - `kit closeout-plan --repo /path/to/repo --strict`
+
+Behavior notes:
+
+- JSON output includes human_summary and blocker_explanations so callers can show the user what is blocked, why it blocks closeout, and the next safe action.
 
 Flags:
 
@@ -1125,6 +1133,10 @@ Fetch and switch the global tool checkout to a ref.
 Examples:
 
 - `kit self update --json`
+
+Behavior notes:
+
+- On macOS, global updates refresh an installed Kit Companion app from the updated checkout. Machines without the app skip this optional step.
 
 Flags:
 

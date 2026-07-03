@@ -16,6 +16,8 @@ from pathlib import Path
 from typing import Any, Callable
 import hashlib
 
+import closeout_explanations
+
 
 STATE_APP_DIR = "repo-contract-kit"
 SIDECAR_DIR_KEYS = (
@@ -35,6 +37,7 @@ GIT_IDENTITY = [
     "user.email=kit-closeout-fix@example.invalid",
 ]
 EVENTS_PAYLOAD_LIMIT = 800
+CLOSEOUT_BLOCKED_EXIT = 2
 
 
 EventSink = Callable[[dict[str, Any]], None]
@@ -394,8 +397,12 @@ def preview_payload(args: Any, repo: Path, cli_path: Path) -> tuple[dict[str, An
         "sidecar_writes": sidecar_writes(False, reason="closeout-fix preview performs no sidecar writes"),
         "sidecar_state": state,
         "next_command": f"kit closeout-fix --repo {shlex.quote(str(repo))} --apply --jsonl",
-        "exit_code": 1 if blockers else 0,
+        "exit_code": CLOSEOUT_BLOCKED_EXIT if blockers else 0,
     }
+    payload["blocker_explanations"] = closeout_explanations.explain_blockers(
+        [{"code": "closeout_blocked", "message": blocker, "count": 1} for blocker in blockers]
+    )
+    payload["human_summary"] = closeout_explanations.closeout_fix_human_summary(payload)
     if result.returncode != 0 and initial is None:
         payload["initial_closeout_error"] = {
             "exit_code": result.returncode,
@@ -586,8 +593,9 @@ def apply_payload(args: Any, repo: Path, cli_path: Path, event_sink: EventSink |
     job_dir = Path(state["paths"]["runs_dir"]) / "closeout-fix" / job_id
     job_dir.mkdir(parents=True, exist_ok=True)
     receipt_path = Path(state["paths"]["receipts_dir"]) / f"{job_id}-closeout-fix.json"
+    result_path = job_dir / "result.json"
     prompt_path = job_dir / "mission.md"
-    sidecar_paths = [*init_paths, str(job_dir), str(receipt_path)]
+    sidecar_paths = [*init_paths, str(job_dir), str(receipt_path), str(result_path)]
     emit(event_sink, {"event": "job-started", "job_id": job_id, "job_dir": str(job_dir), "repo": str(repo)})
 
     runner, runner_blockers = resolve_runner(args.agent, getattr(args, "agent_command", None))
@@ -665,6 +673,7 @@ def apply_payload(args: Any, repo: Path, cli_path: Path, event_sink: EventSink |
         "mode": "apply",
         "job_id": job_id,
         "job_dir": str(job_dir),
+        "result_path": str(result_path),
         "repo": str(repo),
         "created_at": now(),
         "runner": runner,
@@ -697,11 +706,109 @@ def apply_payload(args: Any, repo: Path, cli_path: Path, event_sink: EventSink |
         "target_repo_writes": target_repo_writes(bool(target_paths), paths=sorted(set(target_paths)), reason="agent commits, supervised prune, or push" if target_paths else "no target repo changes detected"),
         "sidecar_writes": sidecar_writes(True, paths=sorted(set(sidecar_paths)), reason="closeout-fix apply wrote job artifacts and receipt"),
         "sidecar_state": sidecar_state(repo),
-        "exit_code": 0 if result == "applied" else 1,
+        "exit_code": 0 if result == "applied" else CLOSEOUT_BLOCKED_EXIT,
     }
+    payload["blocker_explanations"] = (
+        (final or {}).get("blocker_explanations")
+        or closeout_explanations.explain_blockers(
+            [{"code": "closeout_blocked", "message": blocker, "count": 1} for blocker in blockers]
+        )
+    )
+    payload["human_summary"] = closeout_explanations.closeout_fix_human_summary(payload)
     write_json_file(receipt_path, payload)
+    write_json_file(result_path, payload)
+    emit(
+        event_sink,
+        {
+            "event": "job-finished",
+            "job_id": job_id,
+            "result": result,
+            "receipt": str(receipt_path),
+            "result_path": str(result_path),
+            "exit_code": payload["exit_code"],
+            "summary": payload["human_summary"],
+        },
+    )
     emit(event_sink, {"event": "job-completed", "job_id": job_id, "result": result, "receipt": str(receipt_path), "exit_code": payload["exit_code"]})
     return payload, payload["exit_code"]
+
+
+def failure_payload(args: Any, repo: Path, exc: BaseException, event_sink: EventSink | None = None) -> tuple[dict[str, Any], int]:
+    job_id = artifact_stamp()
+    message = safe_excerpt(str(exc) or exc.__class__.__name__)
+    mode = "apply" if getattr(args, "apply", False) else "preview"
+    sidecar_paths: list[str] = []
+    state = sidecar_state(repo)
+    job_dir = Path(state["paths"]["runs_dir"]) / "closeout-fix" / job_id
+    result_path = job_dir / "result.json"
+
+    sidecar_performed = False
+    if mode == "apply":
+        state, init_paths = ensure_sidecar(repo, "closeout-fix failure")
+        job_dir = Path(state["paths"]["runs_dir"]) / "closeout-fix" / job_id
+        job_dir.mkdir(parents=True, exist_ok=True)
+        result_path = job_dir / "result.json"
+        sidecar_paths = [*init_paths, str(job_dir), str(result_path)]
+        sidecar_performed = True
+
+    payload = {
+        "schema_version": 1,
+        "command": "closeout-fix",
+        "mode": mode,
+        "job_id": job_id,
+        "job_dir": str(job_dir),
+        "result_path": str(result_path) if sidecar_performed else None,
+        "repo": str(repo),
+        "created_at": now(),
+        "runner": None,
+        "initial_closeout": None,
+        "agent_result": None,
+        "commits": [],
+        "branches_pushed": [],
+        "worktrees_pruned": [],
+        "receipts": [],
+        "final_closeout": None,
+        "blockers": [f"closeout-fix failed before a normal terminal payload: {message}"],
+        "result": "failed",
+        "target_repo_writes": target_repo_writes(False, reason="closeout-fix failed before supervised target writes could be confirmed"),
+        "sidecar_writes": sidecar_writes(sidecar_performed, paths=sorted(set(sidecar_paths)), reason="closeout-fix failure payload" if sidecar_performed else "preview/no sidecar writes"),
+        "sidecar_state": state,
+        "exit_code": 1,
+    }
+    payload["blocker_explanations"] = closeout_explanations.explain_blockers(
+        [{"code": "external_blockers", "message": payload["blockers"][0], "count": 1}]
+    )
+    payload["human_summary"] = {
+        "title": "Guided closeout failed",
+        "status": "failed",
+        "plain_reason": "The closeout supervisor failed before it could produce a normal applied or blocked result.",
+        "why_it_blocks": "Kit cannot know what the guided workflow completed, so it treats the run as a tool failure rather than workflow evidence.",
+        "recommended_action": "Inspect the job output or rerun the closeout preview before trying apply mode again.",
+        "safe_next_command": f"kit closeout-fix --repo {shlex.quote(str(repo))} --json",
+        "completed": [],
+        "remaining": [
+            {
+                "code": "external_blockers",
+                "title": "Closeout supervisor failure",
+                "category": "tooling_or_policy",
+                "count": 1,
+            }
+        ],
+    }
+    if sidecar_performed:
+        write_json_file(result_path, payload)
+    emit(
+        event_sink,
+        {
+            "event": "job-finished",
+            "job_id": job_id,
+            "result": "failed",
+            "result_path": str(result_path) if sidecar_performed else None,
+            "exit_code": 1,
+            "summary": payload["human_summary"],
+        },
+    )
+    return payload, 1
 
 
 def render_text(payload: dict[str, Any]) -> str:
@@ -718,6 +825,14 @@ def render_text(payload: dict[str, Any]) -> str:
     if payload.get("blockers"):
         lines.append(" - blockers:")
         lines.extend(f"   - {blocker}" for blocker in payload["blockers"])
+    summary = payload.get("human_summary") or {}
+    if summary:
+        lines.append(" - explanation:")
+        lines.append(f"   - {summary.get('title')}: {summary.get('plain_reason')}")
+        if summary.get("why_it_blocks"):
+            lines.append(f"   - why: {summary.get('why_it_blocks')}")
+        if summary.get("recommended_action"):
+            lines.append(f"   - how to address: {summary.get('recommended_action')}")
     if payload.get("receipts"):
         lines.append(" - receipts:")
         lines.extend(f"   - {item.get('path')}" for item in payload["receipts"])

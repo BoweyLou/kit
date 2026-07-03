@@ -84,7 +84,9 @@ already has dirty Git work. Use `kit update --dry-run` to inspect the available
 update after you commit, park, or otherwise classify the dirty files.
 
 Remote/global updates are explicit. A global tool update does not rewrite
-target repos by itself.
+target repos by itself. On macOS, it does refresh the optional installed Kit
+Companion app when `/Applications/KitCompanion.app` or
+`~/Applications/KitCompanion.app` exists.
 
 Update the global cached tool:
 
@@ -93,7 +95,8 @@ kit update --global
 ```
 
 The global update summary reports the tool version transition first and keeps
-the source-ref transition as secondary provenance.
+the source-ref transition as secondary provenance. When the app refresh runs,
+the summary also reports the Kit Companion install path and version transition.
 
 Preview a target update:
 
@@ -137,6 +140,12 @@ reports stale missing entries, preview registry cleanup with
 `kit target prune-missing --dry-run`, then apply it with
 `kit target prune-missing --apply`.
 
+Kit Companion exposes these batch maintenance writes behind explicit
+confirmation in the Batch tab. The app can apply target import, prune missing
+registry entries, run clean-target updates, and prune clean disposable
+worktrees, but setup, install, global updates, self updates, and arbitrary
+write-sidecar commands remain Terminal handoffs.
+
 List every linked worktree for one repo before deciding what needs attention:
 
 ```bash
@@ -162,7 +171,10 @@ worktrees under `agent-worktrees` paths.
 `kit closeout-plan --json` now includes the same repo-aware audit under
 `worktree_prune`. When clean disposable worktrees are removable, the closeout
 next action points at the prune dry-run first and still reports dirty blocked
-worktrees plus task-ledger blockers separately.
+worktrees plus task-ledger blockers separately. Blocked closeout output also
+includes `human_summary` and `blocker_explanations`, which translate raw blocker
+codes into what is wrong, why Kit refuses to claim done, and how to address the
+block safely.
 
 For a supervised one-click closeout, use `closeout-fix`:
 
@@ -175,11 +187,17 @@ Preview is read-only. Apply mode launches a headless closeout agent for that
 repo, writes sidecar job receipts, groups dirty work into logical commits,
 prunes only eligible clean disposable worktrees, verifies final strict
 closeout, and pushes the branch. Add `--no-push` for a local-only CLI run.
+If the job makes partial progress but strict closeout still cannot pass, Kit
+returns `result=blocked` with a durable `result.json` in the sidecar job
+directory. That means the workflow ran but evidence or worktree blockers remain;
+`result=failed` is reserved for supervisor/tool errors.
 
-In Kit Companion, Guided Closeout is the only write-capable in-app exception.
+In Kit Companion, Guided Closeout is a dedicated write-capable app exception.
 After confirmation, it runs the apply-and-push job for the selected target and
 shows the resulting commits, pushed branches, receipts, pruned worktrees, and
-blockers.
+blocker explanations. The Batch tab can run guided closeout for multiple dirty
+targets with two concurrent jobs; each repo keeps its own job card and result
+payload.
 
 Review proposed replacements under `.doc-contract-kit/updates/` instead of
 copying them blindly over target-owned decisions.

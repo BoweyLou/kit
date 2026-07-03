@@ -150,6 +150,43 @@ struct StartPayload: Codable {
 }
 
 struct CloseoutPayload: Codable {
+    struct HumanSummary: Codable {
+        struct Remaining: Codable, Identifiable {
+            let id = UUID()
+            let code: String?
+            let title: String?
+            let category: String?
+            let count: Int?
+
+            enum CodingKeys: String, CodingKey {
+                case code
+                case title
+                case category
+                case count
+            }
+        }
+
+        let title: String?
+        let status: String?
+        let plainReason: String?
+        let whyItBlocks: String?
+        let recommendedAction: String?
+        let safeNextCommand: String?
+        let completed: [String]?
+        let remaining: [Remaining]?
+
+        enum CodingKeys: String, CodingKey {
+            case title
+            case status
+            case plainReason = "plain_reason"
+            case whyItBlocks = "why_it_blocks"
+            case recommendedAction = "recommended_action"
+            case safeNextCommand = "safe_next_command"
+            case completed
+            case remaining
+        }
+    }
+
     struct NextAction: Codable {
         let command: String?
         let mutating: Bool?
@@ -160,10 +197,26 @@ struct CloseoutPayload: Codable {
         let id = UUID()
         let code: String?
         let message: String?
+        let title: String?
+        let category: String?
+        let plainReason: String?
+        let whyItBlocks: String?
+        let recommendedAction: String?
+        let safeNextCommand: String?
+        let automationLevel: String?
+        let count: Int?
 
         enum CodingKeys: String, CodingKey {
             case code
             case message
+            case title
+            case category
+            case plainReason = "plain_reason"
+            case whyItBlocks = "why_it_blocks"
+            case recommendedAction = "recommended_action"
+            case safeNextCommand = "safe_next_command"
+            case automationLevel = "automation_level"
+            case count
         }
     }
 
@@ -171,12 +224,16 @@ struct CloseoutPayload: Codable {
     let completionState: String?
     let nextAction: NextAction?
     let claimBlockers: [Blocker]?
+    let blockerExplanations: [Blocker]?
+    let humanSummary: HumanSummary?
 
     enum CodingKeys: String, CodingKey {
         case canClaimDone = "can_claim_done"
         case completionState = "completion_state"
         case nextAction = "next_action"
         case claimBlockers = "claim_blockers"
+        case blockerExplanations = "blocker_explanations"
+        case humanSummary = "human_summary"
     }
 }
 
@@ -218,6 +275,8 @@ struct CloseoutFixEvent: Codable, Identifiable {
             return "\(count ?? 0) worktrees pruned"
         case "branch-pushed":
             return "Pushed \(branch ?? "branch")"
+        case "job-finished":
+            return "Job \(result ?? "finished")"
         case "job-completed":
             return "Job \(result ?? "completed")"
         default:
@@ -231,6 +290,7 @@ struct CloseoutFixPayload: Codable {
     let mode: String?
     let jobId: String?
     let jobDir: String?
+    let resultPath: String?
     let repo: String?
     let result: String?
     let commits: [CloseoutFixCommit]?
@@ -238,6 +298,8 @@ struct CloseoutFixPayload: Codable {
     let worktreesPruned: [CloseoutFixWorktree]?
     let receipts: [CloseoutFixReceipt]?
     let blockers: [String]?
+    let blockerExplanations: [CloseoutPayload.Blocker]?
+    let humanSummary: CloseoutPayload.HumanSummary?
     let exitCode: Int?
     let noPush: Bool?
 
@@ -246,6 +308,7 @@ struct CloseoutFixPayload: Codable {
         case mode
         case jobId = "job_id"
         case jobDir = "job_dir"
+        case resultPath = "result_path"
         case repo
         case result
         case commits
@@ -253,6 +316,8 @@ struct CloseoutFixPayload: Codable {
         case worktreesPruned = "worktrees_pruned"
         case receipts
         case blockers
+        case blockerExplanations = "blocker_explanations"
+        case humanSummary = "human_summary"
         case exitCode = "exit_code"
         case noPush = "no_push"
     }
@@ -307,6 +372,39 @@ struct CloseoutFixReceipt: Codable, Identifiable {
 struct CloseoutFixFinalPayloadLine: Codable {
     let event: String
     let payload: CloseoutFixPayload?
+}
+
+struct CloseoutFixJob: Identifiable {
+    let id: String
+    let targetName: String
+    let targetRoot: String
+    let startedAt: Date
+    var isRunning: Bool
+    var events: [CloseoutFixEvent]
+    var payload: CloseoutFixPayload?
+    var errorMessage: String?
+
+    var statusText: String {
+        if isRunning {
+            return "running"
+        }
+        if let result = payload?.result {
+            return result
+        }
+        if errorMessage != nil {
+            return "failed"
+        }
+        return "queued"
+    }
+}
+
+struct KitWriteAction: Identifiable, Equatable {
+    let id: String
+    let title: String
+    let confirmation: String
+    let arguments: [String]
+    let workingDirectory: String?
+    let successMessage: String
 }
 
 struct UpdatePreviewPayload: Codable {

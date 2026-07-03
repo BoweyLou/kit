@@ -33,9 +33,25 @@ struct WorkflowPanelsView: View {
                 }
                 .frame(maxWidth: .infinity, alignment: .leading)
 
+                if mode == .batch {
+                    BatchCloseoutPanel(store: store)
+                    BatchWriteActionsPanel(store: store)
+                }
+
+                if !store.closeoutFixJobs.isEmpty {
+                    DisclosureGroup("Guided Closeout Jobs") {
+                        CloseoutJobsPanel(jobs: store.closeoutFixJobs)
+                            .padding(.top, 4)
+                    }
+                }
+
                 if mode == .batch, let preview = store.updatePreview {
                     UpdatePreviewView(preview: preview)
                         .padding(.top, 4)
+                }
+
+                if let output = store.commandOutput, !output.isEmpty {
+                    WorkflowOutputView(output: output)
                 }
             }
         }
@@ -95,6 +111,121 @@ enum WorkflowPanelMode: Equatable {
                 "target update-all",
                 "update"
             ]
+        }
+    }
+}
+
+private struct BatchCloseoutPanel: View {
+    @ObservedObject var store: KitCompanionStore
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            HStack {
+                Label("Batch Guided Closeout", systemImage: "wand.and.stars")
+                    .font(.headline)
+                Spacer()
+                Text("\(store.batchCloseoutCandidates.count) ready")
+                    .font(.caption.monospacedDigit())
+                    .foregroundStyle(.secondary)
+            }
+
+            Text("Run closeout-fix for dirty target repos with two jobs at a time. Each repo keeps separate events, output, receipts, and blockers.")
+                .foregroundStyle(.secondary)
+                .fixedSize(horizontal: false, vertical: true)
+
+            Button {
+                store.requestBatchCloseoutConfirmation()
+            } label: {
+                Label("Run Dirty Closeouts", systemImage: "play.fill")
+            }
+            .disabled(store.batchCloseoutCandidates.isEmpty || store.isBatchCloseoutRunning)
+        }
+        .padding(12)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(Color(nsColor: .controlBackgroundColor), in: RoundedRectangle(cornerRadius: 8))
+        .overlay {
+            RoundedRectangle(cornerRadius: 8)
+                .stroke(Color(nsColor: .separatorColor), lineWidth: 0.5)
+        }
+    }
+}
+
+private struct BatchWriteActionsPanel: View {
+    @ObservedObject var store: KitCompanionStore
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            Label("Allowlisted Writes", systemImage: "lock.open")
+                .font(.headline)
+            Text("These buttons apply specific CLI write paths. Setup, install, global updates, self updates, custom agents, and write-sidecar commands remain Terminal handoffs.")
+                .foregroundStyle(.secondary)
+                .fixedSize(horizontal: false, vertical: true)
+
+            LazyVGrid(columns: [GridItem(.adaptive(minimum: 220), spacing: 10)], alignment: .leading, spacing: 10) {
+                WriteActionButton(
+                    title: "Import Targets",
+                    systemImage: "tray.and.arrow.down",
+                    disabled: store.selectedTarget == nil || store.isRunningWriteCommand,
+                    action: store.requestTargetImportApply
+                )
+                WriteActionButton(
+                    title: "Prune Missing",
+                    systemImage: "trash",
+                    disabled: store.isRunningWriteCommand,
+                    action: store.requestTargetPruneMissingApply
+                )
+                WriteActionButton(
+                    title: "Prune Worktrees",
+                    systemImage: "square.stack.3d.down.right",
+                    disabled: store.selectedTarget == nil || store.isRunningWriteCommand,
+                    action: store.requestWorktreePruneApply
+                )
+                WriteActionButton(
+                    title: "Update Clean Targets",
+                    systemImage: "arrow.triangle.2.circlepath",
+                    disabled: store.isRunningWriteCommand,
+                    action: store.requestTargetUpdateAllApply
+                )
+            }
+        }
+        .padding(12)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(Color(nsColor: .controlBackgroundColor), in: RoundedRectangle(cornerRadius: 8))
+        .overlay {
+            RoundedRectangle(cornerRadius: 8)
+                .stroke(Color(nsColor: .separatorColor), lineWidth: 0.5)
+        }
+    }
+}
+
+private struct WriteActionButton: View {
+    let title: String
+    let systemImage: String
+    let disabled: Bool
+    let action: () -> Void
+
+    var body: some View {
+        Button(action: action) {
+            Label(title, systemImage: systemImage)
+                .frame(maxWidth: .infinity, alignment: .leading)
+        }
+        .disabled(disabled)
+    }
+}
+
+private struct WorkflowOutputView: View {
+    let output: String
+
+    var body: some View {
+        DisclosureGroup("Latest Write Output") {
+            ScrollView {
+                Text(output)
+                    .font(.caption.monospaced())
+                    .textSelection(.enabled)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+            }
+            .frame(minHeight: 120)
+            .padding(.top, 4)
         }
     }
 }

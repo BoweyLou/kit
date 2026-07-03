@@ -4,6 +4,7 @@ import hashlib
 import importlib.util
 import io
 import os
+import plistlib
 import shutil
 import subprocess
 import sys
@@ -1120,11 +1121,57 @@ class RepoContractKitCliTests(unittest.TestCase):
         self.assertEqual(self_update["route_role"], "maintainer")
         self.assertEqual(self_update["canonical_command"], "self update")
         self.assertIn("global tool checkout", self_update["route_note"])
+        self.assertIn("macos_app_update", self_update["json_contract"]["stable_payload_fields"])
 
         migrate_config = commands["migrate-config"]
         self.assertEqual(migrate_config["route_role"], "compatibility")
         self.assertEqual(migrate_config["canonical_command"], "update --metadata-only")
         self.assertIn("metadata-only", migrate_config["route_note"])
+
+    def test_global_update_refreshes_installed_macos_app_when_present(self):
+        module = load_cli_module()
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp) / "kit"
+            install_path = Path(tmp) / "KitCompanion.app"
+            script_dir = root / "script"
+            script_dir.mkdir(parents=True)
+            install_path.joinpath("Contents").mkdir(parents=True)
+            with install_path.joinpath("Contents", "Info.plist").open("wb") as handle:
+                plistlib.dump({"CFBundleShortVersionString": "0.1.0"}, handle)
+
+            install_script = script_dir / "install_macos_app.sh"
+            install_script.write_text(
+                """#!/usr/bin/env bash
+set -euo pipefail
+mkdir -p "$KIT_COMPANION_INSTALL_PATH/Contents"
+cat >"$KIT_COMPANION_INSTALL_PATH/Contents/Info.plist" <<'PLIST'
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+  <key>CFBundleShortVersionString</key>
+  <string>9.9.9</string>
+</dict>
+</plist>
+PLIST
+echo "refreshed"
+""",
+                encoding="utf-8",
+            )
+            install_script.chmod(0o755)
+
+            with mock.patch.object(module.sys, "platform", "darwin"), mock.patch.dict(
+                os.environ,
+                {"KIT_COMPANION_INSTALL_PATH": str(install_path)},
+                clear=False,
+            ):
+                payload = module.update_installed_macos_app(root)
+
+        self.assertEqual(payload["status"], "applied", payload)
+        self.assertEqual(payload["installed_path"], str(install_path))
+        self.assertEqual(payload["before_version"], "0.1.0")
+        self.assertEqual(payload["after_version"], "9.9.9")
+        self.assertIn("refreshed", payload["stdout"])
 
     def test_agent_context_alias_returns_command_map_catalog(self):
         with tempfile.TemporaryDirectory() as tmp:

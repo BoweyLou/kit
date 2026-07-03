@@ -83,9 +83,12 @@ kit update
 ```
 
 Remote/global updates remain explicit: run `kit update --global` to refresh the
-tool checkout, and `kit update` to apply a target update yourself. Kit updates
-preserve target-owned files and customized managed files. Proposed replacements
-are written under `.doc-contract-kit/updates/` for review.
+tool checkout, and `kit update` to apply a target update yourself. On macOS,
+global updates also refresh `/Applications/KitCompanion.app` or
+`~/Applications/KitCompanion.app` when the optional companion app is already
+installed. Kit updates preserve target-owned files and customized managed
+files. Proposed replacements are written under `.doc-contract-kit/updates/`
+for review.
 
 Successful `kit setup` and `kit update` runs register enrolled targets in local
 kit state. To import existing primary repos without pulling in old task
@@ -168,8 +171,10 @@ kit closeout-plan --json
 ```
 
 Run `kit closeout-plan --json` before claiming implementation work is done. If
-`can_claim_done` is false, report the `completion_state` and `next_action`
-instead of saying the work is closed out.
+`can_claim_done` is false, report the `completion_state`, `human_summary`,
+`blocker_explanations`, and `next_action` instead of saying the work is closed
+out. The raw blocker codes remain for automation; the human summary explains
+what is blocked, why Kit refuses to proceed, and the safest next action.
 
 When a dirty repo needs supervised closeout instead of a manual plan, preview
 the one-click closeout job first:
@@ -189,7 +194,11 @@ kit closeout-fix --repo /path/to/repo --apply --jsonl
 
 Use `--no-push` for local-only CLI runs. Custom non-Codex runners require an
 explicit `--agent custom --agent-command <command>`; kit does not infer custom
-runners from prompt adapters or repo instructions.
+runners from prompt adapters or repo instructions. A blocked guided closeout is
+a normal workflow result, not a tool crash: the final payload has
+`result=blocked`, `human_summary`, `blocker_explanations`, and a durable
+`result.json` path under the sidecar job directory. Supervisor or process
+failures use `result=failed`.
 
 `closeout-plan` also embeds the repo-aware disposable-worktree audit. When
 `worktree_prune.summary.would_remove` is non-zero, run the reported
@@ -235,15 +244,18 @@ recommended, read-only, preview, Terminal, and agent scopes; runs read-only JSON
 commands such as `kit target dirty-report --json` and `kit closeout-plan
 --json`; previews supported no-write flows with `--dry-run` or `--no-update`;
 checks for app updates; supports optional Launch at Login; and copies Terminal
-handoff commands. Guided closeout is the only write-capable in-app exception:
-after confirmation, it runs `kit closeout-fix --repo <selected> --apply
---jsonl` through a narrow allowlist and shows commits, pushes, receipts, pruned
-worktrees, and blockers.
+handoff commands. The app keeps the generic command browser read-only or
+preview-only, but has dedicated confirmed write surfaces for guided closeout and
+batch maintenance: dirty targets can run `closeout-fix --apply --jsonl` with two
+jobs at a time, and the Batch tab can apply `target import`, `target
+prune-missing`, clean-target `target update-all`, and clean disposable
+`worktree prune` through narrow allowlists.
 
 Build it only when wanted:
 
 ```bash
 make macos-build
+make macos-install
 make macos-test
 make macos-dmg
 ```

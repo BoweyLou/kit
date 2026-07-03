@@ -11,6 +11,7 @@ import hashlib
 import importlib.util
 import json
 import os
+import plistlib
 import re
 import shutil
 import shlex
@@ -65,6 +66,7 @@ import check_token_budget  # noqa: E402
 import branch_readiness  # noqa: E402
 import changelog_update  # noqa: E402
 import closeout_fix  # noqa: E402
+import closeout_explanations  # noqa: E402
 import docs_explain  # noqa: E402
 import goal_check  # noqa: E402
 from agent_parallel_coordination import build_parallel_context  # noqa: E402
@@ -1485,6 +1487,97 @@ def update_checkout(root: Path, ref: str, label: str) -> tuple[list[dict[str, An
     return steps, checkout_status(root), error, checkout.returncode
 
 
+def installed_macos_app_candidates() -> list[Path]:
+    candidates: list[Path] = []
+    configured = os.environ.get("KIT_COMPANION_INSTALL_PATH")
+    if configured:
+        candidates.append(Path(configured).expanduser())
+    candidates.extend(
+        [
+            Path("/Applications/KitCompanion.app"),
+            Path.home() / "Applications" / "KitCompanion.app",
+        ]
+    )
+    seen: set[str] = set()
+    unique: list[Path] = []
+    for candidate in candidates:
+        key = str(candidate)
+        if key not in seen:
+            unique.append(candidate)
+            seen.add(key)
+    return unique
+
+
+def macos_app_bundle_version(app_path: Path) -> str | None:
+    info_plist = app_path / "Contents" / "Info.plist"
+    if not info_plist.exists():
+        return None
+    try:
+        with info_plist.open("rb") as handle:
+            info = plistlib.load(handle)
+    except Exception:
+        return None
+    version = info.get("CFBundleShortVersionString")
+    return str(version) if version else None
+
+
+def update_installed_macos_app(root: Path) -> dict[str, Any]:
+    payload: dict[str, Any] = {
+        "status": "skipped",
+        "reason": "",
+        "installed_path": None,
+        "before_version": None,
+        "after_version": None,
+    }
+    if os.environ.get("KIT_COMPANION_UPDATE_ON_GLOBAL_UPDATE", "").lower() in {"0", "false", "no"}:
+        payload["reason"] = "disabled by KIT_COMPANION_UPDATE_ON_GLOBAL_UPDATE"
+        return payload
+    if sys.platform != "darwin":
+        payload["reason"] = "not macOS"
+        return payload
+
+    installed_path = next((candidate for candidate in installed_macos_app_candidates() if candidate.exists()), None)
+    if installed_path is None:
+        payload["reason"] = "Kit Companion is not installed"
+        return payload
+
+    install_script = root / "script" / "install_macos_app.sh"
+    payload["installed_path"] = str(installed_path)
+    payload["before_version"] = macos_app_bundle_version(installed_path)
+    payload["command"] = str(install_script)
+    if not install_script.exists():
+        payload["status"] = "failed"
+        payload["reason"] = f"missing installer script: {install_script}"
+        payload["exit_code"] = 2
+        return payload
+
+    env = os.environ.copy()
+    env.setdefault("KIT_COMPANION_INSTALL_PATH", str(installed_path))
+    result = subprocess.run(
+        [str(install_script)],
+        cwd=root,
+        capture_output=True,
+        text=True,
+        check=False,
+        env=env,
+    )
+    payload.update(
+        {
+            "exit_code": result.returncode,
+            "stdout": result.stdout,
+            "stderr": result.stderr,
+            "after_version": macos_app_bundle_version(installed_path),
+        }
+    )
+    if result.returncode == 0:
+        payload["status"] = "applied"
+        payload["reason"] = "installed Kit Companion app refreshed from updated tool checkout"
+    else:
+        payload["status"] = "failed"
+        payload["reason"] = "installer script failed"
+    return payload
+
+
 def self_update_payload(args: argparse.Namespace) -> tuple[dict[str, Any], int]:
     before = self_status_payload()["tool"]
     workflow_before = self_status_payload()["workflow_source"]
@@ -1531,6 +1624,10 @@ def self_update_payload(args: argparse.Namespace) -> tuple[dict[str, Any], int]:
     else:
         payload["workflow_source_after"] = workflow_before
         payload["workflow_source_skipped"] = True
+    macos_app_update = update_installed_macos_app(ROOT)
+    payload["macos_app_update"] = macos_app_update
+    if macos_app_update.get("status") == "failed":
+        payload["warnings"].append(f"Kit Companion app update failed: {macos_app_update.get('reason')}")
     payload["exit_code"] = 0
     return payload, 0
 
@@ -1559,6 +1656,20 @@ def render_self_update(payload: dict[str, Any]) -> None:
         print(f" - ref: {workflow_before.get('short_ref') or 'unknown'} -> {workflow_after.get('short_ref') or 'unknown'}")
     for warning in payload.get("warnings", []):
         print(f" - warning: {warning}")
+    app_update = payload.get("macos_app_update") or {}
+    if app_update:
+        status = app_update.get("status")
+        path = app_update.get("installed_path")
+        if status == "applied":
+            print("optional macOS app update:")
+            print(f" - path: {path}")
+            print(f" - version: {app_update.get('before_version') or 'unknown'} -> {app_update.get('after_version') or 'unknown'}")
+        elif status == "failed":
+            print("optional macOS app update:")
+            print(f" - path: {path or 'unknown'}")
+            print(f" - error: {app_update.get('reason') or 'unknown'}")
+        else:
+            print(f"optional macOS app update: skipped ({app_update.get('reason') or 'not applicable'})")
     if payload.get("error"):
         print(f" - error: {payload['error']}")
     for step in payload.get("steps", []):
@@ -1800,7 +1911,12 @@ def command_map_annotations() -> dict[tuple[str, ...], dict[str, Any]]:
                 "completion_state",
                 "next_action",
                 "claim_blockers",
+                "blocker_explanations",
+                "human_summary",
                 "exit_code",
+            ],
+            "behavior_notes": [
+                "JSON output includes human_summary and blocker_explanations so callers can show the user what is blocked, why it blocks closeout, and the next safe action.",
             ],
         },
         ("closeout-fix",): {
@@ -1830,6 +1946,7 @@ def command_map_annotations() -> dict[tuple[str, ...], dict[str, Any]]:
                 "command",
                 "job_id",
                 "job_dir",
+                "result_path",
                 "runner",
                 "initial_closeout",
                 "commits",
@@ -1838,10 +1955,15 @@ def command_map_annotations() -> dict[tuple[str, ...], dict[str, Any]]:
                 "receipts",
                 "final_closeout",
                 "blockers",
+                "blocker_explanations",
+                "human_summary",
                 "result",
                 "target_repo_writes",
                 "sidecar_writes",
                 "exit_code",
+            ],
+            "behavior_notes": [
+                "Blocked apply runs are first-class workflow outcomes. The final JSON/JSONL payload includes result=blocked, human_summary, blocker_explanations, and result_path; the shell exit code is distinct from supervisor or tool failure.",
             ],
         },
         ("self",): {
@@ -1870,9 +1992,23 @@ def command_map_annotations() -> dict[tuple[str, ...], dict[str, Any]]:
             "route_role": "maintainer",
             "canonical_command": "self update",
             "alias_group": "global-tool",
-            "route_note": "Updates the global tool checkout; target repos still use `kit update`.",
+            "route_note": "Updates the global tool checkout; when Kit Companion is installed on macOS, refreshes the optional app from the updated checkout.",
             "examples": [public_command("self", "update", "--json")],
             "output_schema": "self_update_payload",
+            "stable_payload_fields": [
+                "schema_version",
+                "command",
+                "tool_update",
+                "workflow_source_after",
+                "macos_app_update",
+                "warnings",
+                "target_repo_writes",
+                "sidecar_writes",
+                "exit_code",
+            ],
+            "behavior_notes": [
+                "On macOS, global updates refresh an installed Kit Companion app from the updated checkout. Machines without the app skip this optional step.",
+            ],
         },
         ("sidecar-init",): {
             "audience": ["human", "agent"],
@@ -4761,7 +4897,7 @@ def closeout_plan_payload(args: argparse.Namespace, repo: Path) -> dict[str, Any
         code for code in warning_codes if code in {"missing_sidecar", "receipt_warning", "task_status_warning", "closeout_warning"}
     )
     exit_code = 1 if args.strict and not can_claim_done else 0
-    return {
+    payload = {
         "schema_version": 1,
         "command": "closeout-plan",
         "repo": str(primary),
@@ -4816,6 +4952,9 @@ def closeout_plan_payload(args: argparse.Namespace, repo: Path) -> dict[str, Any
         },
         "exit_code": exit_code,
     }
+    payload["blocker_explanations"] = closeout_explanations.explain_blockers(claim_blockers)
+    payload["human_summary"] = closeout_explanations.closeout_plan_human_summary(payload)
+    return payload
 
 
 def render_closeout_plan(payload: dict[str, Any]) -> None:
@@ -4856,6 +4995,14 @@ def render_closeout_plan(payload: dict[str, Any]) -> None:
         print(" - claim blockers:")
         for item in payload["claim_blockers"]:
             print(f"   - {item.get('code')}: {item.get('message')} ({item.get('count', 0)})")
+    summary = payload.get("human_summary") or {}
+    if summary:
+        print(" - explanation:")
+        print(f"   - {summary.get('title')}: {summary.get('plain_reason')}")
+        if summary.get("why_it_blocks"):
+            print(f"   - why: {summary.get('why_it_blocks')}")
+        if summary.get("recommended_action"):
+            print(f"   - how to address: {summary.get('recommended_action')}")
     if payload.get("task_ledger_blockers"):
         print(" - task ledger blockers:")
         for item in payload["task_ledger_blockers"]:
@@ -8166,6 +8313,7 @@ JSON_CONTRACT_COMMAND_MAP_FIELDS = [
     "canonical_command",
     "output_schema",
     "docs",
+    "behavior_notes",
 ]
 JSON_CONTRACT_STABLE_PAYLOAD_FIELDS = [
     "schema_version",
@@ -8275,6 +8423,7 @@ def command_map_payload(invoked_command: str = "command-map") -> dict[str, Any]:
             "canonical_command": annotation.get("canonical_command") or annotation.get("alias_of") or name,
             "alias_group": annotation.get("alias_group"),
             "route_note": annotation.get("route_note"),
+            "behavior_notes": annotation.get("behavior_notes", []),
             "examples": annotation.get("examples", default_examples(path, json_supported)),
             "exit_codes": annotation.get("exit_codes", default_exit_codes),
             "output_schema": output_schema,
@@ -8485,6 +8634,7 @@ def cli_reference_payload() -> dict[str, Any]:
                 "examples": command.get("examples") or [],
                 "flags": command.get("flags") or [],
                 "docs": command.get("docs") or [],
+                "behavior_notes": command.get("behavior_notes") or [],
             }
         )
         claims.append(
@@ -8553,6 +8703,12 @@ def render_cli_reference_markdown(payload: dict[str, Any]) -> str:
             lines.append("")
             for example in command["examples"]:
                 lines.append(f"- `{example}`")
+            lines.append("")
+        if command["behavior_notes"]:
+            lines.append("Behavior notes:")
+            lines.append("")
+            for note in command["behavior_notes"]:
+                lines.append(f"- {note}")
             lines.append("")
         if command["flags"]:
             lines.append("Flags:")
@@ -10811,10 +10967,13 @@ def main(argv: list[str] | None = None) -> int:
             def event_sink(event: dict[str, Any]) -> None:
                 print(json.dumps(event, sort_keys=True), flush=True)
 
-        if args.apply:
-            payload, exit_code = closeout_fix.apply_payload(args, repo, CLI_ENTRYPOINT, event_sink=event_sink)
-        else:
-            payload, exit_code = closeout_fix.preview_payload(args, repo, CLI_ENTRYPOINT)
+        try:
+            if args.apply:
+                payload, exit_code = closeout_fix.apply_payload(args, repo, CLI_ENTRYPOINT, event_sink=event_sink)
+            else:
+                payload, exit_code = closeout_fix.preview_payload(args, repo, CLI_ENTRYPOINT)
+        except Exception as exc:
+            payload, exit_code = closeout_fix.failure_payload(args, repo, exc, event_sink=event_sink)
 
         if args.jsonl:
             print(json.dumps({"event": "final-payload", "payload": payload}, sort_keys=True), flush=True)

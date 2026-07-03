@@ -258,8 +258,10 @@ class CloseoutFixCliTests(unittest.TestCase):
             self.assertIn("job-started", [event["event"] for event in events])
             self.assertIn("runner-started", [event["event"] for event in events])
             self.assertIn("agent-output", [event["event"] for event in events])
+            self.assertIn("job-finished", [event["event"] for event in events])
             self.assertEqual(events[-1]["event"], "final-payload")
             self.assertEqual(events[-1]["payload"]["result"], "applied")
+            self.assertEqual(events[-1]["payload"]["human_summary"]["title"], "Guided closeout applied")
 
     def test_run_agent_emits_output_before_process_exits(self):
         with tempfile.TemporaryDirectory() as tmp:
@@ -313,12 +315,14 @@ class CloseoutFixCliTests(unittest.TestCase):
                 state_home=state_home,
             )
 
-            self.assertEqual(result.returncode, 1)
+            self.assertEqual(result.returncode, 2)
             payload = json_payload(result)
             self.assertEqual(payload["result"], "blocked")
             self.assertIn("--agent custom requires --agent-command.", payload["blockers"])
+            self.assertEqual(payload["human_summary"]["status"], "blocked")
             self.assertTrue(payload["sidecar_writes"]["performed"])
             self.assertTrue(Path(payload["receipts"][0]["path"]).exists())
+            self.assertTrue(Path(payload["result_path"]).exists())
 
     def test_final_closeout_failure_blocks_success(self):
         with tempfile.TemporaryDirectory() as tmp:
@@ -347,10 +351,14 @@ class CloseoutFixCliTests(unittest.TestCase):
                 state_home=state_home,
             )
 
-            self.assertEqual(result.returncode, 1)
+            self.assertEqual(result.returncode, 2)
             payload = json_payload(result)
             self.assertEqual(payload["result"], "blocked")
             self.assertIn("Final strict closeout-plan did not pass.", payload["blockers"])
+            self.assertEqual(payload["human_summary"]["title"], "Guided closeout blocked after partial progress")
+            self.assertIn("source changes", payload["human_summary"]["plain_reason"])
+            self.assertTrue(payload["blocker_explanations"])
+            self.assertTrue(Path(payload["result_path"]).exists())
             self.assertIn("?? still_dirty.txt", "\n".join(run(["git", "status", "--short"], cwd=repo).stdout.splitlines()))
 
     def test_push_rejection_is_reported_without_force_push(self):
@@ -408,7 +416,7 @@ class CloseoutFixCliTests(unittest.TestCase):
                 state_home=state_home,
             )
 
-            self.assertEqual(result.returncode, 1)
+            self.assertEqual(result.returncode, 2)
             payload = json_payload(result)
             self.assertEqual(payload["result"], "blocked")
             self.assertEqual(payload["branches_pushed"][0]["exit_code"], 1)

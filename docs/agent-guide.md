@@ -62,6 +62,8 @@ writes. Use `kit start --update-policy check-only --json` when the agent should
 inspect whether a local update is available without applying it. Remote fetches
 and global tool refreshes are never part of `kit start`; run
 `kit update --global` only when a human asks to refresh the global checkout.
+On macOS, that explicit global update also refreshes the optional installed Kit
+Companion app when the app bundle exists in `/Applications` or `~/Applications`.
 If a local-safe update is available while the target repo is dirty,
 `local_update.blocked_by` includes `dirty-target-repo` and
 `target_repo_writes.performed` stays false.
@@ -79,6 +81,12 @@ reports each target status in `targets[]`. When a dry-run reports stale missing
 registry entries, use `kit target prune-missing --dry-run --json` before
 `kit target prune-missing --apply --json`; that command writes only the local
 kit registry, not target repos.
+
+Kit Companion mirrors this as explicit Batch tab apply buttons for target
+import, missing-target registry pruning, clean-target update-all, and clean
+disposable worktree pruning. The app write allowlist does not include setup,
+install, global updates, self updates, custom closeout agents, or arbitrary
+`--write-sidecar` commands.
 
 Worktree cleanup is a separate lane. Use
 `kit worktree audit --root <repo-or-parent> --json` to inspect disposable
@@ -111,10 +119,11 @@ kit closeout-plan --json
 
 Before the final response for write-capable work, run
 `kit closeout-plan --json`. Treat `can_claim_done=false` as a hard stop on
-“done” wording: report the `completion_state`, `claim_blockers`, and
-`next_action` instead. Use `kit closeout-plan --strict --json` when a shell
-gate should fail until dirty primary state, active tasks, missing receipts, and
-closeout blockers are resolved.
+“done” wording: report the `completion_state`, `human_summary`,
+`blocker_explanations`, and `next_action` instead. Use
+`kit closeout-plan --strict --json` when a shell gate should fail until dirty
+primary state, active tasks, missing receipts, and closeout blockers are
+resolved.
 
 Use `kit closeout-fix` only when the requested task is to close out a dirty repo
 as a supervised workflow:
@@ -131,10 +140,19 @@ branches unless `--no-push` is supplied. The default runner is local
 `codex exec`; custom runners require explicit `--agent custom --agent-command
 <command>`. Do not infer a runner from instruction-only adapters.
 
+Kit Companion can queue guided closeout for multiple dirty targets with a
+concurrency limit of two, but each job still invokes the same one-repo
+`closeout-fix --apply --jsonl` command and keeps separate job events, receipts,
+and final payloads.
+
 The launched closeout agent must not run force-push, reset, clean, destructive
 checkout, stash/drop, dirty-worktree deletion, or source-file deletion. A
 `result` of `applied` is valid only when the final strict closeout payload
-passes.
+passes. A `result` of `blocked` means the supervised workflow completed with
+remaining closeout blockers; read `human_summary`, `blocker_explanations`, and
+the sidecar `result.json` before deciding the next step. A `result` of `failed`
+means the supervisor or runner failed before producing a normal workflow
+outcome.
 
 For parallel write-capable work, use the `parallel_context` object from
 `make agent-task-status TASK_STATUS_JSON=1`, `make agent-state-ledger

@@ -180,6 +180,19 @@ do {
     try KitProcessRunner.validateReadOnlyCommand(["closeout-fix", "--repo", "/tmp/repo", "--json"])
     try KitProcessRunner.validateCloseoutFixCommand(["closeout-fix", "--repo", "/tmp/repo", "--apply", "--jsonl"])
     try KitProcessRunner.validateCloseoutFixCommand(["closeout-fix", "--repo", "/tmp/repo", "--apply", "--jsonl", "--agent", "codex"])
+    try KitProcessRunner.validateAllowedWriteCommand(["target", "import", "--root", "/tmp/root", "--apply", "--json"])
+    try KitProcessRunner.validateAllowedWriteCommand(["target", "prune-missing", "--apply", "--json"])
+    try KitProcessRunner.validateAllowedWriteCommand(["target", "update-all", "--apply", "--json"])
+    try KitProcessRunner.validateAllowedWriteCommand(["worktree", "prune", "--root", "/tmp/root", "--apply", "--json"])
+    try expectThrows("setup should not be app write allowlisted") {
+        try KitProcessRunner.validateAllowedWriteCommand(["setup", "--preset", "agentic", "--json"])
+    }
+    try expectThrows("global update should not be app write allowlisted") {
+        try KitProcessRunner.validateAllowedWriteCommand(["update", "--global", "--json"])
+    }
+    try expectThrows("write-sidecar should not be app write allowlisted") {
+        try KitProcessRunner.validateAllowedWriteCommand(["verify", "--write-sidecar", "--json"])
+    }
     try expectThrows("closeout-fix dedicated runner should reject custom agent commands") {
         try KitProcessRunner.validateCloseoutFixCommand([
             "closeout-fix",
@@ -192,11 +205,12 @@ do {
         ])
     }
     let finalLine = """
-    {"event":"final-payload","payload":{"command":"closeout-fix","result":"applied","commits":[{"short_sha":"abc123","subject":"Add lane"}],"receipts":[{"path":"/tmp/receipt.json","kind":"closeout-fix"}],"branches_pushed":[],"worktrees_pruned":[],"blockers":[],"exit_code":0}}
+    {"event":"final-payload","payload":{"command":"closeout-fix","result":"applied","human_summary":{"title":"Guided closeout applied","plain_reason":"Strict closeout passed after the guided workflow.","recommended_action":"Review the receipt."},"blocker_explanations":[],"commits":[{"short_sha":"abc123","subject":"Add lane"}],"receipts":[{"path":"/tmp/receipt.json","kind":"closeout-fix"}],"branches_pushed":[],"worktrees_pruned":[],"blockers":[],"exit_code":0}}
     """
     let finalPayload = try JSONDecoder().decode(CloseoutFixFinalPayloadLine.self, from: Data(finalLine.utf8))
     try check(finalPayload.payload?.result == "applied", "closeout-fix final JSONL payload should decode")
     try check(finalPayload.payload?.commits?.first?.subject == "Add lane", "closeout-fix commits should decode")
+    try check(finalPayload.payload?.humanSummary?.title == "Guided closeout applied", "closeout-fix human summary should decode")
 
     try check(
         status.terminalCommand(selectedRepo: "/tmp/example repo") == "kit status --repo '/tmp/example repo' --json",
@@ -300,6 +314,46 @@ do {
         try check(doneAt.timeIntervalSince(eventAt) > 0.25, "closeout-fix event should arrive before final payload")
     } else {
         throw CheckFailure.failed("closeout-fix streaming timestamps were not recorded")
+    }
+
+    let blockedStreamingCommand = tempDir.appendingPathComponent("blocked-streaming-kit")
+    try """
+    #!/usr/bin/env python3
+    import json
+
+    print(json.dumps({"event":"job-finished","result":"blocked","exit_code":2}), flush=True)
+    print(json.dumps({"event":"final-payload","payload":{"command":"closeout-fix","mode":"apply","result":"blocked","human_summary":{"title":"Guided closeout blocked after partial progress","plain_reason":"The source tree is clean, but evidence cleanup is still needed.","recommended_action":"Review task evidence."},"blocker_explanations":[{"code":"missing_final_receipts","title":"Missing task receipts","plain_reason":"Some old tasks are missing receipts.","recommended_action":"Link durable receipts.","count":3}],"commits":[],"branches_pushed":[],"worktrees_pruned":[],"receipts":[],"blockers":["Final strict closeout-plan did not pass."],"exit_code":2}}), flush=True)
+    raise SystemExit(2)
+    """.write(to: blockedStreamingCommand, atomically: true, encoding: .utf8)
+    try FileManager.default.setAttributes([.posixPermissions: 0o755], ofItemAtPath: blockedStreamingCommand.path)
+
+    let blockedSemaphore = DispatchSemaphore(value: 0)
+    var blockedResult: Result<CloseoutFixPayload, Error>?
+    Task {
+        do {
+            blockedResult = .success(
+                try await KitProcessRunner().runCloseoutFix(
+                    arguments: ["closeout-fix", "--repo", tempDir.path, "--apply", "--jsonl"],
+                    kitPath: blockedStreamingCommand.path
+                ) { _ in }
+            )
+        } catch {
+            blockedResult = .failure(error)
+        }
+        blockedSemaphore.signal()
+    }
+    if blockedSemaphore.wait(timeout: .now() + 5) == .timedOut {
+        throw CheckFailure.failed("blocked closeout-fix streaming command should finish")
+    }
+    switch blockedResult {
+    case .success(let payload):
+        try check(payload.result == "blocked", "blocked closeout-fix final payload should return without throwing")
+        try check(payload.humanSummary?.title == "Guided closeout blocked after partial progress", "blocked closeout-fix should decode human summary")
+        try check(payload.blockerExplanations?.first?.title == "Missing task receipts", "blocked closeout-fix should decode blocker explanation")
+    case .failure(let error):
+        throw CheckFailure.failed("blocked closeout-fix streaming command should not throw when final payload is present: \(error)")
+    case .none:
+        throw CheckFailure.failed("blocked closeout-fix streaming command did not report a result")
     }
     try? FileManager.default.removeItem(at: tempDir)
 

@@ -1,5 +1,31 @@
 # Changelog
 
+## 0.6.52 - 2026-07-03
+
+- Add Batch Guided Closeout to Kit Companion so dirty target repos can run
+  separate `closeout-fix --apply --jsonl` jobs with a two-job concurrency limit
+  and per-repo job cards.
+- Add confirmed Kit Companion Batch tab write actions for target import,
+  missing-target registry pruning, clean-target updates, and clean disposable
+  worktree pruning while keeping setup, install, global updates, self updates,
+  custom closeout agents, and arbitrary write-sidecar commands as Terminal
+  handoffs.
+- Add `make macos-install` and have explicit global tool updates refresh an
+  installed Kit Companion app on macOS when the optional app is present.
+- Document the expanded app write boundary in ADR 0004 and keep the generic
+  command browser read-only or preview-only.
+
+## 0.6.51 - 2026-07-02
+
+- Add human-readable closeout explanations to `closeout-plan` and
+  `closeout-fix` JSON/text output so blockers include what happened, why Kit
+  refuses to claim done, and the safest next action.
+- Treat `closeout-fix` blocked outcomes as a first-class workflow result with a
+  distinct exit code and durable `result.json`, while reserving generic failure
+  output for supervisor/tool errors.
+- Update Kit Companion to render closeout summaries and blocker explanations
+  instead of surfacing a blocked guided closeout as a raw command failure.
+
 ## 0.6.50 - 2026-07-02
 
 - Fix Kit Companion target selection so the dashboard detail reloads for the

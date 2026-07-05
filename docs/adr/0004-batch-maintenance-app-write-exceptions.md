@@ -34,9 +34,10 @@ limit of two. The app must keep per-repo job cards, events, result payloads,
 receipts, and blockers separate.
 
 Use `target closeout-all` for all-registry overnight closeout automation. It
-must read registered targets only, use the gated closeout policy, and report
-`CLEAN`, `CLEANED`, `LEFT-UNFINISHED`, `NEEDS-REVIEW`, or `FAILED` without
-normalizing ambiguous work.
+must read registered targets only, use the gated closeout policy, integrate
+clean completed branches only through temporary verified worktrees and non-force
+pushes, and report `CLEAN`, `CLEANED`, `LEFT-UNFINISHED`, `NEEDS-REVIEW`, or
+`FAILED` without normalizing ambiguous work.
 
 Do not allow the app write runner to execute setup, install, global tool
 updates, self updates, custom closeout agents, arbitrary target writes,

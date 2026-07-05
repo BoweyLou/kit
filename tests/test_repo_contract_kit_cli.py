@@ -1536,6 +1536,69 @@ echo "refreshed"
             self.assertTrue(targets["dirty"]["closeout_plan"]["autoclose_eligibility"]["eligible"])
             self.assertIn("kit target closeout-all --apply --policy gated --json", payload["next_commands"])
 
+    def test_target_closeout_all_apply_merges_clean_feature_branch_to_default(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            bare = root / "origin.git"
+            repo = root / "repo"
+            repo.mkdir()
+            subprocess.run(["git", "init", "--bare", "-q", str(bare)], cwd=root, check=True)
+            init_git_repo(repo)
+            default_branch = subprocess.run(
+                ["git", "branch", "--show-current"],
+                cwd=repo,
+                capture_output=True,
+                text=True,
+                check=True,
+            ).stdout.strip()
+            subprocess.run(["git", "remote", "add", "origin", str(bare)], cwd=repo, check=True)
+            subprocess.run(["git", "push", "-u", "origin", default_branch], cwd=repo, capture_output=True, text=True, check=True)
+            state_home = root / "state"
+            env = {**os.environ, "XDG_STATE_HOME": str(state_home)}
+            setup = subprocess.run(
+                [sys.executable, str(CLI), "setup", "--repo", str(repo), "--preset", "minimal", "--json"],
+                cwd=ROOT,
+                env=env,
+                capture_output=True,
+                text=True,
+                check=False,
+            )
+            self.assertEqual(setup.returncode, 0, setup.stderr)
+            commit_all(repo, "Install repo-contract-kit")
+            subprocess.run(["git", "push"], cwd=repo, capture_output=True, text=True, check=True)
+            subprocess.run(["git", "switch", "-q", "-c", "codex/done"], cwd=repo, check=True)
+            (repo / "feature.txt").write_text("done\n", encoding="utf-8")
+            commit_all(repo, "Add completed feature")
+
+            result = subprocess.run(
+                [sys.executable, str(CLI), "target", "closeout-all", "--apply", "--policy", "gated", "--json"],
+                cwd=root,
+                env=env,
+                capture_output=True,
+                text=True,
+                check=False,
+            )
+
+            self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+            payload = json.loads(result.stdout)
+            self.assertEqual(payload["summary"]["statuses"]["CLEANED"], 1)
+            item = payload["targets"][0]
+            self.assertEqual(item["status"], "CLEANED")
+            self.assertEqual(item["reason"], "default-branch-integrated")
+            self.assertTrue(item["target_repo_writes"]["performed"])
+            self.assertTrue(item["sidecar_writes"]["performed"])
+            self.assertEqual(item["default_branch_integration"]["status"], "CLEANED")
+            subprocess.run(["git", "fetch", "origin", default_branch], cwd=repo, capture_output=True, text=True, check=True)
+            feature_on_default = subprocess.run(
+                ["git", "show", f"origin/{default_branch}:feature.txt"],
+                cwd=repo,
+                capture_output=True,
+                text=True,
+                check=False,
+            )
+            self.assertEqual(feature_on_default.returncode, 0, feature_on_default.stderr)
+            self.assertEqual(feature_on_default.stdout, "done\n")
+
     def test_finish_preview_reports_gated_apply_for_finishable_dirty_repo(self):
         with tempfile.TemporaryDirectory() as tmp:
             repo = Path(tmp) / "repo"

@@ -118,8 +118,10 @@ kit target closeout-all --apply --policy gated --json
 These actions still require app confirmation. `target update-all --apply`
 relies on the CLI's clean-target gate and skips dirty, missing, or
 no-longer-enrolled targets. `target closeout-all --apply --policy gated`
-reads only the kit target registry and leaves active, ambiguous, or
-default-branch-integration work as `LEFT-UNFINISHED` or `NEEDS-REVIEW`.
+reads only the kit target registry, closes only policy-eligible repos, and
+integrates clean completed branches through a temporary verified worktree before
+non-force pushing the detected default branch. Active, ambiguous, conflicting,
+or failing work remains `LEFT-UNFINISHED` or `NEEDS-REVIEW`.
 `worktree prune --apply` removes only eligible clean linked worktrees under
 agent-worktrees paths. Setup, install, global tool updates, self updates,
 custom closeout agents, arbitrary target writes, and `--write-sidecar` commands

@@ -2421,6 +2421,7 @@ def command_map_annotations() -> dict[tuple[str, ...], dict[str, Any]]:
                 "registry",
                 "summary",
                 "targets",
+                "default_branch_integration",
                 "target_repo_writes",
                 "sidecar_writes",
                 "exit_code",
@@ -10241,6 +10242,199 @@ def target_closeout_status_for_plan(plan: dict[str, Any], *, apply: bool) -> tup
     return "NEEDS-REVIEW", plan.get("unfinished_reason") or state or "closeout-review-required", (plan.get("next_action") or {}).get("command") or ""
 
 
+def target_closeout_integrate_default_branch(
+    args: argparse.Namespace,
+    repo: Path,
+    plan: dict[str, Any],
+) -> dict[str, Any]:
+    merge = plan.get("merge_readiness") or {}
+    branch = merge.get("current_branch")
+    default_branch = merge.get("default_branch")
+    state, sidecar_paths = ensure_sidecar(repo, "target closeout-all default branch integration")
+    run_dir = Path(state["paths"]["runs_dir"]) / "target-closeout-all" / artifact_stamp()
+    integration = run_dir / "integration"
+    result: dict[str, Any] = {
+        "status": "NEEDS-REVIEW",
+        "reason": "default-branch-integration-not-run",
+        "branch": branch,
+        "default_branch": default_branch,
+        "worktree": str(integration),
+        "sidecar_writes": sidecar_writes(True, paths=sidecar_paths, reason="default branch integration receipt state"),
+        "target_repo_writes": target_repo_writes(False, reason="default branch integration not run"),
+        "steps": [],
+        "branches_pushed": [],
+        "exit_code": 1,
+    }
+    if getattr(args, "no_push", False):
+        result.update({"reason": "no-push-enabled", "next_action": "Re-run without --no-push after reviewing the branch."})
+        return result
+    if not branch or not default_branch or branch == default_branch:
+        result.update({"reason": "integration-not-required", "status": "CLEAN", "next_action": "none", "exit_code": 0})
+        return result
+    remotes = {line.strip() for line in git_text(repo, ["remote"]).splitlines() if line.strip()}
+    if "origin" not in remotes:
+        result.update({"reason": "missing-origin-remote", "next_action": "Push and merge the branch manually after configuring origin."})
+        return result
+
+    branch_push, branch_push_blockers = closeout_fix.push_current_branch(repo, getattr(args, "timeout_seconds", 3600))
+    if branch_push:
+        result["branches_pushed"].append(branch_push)
+        result["steps"].append({"name": "push-current-branch", **branch_push})
+    if branch_push_blockers:
+        result.update(
+            {
+                "reason": "current-branch-push-failed",
+                "blockers": branch_push_blockers,
+                "next_action": "Resolve the branch push failure, then rerun closeout-all.",
+            }
+        )
+        return result
+
+    fetch = run_git(repo, ["fetch", "origin", default_branch])
+    result["steps"].append(
+        {
+            "name": "fetch-default-branch",
+            "command": f"git fetch origin {default_branch}",
+            "exit_code": fetch.returncode,
+            "stdout": closeout_fix.safe_excerpt(fetch.stdout),
+            "stderr": closeout_fix.safe_excerpt(fetch.stderr),
+        }
+    )
+    if fetch.returncode != 0:
+        result.update({"reason": "fetch-default-branch-failed", "next_action": "Resolve fetch failure, then rerun closeout-all."})
+        return result
+
+    remote_default_ref = f"refs/remotes/origin/{default_branch}"
+    default_ref = remote_default_ref if branch_head(repo, remote_default_ref) else default_branch
+    add = run_git(repo, ["worktree", "add", "--detach", str(integration), default_ref])
+    result["steps"].append(
+        {
+            "name": "create-integration-worktree",
+            "command": f"git worktree add --detach {integration} {default_ref}",
+            "exit_code": add.returncode,
+            "stdout": closeout_fix.safe_excerpt(add.stdout),
+            "stderr": closeout_fix.safe_excerpt(add.stderr),
+        }
+    )
+    if add.returncode != 0:
+        result.update({"reason": "integration-worktree-create-failed", "next_action": "Inspect git worktree state, then rerun closeout-all."})
+        return result
+
+    merge_result = run_git(
+        integration,
+        [
+            "-c",
+            "user.name=kit closeout-all",
+            "-c",
+            "user.email=kit-closeout-all@example.invalid",
+            "merge",
+            "--no-ff",
+            "--no-edit",
+            branch,
+        ],
+    )
+    result["steps"].append(
+        {
+            "name": "merge-completed-branch",
+            "command": f"git merge --no-ff --no-edit {branch}",
+            "exit_code": merge_result.returncode,
+            "stdout": closeout_fix.safe_excerpt(merge_result.stdout),
+            "stderr": closeout_fix.safe_excerpt(merge_result.stderr),
+        }
+    )
+    if merge_result.returncode != 0:
+        result.update({"reason": "merge-conflict-or-failure", "next_action": f"Inspect integration worktree: {integration}"})
+        return result
+
+    verify_command = [
+        sys.executable,
+        str(CLI_ENTRYPOINT),
+        "verify",
+        "--repo",
+        str(integration),
+        "--harness-mode",
+        "auto",
+        "--json",
+    ]
+    verify = subprocess.run(verify_command, cwd=integration, capture_output=True, text=True, check=False)
+    verify_payload = parse_json_stdout(verify)
+    result["steps"].append(
+        {
+            "name": "verify-integration-worktree",
+            "command": " ".join(shlex.quote(part) for part in verify_command),
+            "exit_code": verify.returncode,
+            "payload": verify_payload,
+            "stdout": closeout_fix.safe_excerpt(verify.stdout),
+            "stderr": closeout_fix.safe_excerpt(verify.stderr),
+        }
+    )
+    if verify.returncode != 0:
+        result.update({"reason": "integration-verification-failed", "next_action": f"Inspect integration worktree and verify output: {integration}"})
+        return result
+
+    before_default = branch_head(repo, remote_default_ref) or branch_head(repo, default_branch)
+    after_default = current_commit(integration)
+    push = run_git(integration, ["push", "origin", f"HEAD:refs/heads/{default_branch}"])
+    default_push = {
+        "branch": default_branch,
+        "command": f"git push origin HEAD:refs/heads/{default_branch}",
+        "exit_code": push.returncode,
+        "stdout": closeout_fix.safe_excerpt(push.stdout),
+        "stderr": closeout_fix.safe_excerpt(push.stderr),
+        "before_head": before_default or None,
+        "after_head": after_default or None,
+    }
+    result["branches_pushed"].append(default_push)
+    result["steps"].append({"name": "push-default-branch", **default_push})
+    if push.returncode != 0:
+        result.update({"reason": "default-branch-push-failed", "next_action": f"Inspect integration worktree: {integration}"})
+        return result
+
+    cleanup = run_git(repo, ["worktree", "remove", str(integration)])
+    result["steps"].append(
+        {
+            "name": "remove-integration-worktree",
+            "command": f"git worktree remove {integration}",
+            "exit_code": cleanup.returncode,
+            "stdout": closeout_fix.safe_excerpt(cleanup.stdout),
+            "stderr": closeout_fix.safe_excerpt(cleanup.stderr),
+        }
+    )
+    cleanup_warning = None
+    if cleanup.returncode != 0:
+        cleanup_warning = f"Integration worktree pushed successfully but cleanup failed: {integration}"
+    receipt = {
+        "schema_version": 1,
+        "command": "target-closeout-all-default-branch-integration",
+        "created_at": now(),
+        "repo": str(repo),
+        "branch": branch,
+        "default_branch": default_branch,
+        "before_default_head": before_default or None,
+        "after_default_head": after_default or None,
+        "worktree": str(integration),
+        "cleanup_warning": cleanup_warning,
+        "steps": result["steps"],
+    }
+    receipt_path = run_dir / "default-branch-integration.json"
+    write_json_file(receipt_path, receipt)
+    result.update(
+        {
+            "status": "CLEANED",
+            "reason": "default-branch-integrated",
+            "before_default_head": before_default or None,
+            "after_default_head": after_default or None,
+            "receipt": str(receipt_path),
+            "cleanup_warning": cleanup_warning,
+            "target_repo_writes": target_repo_writes(True, paths=[str(repo)], reason="pushed completed branch and default branch without force"),
+            "sidecar_writes": sidecar_writes(True, paths=[*sidecar_paths, str(receipt_path)], reason="default branch integration receipt"),
+            "next_action": "none" if cleanup_warning is None else cleanup_warning,
+            "exit_code": 0,
+        }
+    )
+    return result
+
+
 def target_closeout_all_run_target(args: argparse.Namespace, entry: dict[str, Any], *, apply: bool) -> dict[str, Any]:
     root = entry.get("root")
     result: dict[str, Any] = {
@@ -10298,6 +10492,37 @@ def target_closeout_all_run_target(args: argparse.Namespace, entry: dict[str, An
         }
     )
 
+    merge_readiness = plan.get("merge_readiness") or {}
+    if apply and status == "NEEDS-REVIEW" and reason == "default-branch-integration-required":
+        integration = target_closeout_integrate_default_branch(args, repo, plan)
+        result["default_branch_integration"] = integration
+        result["target_repo_writes"] = integration.get("target_repo_writes") or target_repo_writes(False)
+        result["sidecar_writes"] = integration.get("sidecar_writes") or sidecar_writes(False)
+        if integration.get("status") == "CLEANED":
+            result.update(
+                {
+                    "status": "CLEANED",
+                    "reason": "default-branch-integrated",
+                    "after_head": integration.get("after_default_head") or result.get("after_head"),
+                    "default_before_head": integration.get("before_default_head"),
+                    "default_after_head": integration.get("after_default_head"),
+                    "branches_pushed": integration.get("branches_pushed") or [],
+                    "next_action": integration.get("next_action") or "none",
+                    "exit_code": 0,
+                }
+            )
+        else:
+            result.update(
+                {
+                    "status": "NEEDS-REVIEW",
+                    "reason": integration.get("reason") or "default-branch-integration-blocked",
+                    "next_action": integration.get("next_action") or merge_readiness.get("integration_summary") or "Inspect default branch integration result.",
+                    "branches_pushed": integration.get("branches_pushed") or [],
+                    "exit_code": integration.get("exit_code") or 1,
+                }
+            )
+        return result
+
     if not apply or status != "LEFT-UNFINISHED" or not (plan.get("autoclose_eligibility") or {}).get("eligible"):
         return result
 
@@ -10327,14 +10552,44 @@ def target_closeout_all_run_target(args: argparse.Namespace, entry: dict[str, An
     final_merge = (final_closeout or {}).get("merge_readiness") or {}
     if closeout_exit == 0 and isinstance(final_closeout, dict) and final_closeout.get("can_claim_done"):
         if final_merge.get("requires_integration_worktree"):
-            result.update(
-                {
-                    "status": "NEEDS-REVIEW",
-                    "reason": "default-branch-integration-required",
-                    "next_action": final_merge.get("integration_summary") or "Integrate the completed branch into the detected default branch.",
-                    "exit_code": 1,
-                }
+            integration = target_closeout_integrate_default_branch(args, repo, final_closeout)
+            result["default_branch_integration"] = integration
+            integration_writes = integration.get("target_repo_writes") or target_repo_writes(False)
+            integration_sidecar = integration.get("sidecar_writes") or sidecar_writes(False)
+            closeout_writes = result.get("target_repo_writes") or target_repo_writes(False)
+            closeout_sidecar = result.get("sidecar_writes") or sidecar_writes(False)
+            result["target_repo_writes"] = target_repo_writes(
+                bool(closeout_writes.get("performed") or integration_writes.get("performed")),
+                paths=sorted(set((closeout_writes.get("paths") or []) + (integration_writes.get("paths") or []))),
+                reason="closeout-fix and default branch integration",
             )
+            result["sidecar_writes"] = sidecar_writes(
+                bool(closeout_sidecar.get("performed") or integration_sidecar.get("performed")),
+                paths=sorted(set((closeout_sidecar.get("paths") or []) + (integration_sidecar.get("paths") or []))),
+                reason="closeout-fix and default branch integration receipts",
+            )
+            if integration.get("status") == "CLEANED":
+                result.update(
+                    {
+                        "status": "CLEANED",
+                        "reason": "closeout-fix-applied-and-default-branch-integrated",
+                        "default_before_head": integration.get("before_default_head"),
+                        "default_after_head": integration.get("after_default_head"),
+                        "branches_pushed": (closeout_payload.get("branches_pushed") or []) + (integration.get("branches_pushed") or []),
+                        "next_action": integration.get("next_action") or "none",
+                        "exit_code": 0,
+                    }
+                )
+            else:
+                result.update(
+                    {
+                        "status": "NEEDS-REVIEW",
+                        "reason": integration.get("reason") or "default-branch-integration-blocked",
+                        "branches_pushed": (closeout_payload.get("branches_pushed") or []) + (integration.get("branches_pushed") or []),
+                        "next_action": integration.get("next_action") or final_merge.get("integration_summary") or "Inspect default branch integration result.",
+                        "exit_code": integration.get("exit_code") or 1,
+                    }
+                )
         else:
             result.update({"status": "CLEANED", "reason": "closeout-fix-applied", "next_action": "none", "exit_code": 0})
     elif closeout_payload.get("result") == "failed":
@@ -10362,6 +10617,11 @@ def target_closeout_all_payload(args: argparse.Namespace) -> tuple[dict[str, Any
         writes = item.get("sidecar_writes") or {}
         if writes.get("performed"):
             sidecar_paths.extend(writes.get("paths") or [])
+    default_branch_integrations = [
+        item["default_branch_integration"]
+        for item in results
+        if isinstance(item.get("default_branch_integration"), dict)
+    ]
     next_commands: list[str] = []
     if targets and not apply:
         next_commands.append(public_command("target", "closeout-all", "--apply", "--policy", getattr(args, "policy", "gated"), "--json"))
@@ -10387,8 +10647,10 @@ def target_closeout_all_payload(args: argparse.Namespace) -> tuple[dict[str, Any
             "left_unfinished": unfinished_count,
             "needs_review": needs_review_count,
             "failed": failed_count,
+            "default_branch_integrations": len(default_branch_integrations),
             "statuses": status_counts,
         },
+        "default_branch_integration": default_branch_integrations,
         "targets": results,
         "next_commands": next_commands,
         "exit_code": exit_code,
@@ -10575,6 +10837,7 @@ def render_target_closeout_all(payload: dict[str, Any], style: str = "auto") -> 
     print(f" - targets: {summary.get('total', 0)}")
     print(f" - clean: {summary.get('clean', 0)}")
     print(f" - cleaned: {summary.get('cleaned', 0)}")
+    print(f" - default branch integrations: {summary.get('default_branch_integrations', 0)}")
     print(f" - left unfinished: {summary.get('left_unfinished', 0)}")
     print(f" - needs review: {summary.get('needs_review', 0)}")
     print(f" - failed: {summary.get('failed', 0)}")

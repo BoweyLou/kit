@@ -162,8 +162,12 @@ kit target closeout-all --apply --policy gated --json
 
 Dry-run is report-only. Apply mode reads the kit target registry, leaves active
 or ambiguous work untouched, and invokes the same gated one-repo closeout
-supervisor only for eligible targets. Status values are `CLEAN`, `CLEANED`,
-`LEFT-UNFINISHED`, `NEEDS-REVIEW`, and `FAILED`.
+supervisor only for eligible targets. For a clean completed branch, apply mode
+pushes the branch, creates a temporary integration worktree from the detected
+default branch, merges the branch, runs `kit verify --harness-mode auto
+--json`, and pushes the default branch without force only after verification
+passes. Status values are `CLEAN`, `CLEANED`, `LEFT-UNFINISHED`,
+`NEEDS-REVIEW`, and `FAILED`.
 
 The launched closeout agent must not run force-push, reset, clean, destructive
 checkout, stash/drop, dirty-worktree deletion, or source-file deletion. A

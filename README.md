@@ -262,7 +262,9 @@ batch maintenance: dirty targets can run `closeout-fix --apply --jsonl` with two
 jobs at a time, and the Batch tab can apply `target import`, `target
 prune-missing`, clean-target `target update-all`, all-target gated
 `target closeout-all`, and clean disposable `worktree prune` through narrow
-allowlists.
+allowlists. `target closeout-all --apply --policy gated` uses temporary
+integration worktrees and local verification before any non-force default-branch
+push.
 
 Build it only when wanted:
 

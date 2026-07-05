@@ -112,14 +112,18 @@ kit target import --root <selected-target> --apply --json
 kit target prune-missing --apply --json
 kit worktree prune --root <selected-target> --apply --json
 kit target update-all --apply --json
+kit target closeout-all --apply --policy gated --json
 ```
 
 These actions still require app confirmation. `target update-all --apply`
 relies on the CLI's clean-target gate and skips dirty, missing, or
-no-longer-enrolled targets. `worktree prune --apply` removes only eligible clean
-linked worktrees under agent-worktrees paths. Setup, install, global tool
-updates, self updates, custom closeout agents, arbitrary target writes, and
-`--write-sidecar` commands remain Terminal handoffs.
+no-longer-enrolled targets. `target closeout-all --apply --policy gated`
+reads only the kit target registry and leaves active, ambiguous, or
+default-branch-integration work as `LEFT-UNFINISHED` or `NEEDS-REVIEW`.
+`worktree prune --apply` removes only eligible clean linked worktrees under
+agent-worktrees paths. Setup, install, global tool updates, self updates,
+custom closeout agents, arbitrary target writes, and `--write-sidecar` commands
+remain Terminal handoffs.
 
 ## Build Locally
 

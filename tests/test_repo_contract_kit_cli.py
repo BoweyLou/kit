@@ -144,11 +144,13 @@ class RepoContractKitCliTests(unittest.TestCase):
             [
                 "agent-self-heal --apply",
                 "closeout-fix --apply",
+                "finish --apply",
                 "install",
                 "setup",
                 "start",
                 "self update",
                 "target add",
+                "target closeout-all --apply",
                 "target import --apply",
                 "target prune-missing --apply",
                 "target repair-source-clone --apply",
@@ -165,6 +167,8 @@ class RepoContractKitCliTests(unittest.TestCase):
         self.assertIn("feedback", payload["cli"]["sidecar_write_commands"])
         self.assertIn("agent-self-heal --apply", payload["cli"]["sidecar_write_commands"])
         self.assertIn("closeout-fix --apply", payload["cli"]["sidecar_write_commands"])
+        self.assertIn("finish --apply", payload["cli"]["sidecar_write_commands"])
+        self.assertIn("target closeout-all --apply", payload["cli"]["sidecar_write_commands"])
         self.assertIn("agent-preflight --write-sidecar", payload["cli"]["sidecar_write_commands"])
         self.assertIn("target import --apply", payload["cli"]["sidecar_write_commands"])
         self.assertIn("target prune-missing --apply", payload["cli"]["sidecar_write_commands"])
@@ -742,6 +746,8 @@ class RepoContractKitCliTests(unittest.TestCase):
             "update",
             "target update",
             "target update-all",
+            "target closeout-all",
+            "finish",
             "closeout-fix",
             "worktree list",
             "task-packet",
@@ -783,6 +789,17 @@ class RepoContractKitCliTests(unittest.TestCase):
         self.assertEqual(closeout_fix["target_repo_write"], "via launched agent in --apply mode")
         self.assertIn("kit closeout-fix --repo /path/to/repo --apply --jsonl", closeout_fix["examples"])
         self.assertIn("commits", closeout_fix["json_contract"]["stable_payload_fields"])
+
+        finish = commands["finish"]
+        self.assertEqual(finish["mutation"], "launches-write-agent-with-apply")
+        self.assertEqual(finish["output_schema"], "finish_payload")
+        self.assertIn("kit finish --repo /path/to/repo --apply --jsonl", finish["examples"])
+        self.assertIn("autoclose_eligibility", finish["json_contract"]["stable_payload_fields"])
+
+        target_closeout_all = commands["target closeout-all"]
+        self.assertEqual(target_closeout_all["mutation"], "launches-write-agent-with-apply")
+        self.assertEqual(target_closeout_all["output_schema"], "target_closeout_all_payload")
+        self.assertIn("kit target closeout-all --apply --policy gated --json", target_closeout_all["examples"])
 
         worktree_list = commands["worktree list"]
         self.assertEqual(worktree_list["mutation"], "read-only")
@@ -1470,6 +1487,90 @@ echo "refreshed"
             self.assertFalse(payload["target_repo_writes"]["performed"])
             self.assertEqual(payload["summary"]["statuses"]["skipped-dirty"], 1)
             self.assertEqual(payload["targets"][0]["status"], "skipped-dirty")
+
+    def test_target_closeout_all_dry_run_reports_clean_and_finishable_dirty_targets(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            clean = root / "clean"
+            dirty = root / "dirty"
+            clean.mkdir()
+            dirty.mkdir()
+            init_git_repo(clean)
+            init_git_repo(dirty)
+            state_home = root / "state"
+            env = {**os.environ, "XDG_STATE_HOME": str(state_home)}
+
+            for target in (clean, dirty):
+                setup = subprocess.run(
+                    [sys.executable, str(CLI), "setup", "--repo", str(target), "--preset", "minimal", "--json"],
+                    cwd=ROOT,
+                    env=env,
+                    capture_output=True,
+                    text=True,
+                    check=False,
+                )
+                self.assertEqual(setup.returncode, 0, setup.stderr)
+                commit_all(target, "Install repo-contract-kit")
+            (dirty / "README.md").write_text("# dirty\n", encoding="utf-8")
+
+            result = subprocess.run(
+                [sys.executable, str(CLI), "target", "closeout-all", "--dry-run", "--json"],
+                cwd=root,
+                env=env,
+                capture_output=True,
+                text=True,
+                check=False,
+            )
+
+            self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+            payload = json.loads(result.stdout)
+            self.assertEqual(payload["command"], "target-closeout-all")
+            self.assertEqual(payload["mode"], "dry-run")
+            self.assertFalse(payload["target_repo_writes"]["performed"])
+            self.assertFalse(payload["sidecar_writes"]["performed"])
+            self.assertEqual(payload["summary"]["statuses"]["CLEAN"], 1)
+            self.assertEqual(payload["summary"]["statuses"]["LEFT-UNFINISHED"], 1)
+            targets = {Path(item["root"]).name: item for item in payload["targets"]}
+            self.assertEqual(targets["clean"]["status"], "CLEAN")
+            self.assertEqual(targets["dirty"]["status"], "LEFT-UNFINISHED")
+            self.assertTrue(targets["dirty"]["closeout_plan"]["autoclose_eligibility"]["eligible"])
+            self.assertIn("kit target closeout-all --apply --policy gated --json", payload["next_commands"])
+
+    def test_finish_preview_reports_gated_apply_for_finishable_dirty_repo(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            repo = Path(tmp) / "repo"
+            repo.mkdir()
+            init_git_repo(repo)
+            state_home = Path(tmp) / "state"
+            env = {**os.environ, "XDG_STATE_HOME": str(state_home)}
+            setup = subprocess.run(
+                [sys.executable, str(CLI), "setup", "--repo", str(repo), "--preset", "minimal", "--json"],
+                cwd=ROOT,
+                env=env,
+                capture_output=True,
+                text=True,
+                check=False,
+            )
+            self.assertEqual(setup.returncode, 0, setup.stderr)
+            commit_all(repo, "Install repo-contract-kit")
+            (repo / "README.md").write_text("# dirty\n", encoding="utf-8")
+
+            result = subprocess.run(
+                [sys.executable, str(CLI), "finish", "--repo", str(repo), "--json"],
+                cwd=ROOT,
+                env=env,
+                capture_output=True,
+                text=True,
+                check=False,
+            )
+
+            self.assertEqual(result.returncode, 1, result.stdout + result.stderr)
+            payload = json.loads(result.stdout)
+            self.assertEqual(payload["command"], "finish")
+            self.assertEqual(payload["result"], "needs-apply")
+            self.assertTrue(payload["autoclose_eligibility"]["eligible"])
+            self.assertEqual(payload["next_action"]["command"], f"kit closeout-fix --repo {repo.resolve()} --apply --jsonl")
+            self.assertFalse(payload["target_repo_writes"]["performed"])
 
     def test_target_prune_missing_cleans_stale_registry_without_target_writes(self):
         with tempfile.TemporaryDirectory() as tmp:

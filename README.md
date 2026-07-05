@@ -168,6 +168,7 @@ For normal scoped work:
 kit task-packet --harness-mode auto --json
 kit verify --harness-mode auto --json
 kit closeout-plan --json
+kit finish --json
 ```
 
 Run `kit closeout-plan --json` before claiming implementation work is done. If
@@ -175,6 +176,17 @@ Run `kit closeout-plan --json` before claiming implementation work is done. If
 `blocker_explanations`, and `next_action` instead of saying the work is closed
 out. The raw blocker codes remain for automation; the human summary explains
 what is blocked, why Kit refuses to proceed, and the safest next action.
+`closeout-plan` also reports `autoclose_eligibility`, `default_branch`,
+`merge_readiness`, `docs_required`, and `unfinished_reason` so automations can
+decide when a repo is safe to close without scraping prose.
+
+Use `kit finish --json` as the stricter per-thread final gate. Apply mode is
+narrow: it delegates to `closeout-fix` only when the closeout plan marks the
+repo eligible for gated autoclose.
+
+```bash
+kit finish --repo /path/to/repo --apply --jsonl
+```
 
 When a dirty repo needs supervised closeout instead of a manual plan, preview
 the one-click closeout job first:
@@ -248,8 +260,9 @@ handoff commands. The app keeps the generic command browser read-only or
 preview-only, but has dedicated confirmed write surfaces for guided closeout and
 batch maintenance: dirty targets can run `closeout-fix --apply --jsonl` with two
 jobs at a time, and the Batch tab can apply `target import`, `target
-prune-missing`, clean-target `target update-all`, and clean disposable
-`worktree prune` through narrow allowlists.
+prune-missing`, clean-target `target update-all`, all-target gated
+`target closeout-all`, and clean disposable `worktree prune` through narrow
+allowlists.
 
 Build it only when wanted:
 

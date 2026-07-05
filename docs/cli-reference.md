@@ -4,7 +4,7 @@ Generated from `kit command-map --json`.
 Do not edit command sections by hand; run `kit cli-reference --write docs/cli-reference.md`.
 
 - Schema version: `1`
-- Command count: `66`
+- Command count: `68`
 
 ## Commands
 
@@ -741,6 +741,37 @@ Flags:
 - `--export-json` - Export local feedback entries as JSON without writing sidecar state.
 - `--limit` - Maximum entries to list or export. Use 0 for all entries.
 
+### kit finish
+
+Run the strict per-thread finish gate and optionally apply gated closeout.
+
+- Audience: `human, agent, app`
+- Mutation: `launches-write-agent-with-apply`
+- Target writes: `via closeout-fix in --apply mode`
+- Sidecar writes: `with --apply`
+- JSON: `yes`
+- Output schema: `finish_payload`
+- Route role: `canonical`
+- Canonical command: `finish`
+- Docs: `README.md, docs/agent-guide.md, docs/cli-reference.md`
+
+Examples:
+
+- `kit finish --repo /path/to/repo --json`
+- `kit finish --repo /path/to/repo --apply --jsonl`
+
+Flags:
+
+- `--repo` - Target git repository. Defaults to the current directory.
+- `--json` - Emit machine-readable JSON.
+- `--format`
+- `--apply` - Apply gated closeout when closeout-plan marks the repo eligible.
+- `--jsonl` - Stream closeout-fix JSONL events and the final finish payload when applying.
+- `--agent` - Headless runner to launch when --apply delegates to closeout-fix.
+- `--agent-command` - Explicit command for --agent custom.
+- `--timeout-seconds` - Maximum seconds for each supervised closeout step.
+- `--no-push` - Leave successful closeout commits local instead of pushing the current branch.
+
 ### kit goal-check
 
 Map changed files to local repo goal and area contracts.
@@ -1296,6 +1327,37 @@ Flags:
 - `--runtime-adapter`
 - `--runtime-adapters`
 - `--force`
+
+### kit target closeout-all
+
+Dry-run or apply gated closeout across every registered target repo.
+
+- Audience: `human, agent, app`
+- Mutation: `launches-write-agent-with-apply`
+- Target writes: `with --apply through closeout-fix`
+- Sidecar writes: `with --apply`
+- JSON: `yes`
+- Output schema: `target_closeout_all_payload`
+- Route role: `canonical`
+- Canonical command: `target closeout-all`
+- Docs: `README.md, docs/agent-guide.md, docs/cli-reference.md`
+
+Examples:
+
+- `kit target closeout-all --dry-run --json`
+- `kit target closeout-all --apply --policy gated --json`
+
+Flags:
+
+- `--json` - Emit machine-readable JSON.
+- `--style` - Human output style: auto uses ANSI only on a TTY, plain disables it, pretty forces it unless NO_COLOR is set.
+- `--dry-run` - Report every registered target closeout state without writes. This is the default.
+- `--apply` - Apply closeout only to policy-eligible targets.
+- `--policy` - Closeout policy. Only gated is supported.
+- `--agent` - Headless runner to launch for eligible dirty repos.
+- `--agent-command` - Explicit command for --agent custom.
+- `--timeout-seconds` - Maximum seconds for each supervised closeout step.
+- `--no-push` - Leave successful closeout commits local instead of pushing branches.
 
 ### kit target dirty-report
 

@@ -1315,11 +1315,13 @@ def cli_metadata() -> dict[str, Any]:
         "mutating_commands": [
             "agent-self-heal --apply",
             "closeout-fix --apply",
+            "finish --apply",
             "install",
             "setup",
             "start",
             "self update",
             "target add",
+            "target closeout-all --apply",
             "target import --apply",
             "target prune-missing --apply",
             "target repair-source-clone --apply",
@@ -1335,6 +1337,7 @@ def cli_metadata() -> dict[str, Any]:
             "sidecar-init",
             "agent-self-heal --apply",
             "closeout-fix --apply",
+            "finish --apply",
             "automation-handoff",
             "agent-preflight --write-sidecar",
             "agent-doctor --write-sidecar",
@@ -1343,6 +1346,7 @@ def cli_metadata() -> dict[str, Any]:
             "review-plan --write-sidecar",
             "docs-propose --write-sidecar",
             "onboarding-pr --write-sidecar",
+            "target closeout-all --apply",
             "target import --apply",
             "target prune-missing --apply",
             "task-packet --write-sidecar",
@@ -1909,6 +1913,11 @@ def command_map_annotations() -> dict[tuple[str, ...], dict[str, Any]]:
                 "sidecar_writes",
                 "can_claim_done",
                 "completion_state",
+                "autoclose_eligibility",
+                "default_branch",
+                "merge_readiness",
+                "docs_required",
+                "unfinished_reason",
                 "next_action",
                 "claim_blockers",
                 "blocker_explanations",
@@ -1917,6 +1926,38 @@ def command_map_annotations() -> dict[tuple[str, ...], dict[str, Any]]:
             ],
             "behavior_notes": [
                 "JSON output includes human_summary and blocker_explanations so callers can show the user what is blocked, why it blocks closeout, and the next safe action.",
+            ],
+        },
+        ("finish",): {
+            "audience": ["human", "agent", "app"],
+            "mutation": "launches-write-agent-with-apply",
+            "sidecar_write": "with --apply",
+            "target_repo_write": "via closeout-fix in --apply mode",
+            "route_role": "canonical",
+            "canonical_command": "finish",
+            "alias_group": "task-closeout",
+            "route_note": "`kit finish` is the strict per-thread completion gate. Preview composes closeout-plan policy fields; --apply delegates to closeout-fix only when the repo is eligible for gated closeout.",
+            "examples": [
+                public_command("finish", "--repo", "/path/to/repo", "--json"),
+                public_command("finish", "--repo", "/path/to/repo", "--apply", "--jsonl"),
+            ],
+            "output_schema": "finish_payload",
+            "docs": ["README.md", "docs/agent-guide.md", "docs/cli-reference.md"],
+            "stable_payload_fields": [
+                "schema_version",
+                "command",
+                "mode",
+                "repo",
+                "result",
+                "can_claim_done",
+                "completion_state",
+                "autoclose_eligibility",
+                "merge_readiness",
+                "next_action",
+                "closeout_fix",
+                "target_repo_writes",
+                "sidecar_writes",
+                "exit_code",
             ],
         },
         ("closeout-fix",): {
@@ -2357,6 +2398,34 @@ def command_map_annotations() -> dict[tuple[str, ...], dict[str, Any]]:
             ],
             "output_schema": "target_prune_missing_payload",
         },
+        ("target", "closeout-all"): {
+            "audience": ["human", "agent", "app"],
+            "mutation": "launches-write-agent-with-apply",
+            "target_repo_write": "with --apply through closeout-fix",
+            "sidecar_write": "with --apply",
+            "route_role": "canonical",
+            "canonical_command": "target closeout-all",
+            "alias_group": "target-closeout",
+            "route_note": "Runs the registered-target closeout gate across the kit target registry. Dry-run is report-only; --apply closes only policy-eligible repos and leaves ambiguous or unfinished work untouched.",
+            "examples": [
+                public_command("target", "closeout-all", "--dry-run", "--json"),
+                public_command("target", "closeout-all", "--apply", "--policy", "gated", "--json"),
+            ],
+            "output_schema": "target_closeout_all_payload",
+            "docs": ["README.md", "docs/agent-guide.md", "docs/cli-reference.md"],
+            "stable_payload_fields": [
+                "schema_version",
+                "command",
+                "mode",
+                "policy",
+                "registry",
+                "summary",
+                "targets",
+                "target_repo_writes",
+                "sidecar_writes",
+                "exit_code",
+            ],
+        },
         ("target", "update-all"): {
             "audience": ["human", "agent"],
             "mutation": "writes-targets-with-apply",
@@ -2517,6 +2586,178 @@ def primary_checkout(repo: Path) -> Path:
     if common and common.name == ".git":
         return common.parent.resolve()
     return repo.resolve()
+
+
+def current_branch_name(repo: Path) -> str:
+    branch = git_text(repo, ["branch", "--show-current"])
+    if branch:
+        return branch
+    branch = git_text(repo, ["rev-parse", "--abbrev-ref", "HEAD"])
+    return "" if branch == "HEAD" else branch
+
+
+def current_commit(repo: Path) -> str:
+    return git_text(repo, ["rev-parse", "HEAD"])
+
+
+def branch_head(repo: Path, branch: str | None) -> str:
+    if not branch:
+        return ""
+    return git_text(repo, ["rev-parse", branch])
+
+
+def local_branch_exists(repo: Path, branch: str) -> bool:
+    return run_git(repo, ["show-ref", "--verify", "--quiet", f"refs/heads/{branch}"]).returncode == 0
+
+
+def closeout_default_branch(repo: Path) -> dict[str, Any]:
+    current_branch = current_branch_name(repo)
+    remote_head = git_text(repo, ["symbolic-ref", "--quiet", "--short", "refs/remotes/origin/HEAD"])
+    branch = ""
+    source = "unknown"
+    remote = ""
+    if remote_head.startswith("origin/"):
+        branch = remote_head.split("/", 1)[1]
+        source = "origin-head"
+        remote = "origin"
+    elif current_branch in DEFAULT_BRANCH_NAMES:
+        branch = current_branch
+        source = "current-default-name"
+    else:
+        for candidate in ("main", "master", "trunk", "develop"):
+            if local_branch_exists(repo, candidate):
+                branch = candidate
+                source = "local-default-name"
+                break
+    if not branch and current_branch:
+        branch = current_branch
+        source = "current-branch-fallback"
+    return {
+        "name": branch or None,
+        "remote": remote or None,
+        "remote_head": remote_head or None,
+        "source": source,
+        "detected": bool(branch),
+        "current_branch": current_branch or None,
+        "current_head": current_commit(repo) or None,
+        "head": branch_head(repo, branch) or None,
+    }
+
+
+def closeout_blocker_codes(blockers: list[dict[str, Any]]) -> list[str]:
+    return sorted({str(item.get("code") or "") for item in blockers if item.get("code")})
+
+
+def closeout_docs_required(dirty: dict[str, Any], completion_state: str) -> dict[str, Any]:
+    if completion_state == "clean":
+        return {
+            "required": False,
+            "state": "not-required-by-clean-tree",
+            "reason": "No target repo changes are pending.",
+            "report_marker": "No docs needed: repo is clean.",
+        }
+    if dirty.get("dirty"):
+        return {
+            "required": None,
+            "state": "requires-change-classification",
+            "reason": "Dirty changes need semantic classification before docs impact can be decided.",
+            "report_requirement": "Report docs updated, or record `No docs needed: <reason>`.",
+        }
+    return {
+        "required": None,
+        "state": "unknown-until-closeout-completes",
+        "reason": "Closeout may change task receipts, managed files, or docs; classify the final diff before claiming completion.",
+        "report_requirement": "Report docs updated, or record `No docs needed: <reason>`.",
+    }
+
+
+def closeout_unfinished_reason(completion_state: str, claim_blockers: list[dict[str, Any]]) -> str | None:
+    if completion_state == "clean" and not claim_blockers:
+        return None
+    if claim_blockers:
+        first = claim_blockers[0]
+        code = first.get("code") or "blocked"
+        message = first.get("message") or "Closeout has unresolved blockers."
+        return f"{code}: {message}"
+    return f"{completion_state}: closeout is not complete."
+
+
+def closeout_autoclose_eligibility(
+    repo: Path,
+    completion_state: str,
+    can_claim_done: bool,
+    claim_blockers: list[dict[str, Any]],
+) -> dict[str, Any]:
+    blocker_codes = closeout_blocker_codes(claim_blockers)
+    soft_blockers = {"dirty_primary_checkout", "worktree_prune_candidates"}
+    hard_blockers = sorted(code for code in blocker_codes if code not in soft_blockers)
+    eligible_states = {"needs-integration", "needs-worktree-prune"}
+    if can_claim_done:
+        eligible = False
+        reason = "already-clean"
+    elif hard_blockers:
+        eligible = False
+        reason = f"hard-blockers-present: {', '.join(hard_blockers)}"
+    elif completion_state not in eligible_states:
+        eligible = False
+        reason = f"completion-state-not-autocloseable: {completion_state}"
+    else:
+        eligible = True
+        reason = "gated-closeout-fix-preview-required"
+    return {
+        "eligible": eligible,
+        "policy": "gated",
+        "reason": reason,
+        "allowed_blockers": sorted(soft_blockers),
+        "blocker_codes": blocker_codes,
+        "preview_command": public_command("closeout-fix", "--repo", str(repo), "--json"),
+        "apply_command": public_command("closeout-fix", "--repo", str(repo), "--apply", "--jsonl"),
+    }
+
+
+def closeout_merge_readiness(
+    repo: Path,
+    default_branch: dict[str, Any],
+    can_claim_done: bool,
+    claim_blockers: list[dict[str, Any]],
+) -> dict[str, Any]:
+    current_branch = current_branch_name(repo)
+    current_head = current_commit(repo)
+    default_name = default_branch.get("name")
+    default_head = default_branch.get("head")
+    requires_integration = bool(current_branch and default_name and current_branch != default_name)
+    if not default_name:
+        status = "default-branch-unknown"
+        ready = False
+    elif not current_branch:
+        status = "detached-head"
+        ready = False
+    elif not can_claim_done:
+        status = "needs-closeout-before-merge"
+        ready = False
+    elif not requires_integration:
+        status = "on-default-branch"
+        ready = True
+    else:
+        status = "ready-for-reviewed-integration"
+        ready = True
+    command = None
+    if requires_integration:
+        command = (
+            f"create temporary integration worktree from {default_name}, merge {current_branch}, "
+            "run kit verify --harness-mode auto, then push without force"
+        )
+    return {
+        "status": status,
+        "ready": ready,
+        "current_branch": current_branch or None,
+        "current_head": current_head or None,
+        "default_branch": default_name,
+        "default_head": default_head,
+        "requires_integration_worktree": requires_integration,
+        "blocker_codes": closeout_blocker_codes(claim_blockers),
+        "integration_summary": command,
+    }
 
 
 def path_matches_allowed(path: str, allowed_paths: list[str]) -> bool:
@@ -4893,6 +5134,11 @@ def closeout_plan_payload(args: argparse.Namespace, repo: Path) -> dict[str, Any
         )
 
     can_claim_done = not claim_blockers
+    default_branch = closeout_default_branch(primary)
+    autoclose_eligibility = closeout_autoclose_eligibility(primary, completion_state, can_claim_done, claim_blockers)
+    merge_readiness = closeout_merge_readiness(primary, default_branch, can_claim_done, claim_blockers)
+    docs_required = closeout_docs_required(dirty, completion_state)
+    unfinished_reason = closeout_unfinished_reason(completion_state, claim_blockers)
     nonblocking_warning_codes = sorted(
         code for code in warning_codes if code in {"missing_sidecar", "receipt_warning", "task_status_warning", "closeout_warning"}
     )
@@ -4913,6 +5159,11 @@ def closeout_plan_payload(args: argparse.Namespace, repo: Path) -> dict[str, Any
         "completion_state": completion_state,
         "result": "ok" if can_claim_done else "blocked",
         "strict": bool(args.strict),
+        "autoclose_eligibility": autoclose_eligibility,
+        "default_branch": default_branch,
+        "merge_readiness": merge_readiness,
+        "docs_required": docs_required,
+        "unfinished_reason": unfinished_reason,
         "next_action": next_action,
         "claim_blockers": claim_blockers,
         "task_ledger_blockers": task_ledger_blockers,
@@ -4962,6 +5213,15 @@ def render_closeout_plan(payload: dict[str, Any]) -> None:
     print(f" - can claim done: {str(payload['can_claim_done']).lower()}")
     print(f" - completion state: {payload['completion_state']}")
     print(f" - writes: target=false sidecar=false")
+    default_branch = payload.get("default_branch") or {}
+    autoclose = payload.get("autoclose_eligibility") or {}
+    merge = payload.get("merge_readiness") or {}
+    if default_branch:
+        print(f" - default branch: {default_branch.get('name') or 'unknown'} ({default_branch.get('source')})")
+    if autoclose:
+        print(f" - autoclose eligible: {str(autoclose.get('eligible')).lower()} ({autoclose.get('reason')})")
+    if merge:
+        print(f" - merge readiness: {merge.get('status')}")
     dirty = payload.get("dirty") or {}
     git_state = payload.get("git_worktree_state") or {}
     managed_state = payload.get("kit_managed_state") or {}
@@ -9855,6 +10115,287 @@ def target_update_all_payload(args: argparse.Namespace) -> tuple[dict[str, Any],
     return payload, exit_code
 
 
+def closeout_plan_for_repo(repo: Path, *, strict: bool = False) -> dict[str, Any]:
+    return closeout_plan_payload(argparse.Namespace(repo=str(repo), strict=strict), repo)
+
+
+def closeout_fix_result_summary(payload: dict[str, Any] | None) -> dict[str, Any] | None:
+    if not payload:
+        return None
+    return {
+        "command": payload.get("command"),
+        "mode": payload.get("mode"),
+        "result": payload.get("result"),
+        "job_id": payload.get("job_id"),
+        "job_dir": payload.get("job_dir"),
+        "result_path": payload.get("result_path"),
+        "commits": payload.get("commits") or [],
+        "branches_pushed": payload.get("branches_pushed") or [],
+        "worktrees_pruned": payload.get("worktrees_pruned") or [],
+        "receipts": payload.get("receipts") or [],
+        "blockers": payload.get("blockers") or [],
+        "final_closeout": payload.get("final_closeout"),
+        "target_repo_writes": payload.get("target_repo_writes") or target_repo_writes(False),
+        "sidecar_writes": payload.get("sidecar_writes") or sidecar_writes(False),
+        "exit_code": payload.get("exit_code"),
+    }
+
+
+def finish_payload(
+    args: argparse.Namespace,
+    repo: Path,
+    *,
+    event_sink: closeout_fix.EventSink | None = None,
+) -> tuple[dict[str, Any], int]:
+    apply = bool(getattr(args, "apply", False))
+    plan = closeout_plan_for_repo(repo, strict=True)
+    initial_plan = plan
+    eligibility = plan.get("autoclose_eligibility") or {}
+    next_action = plan.get("next_action") or {}
+    closeout_payload: dict[str, Any] | None = None
+    closeout_exit = None
+
+    if not apply:
+        if plan.get("can_claim_done"):
+            result = "finished"
+            exit_code = 0
+        elif eligibility.get("eligible"):
+            result = "needs-apply"
+            exit_code = 1
+            next_action = {
+                "command": eligibility.get("apply_command"),
+                "reason": "Run the gated closeout supervisor to preserve and integrate finishable dirty work.",
+                "mutating": True,
+            }
+        else:
+            result = "blocked"
+            exit_code = 1
+    elif not eligibility.get("eligible"):
+        result = "finished" if plan.get("can_claim_done") else "blocked"
+        exit_code = 0 if plan.get("can_claim_done") else 2
+    else:
+        preview_payload, preview_exit = closeout_fix.preview_payload(args, repo, CLI_ENTRYPOINT)
+        if preview_exit != 0:
+            closeout_payload = preview_payload
+            result = "blocked"
+            closeout_exit = preview_exit
+            exit_code = preview_exit
+        else:
+            closeout_payload, closeout_exit = closeout_fix.apply_payload(args, repo, CLI_ENTRYPOINT, event_sink=event_sink)
+            final_closeout = closeout_payload.get("final_closeout") if closeout_payload else None
+            if closeout_exit == 0 and isinstance(final_closeout, dict) and final_closeout.get("can_claim_done"):
+                result = "finished"
+                plan = final_closeout
+                exit_code = 0
+            else:
+                result = "blocked"
+                exit_code = closeout_exit or 2
+
+    payload = {
+        "schema_version": 1,
+        "command": "finish",
+        "mode": "apply" if apply else "check",
+        "repo": str(repo),
+        "created_at": now(),
+        "result": result,
+        "can_claim_done": bool(plan.get("can_claim_done")),
+        "completion_state": plan.get("completion_state"),
+        "autoclose_eligibility": plan.get("autoclose_eligibility"),
+        "default_branch": plan.get("default_branch"),
+        "merge_readiness": plan.get("merge_readiness"),
+        "docs_required": plan.get("docs_required"),
+        "unfinished_reason": plan.get("unfinished_reason"),
+        "next_action": next_action,
+        "closeout_plan": plan,
+        "initial_closeout": initial_plan if closeout_payload else None,
+        "closeout_fix": closeout_fix_result_summary(closeout_payload),
+        "target_repo_writes": (closeout_payload or {}).get("target_repo_writes")
+        or target_repo_writes(False, reason="finish check is read-only" if not apply else "finish did not write target repo state"),
+        "sidecar_writes": (closeout_payload or {}).get("sidecar_writes")
+        or sidecar_writes(False, reason="finish check is read-only" if not apply else "finish did not write sidecar state"),
+        "closeout_exit_code": closeout_exit,
+        "exit_code": exit_code,
+    }
+    payload["human_summary"] = (plan.get("human_summary") or {}) if isinstance(plan, dict) else {}
+    return payload, exit_code
+
+
+def target_closeout_status_for_plan(plan: dict[str, Any], *, apply: bool) -> tuple[str, str, str]:
+    merge = plan.get("merge_readiness") or {}
+    eligibility = plan.get("autoclose_eligibility") or {}
+    if plan.get("can_claim_done"):
+        if merge.get("requires_integration_worktree"):
+            return (
+                "NEEDS-REVIEW",
+                "default-branch-integration-required",
+                merge.get("integration_summary") or "Integrate the completed branch into the detected default branch.",
+            )
+        return "CLEAN", "already-clean", "none"
+    if eligibility.get("eligible"):
+        if apply:
+            return "LEFT-UNFINISHED", "eligible-closeout-pending-apply", eligibility.get("apply_command") or ""
+        return "LEFT-UNFINISHED", "dry-run-eligible-closeout", eligibility.get("apply_command") or ""
+    state = str(plan.get("completion_state") or "")
+    if state in {"needs-receipt", "needs-finalizer", "blocked", "needs-cleanup"}:
+        return "LEFT-UNFINISHED", plan.get("unfinished_reason") or state, (plan.get("next_action") or {}).get("command") or ""
+    return "NEEDS-REVIEW", plan.get("unfinished_reason") or state or "closeout-review-required", (plan.get("next_action") or {}).get("command") or ""
+
+
+def target_closeout_all_run_target(args: argparse.Namespace, entry: dict[str, Any], *, apply: bool) -> dict[str, Any]:
+    root = entry.get("root")
+    result: dict[str, Any] = {
+        "root": root,
+        "id": entry.get("id"),
+        "name": entry.get("name"),
+        "status": "FAILED",
+        "target_repo_writes": target_repo_writes(False, reason="not attempted"),
+        "sidecar_writes": sidecar_writes(False, reason="not attempted"),
+    }
+    if not root:
+        result.update({"status": "FAILED", "reason": "invalid-registry-entry", "exit_code": 2, "error": "Registry entry has no root path."})
+        return result
+
+    repo_path = Path(str(root)).expanduser()
+    if not repo_path.exists():
+        result.update({"status": "FAILED", "reason": "missing", "exit_code": 2, "error": "Registered target path does not exist."})
+        return result
+    git_root_result = run_git(repo_path, ["rev-parse", "--show-toplevel"])
+    if git_root_result.returncode != 0:
+        result.update({"status": "FAILED", "reason": "not-git", "exit_code": 2, "error": "Registered target path is not a git repository."})
+        return result
+    repo = Path(git_root_result.stdout.strip()).resolve()
+    result["root"] = str(repo)
+    if not (repo / ".doc-contract-kit" / "install.json").exists():
+        result.update({"status": "FAILED", "reason": "not-installed", "exit_code": 2, "error": "Registered target no longer has a kit install receipt."})
+        return result
+
+    before_head = current_commit(repo)
+    before_branch = current_branch_name(repo)
+    plan = closeout_plan_for_repo(repo, strict=False)
+    status, reason, next_action = target_closeout_status_for_plan(plan, apply=apply)
+    result.update(
+        {
+            "status": status,
+            "reason": reason,
+            "branch": before_branch or None,
+            "default_branch": (plan.get("default_branch") or {}).get("name"),
+            "before_head": before_head or None,
+            "after_head": before_head or None,
+            "closeout_plan": {
+                "can_claim_done": plan.get("can_claim_done"),
+                "completion_state": plan.get("completion_state"),
+                "autoclose_eligibility": plan.get("autoclose_eligibility"),
+                "merge_readiness": plan.get("merge_readiness"),
+                "docs_required": plan.get("docs_required"),
+                "unfinished_reason": plan.get("unfinished_reason"),
+                "claim_blockers": plan.get("claim_blockers") or [],
+                "next_action": plan.get("next_action"),
+            },
+            "next_action": next_action,
+            "target_repo_writes": target_repo_writes(False, reason="batch closeout dry-run or skipped"),
+            "sidecar_writes": sidecar_writes(False, reason="batch closeout dry-run or skipped"),
+            "exit_code": 0 if status == "CLEAN" or (not apply and status == "LEFT-UNFINISHED") else 1,
+        }
+    )
+
+    if not apply or status != "LEFT-UNFINISHED" or not (plan.get("autoclose_eligibility") or {}).get("eligible"):
+        return result
+
+    preview_payload, preview_exit = closeout_fix.preview_payload(args, repo, CLI_ENTRYPOINT)
+    result["closeout_preview"] = closeout_fix_result_summary(preview_payload)
+    if preview_exit != 0:
+        result.update(
+            {
+                "status": "NEEDS-REVIEW",
+                "reason": "closeout-fix-preview-blocked",
+                "next_action": "Inspect closeout-fix preview blockers.",
+                "exit_code": preview_exit,
+            }
+        )
+        return result
+
+    try:
+        closeout_payload, closeout_exit = closeout_fix.apply_payload(args, repo, CLI_ENTRYPOINT)
+    except Exception as exc:
+        closeout_payload, closeout_exit = closeout_fix.failure_payload(args, repo, exc)
+    after_head = current_commit(repo)
+    result["after_head"] = after_head or None
+    result["closeout_fix"] = closeout_fix_result_summary(closeout_payload)
+    result["target_repo_writes"] = closeout_payload.get("target_repo_writes") or target_repo_writes(False)
+    result["sidecar_writes"] = closeout_payload.get("sidecar_writes") or sidecar_writes(False)
+    final_closeout = closeout_payload.get("final_closeout") if closeout_payload else None
+    final_merge = (final_closeout or {}).get("merge_readiness") or {}
+    if closeout_exit == 0 and isinstance(final_closeout, dict) and final_closeout.get("can_claim_done"):
+        if final_merge.get("requires_integration_worktree"):
+            result.update(
+                {
+                    "status": "NEEDS-REVIEW",
+                    "reason": "default-branch-integration-required",
+                    "next_action": final_merge.get("integration_summary") or "Integrate the completed branch into the detected default branch.",
+                    "exit_code": 1,
+                }
+            )
+        else:
+            result.update({"status": "CLEANED", "reason": "closeout-fix-applied", "next_action": "none", "exit_code": 0})
+    elif closeout_payload.get("result") == "failed":
+        result.update({"status": "FAILED", "reason": "closeout-fix-failed", "next_action": "Inspect closeout-fix result_path.", "exit_code": closeout_exit or 1})
+    else:
+        result.update({"status": "NEEDS-REVIEW", "reason": "closeout-fix-blocked", "next_action": "Inspect closeout-fix blockers.", "exit_code": closeout_exit or 2})
+    return result
+
+
+def target_closeout_all_payload(args: argparse.Namespace) -> tuple[dict[str, Any], int]:
+    registry = read_target_registry()
+    targets = list(registry.get("targets") or [])
+    apply = bool(getattr(args, "apply", False)) and not bool(getattr(args, "dry_run", False))
+    results = [target_closeout_all_run_target(args, entry, apply=apply) for entry in targets]
+    status_counts: dict[str, int] = {}
+    for item in results:
+        status = str(item.get("status") or "FAILED")
+        status_counts[status] = status_counts.get(status, 0) + 1
+    failed_count = status_counts.get("FAILED", 0)
+    needs_review_count = status_counts.get("NEEDS-REVIEW", 0)
+    unfinished_count = status_counts.get("LEFT-UNFINISHED", 0)
+    write_paths = [item["root"] for item in results if (item.get("target_repo_writes") or {}).get("performed")]
+    sidecar_paths: list[str] = []
+    for item in results:
+        writes = item.get("sidecar_writes") or {}
+        if writes.get("performed"):
+            sidecar_paths.extend(writes.get("paths") or [])
+    next_commands: list[str] = []
+    if targets and not apply:
+        next_commands.append(public_command("target", "closeout-all", "--apply", "--policy", getattr(args, "policy", "gated"), "--json"))
+    if status_counts.get("FAILED"):
+        next_commands.append(public_command("target", "list", "--json"))
+    exit_code = 1 if apply and (failed_count or needs_review_count or unfinished_count) else 0
+    payload = {
+        "schema_version": 1,
+        "command": "target-closeout-all",
+        "mode": "apply" if apply else "dry-run",
+        "policy": getattr(args, "policy", "gated"),
+        "registry": {
+            "path": str(target_registry_path()),
+            "target_count": len(targets),
+            "updated_at": registry.get("updated_at"),
+        },
+        "target_repo_writes": target_repo_writes(bool(write_paths), paths=write_paths, reason="batch closeout apply" if write_paths else "batch dry-run, clean targets, or skipped closeouts"),
+        "sidecar_writes": sidecar_writes(bool(sidecar_paths), paths=sorted(set(sidecar_paths)), reason="batch closeout apply" if sidecar_paths else "batch dry-run, clean targets, or skipped closeouts"),
+        "summary": {
+            "total": len(results),
+            "clean": status_counts.get("CLEAN", 0),
+            "cleaned": status_counts.get("CLEANED", 0),
+            "left_unfinished": unfinished_count,
+            "needs_review": needs_review_count,
+            "failed": failed_count,
+            "statuses": status_counts,
+        },
+        "targets": results,
+        "next_commands": next_commands,
+        "exit_code": exit_code,
+    }
+    return payload, exit_code
+
+
 def target_prune_missing_payload(args: argparse.Namespace) -> tuple[dict[str, Any], int]:
     registry = read_target_registry()
     targets = list(registry.get("targets") or [])
@@ -10018,6 +10559,35 @@ def render_target_update_all(payload: dict[str, Any], style: str = "auto") -> No
         if plan:
             detail = f" ({plan.get('actions', 0)} actions, {plan.get('conflicts', 0)} conflicts, {plan.get('blockers', 0)} blockers)"
         print(f"   - {status}: {root}{detail}")
+    if payload.get("next_commands"):
+        print(" - next commands:")
+        for command in payload["next_commands"]:
+            print(f"   - {command}")
+
+
+def render_target_closeout_all(payload: dict[str, Any], style: str = "auto") -> None:
+    summary = payload.get("summary") or {}
+    registry = payload.get("registry") or {}
+    print(styled_text(f"{PUBLIC_COMMAND} target closeout-all:", style, "1;36"))
+    print(f" - mode: {payload.get('mode')}")
+    print(f" - policy: {payload.get('policy')}")
+    print(f" - registry: {registry.get('path')}")
+    print(f" - targets: {summary.get('total', 0)}")
+    print(f" - clean: {summary.get('clean', 0)}")
+    print(f" - cleaned: {summary.get('cleaned', 0)}")
+    print(f" - left unfinished: {summary.get('left_unfinished', 0)}")
+    print(f" - needs review: {summary.get('needs_review', 0)}")
+    print(f" - failed: {summary.get('failed', 0)}")
+    for item in payload.get("targets") or []:
+        root = item.get("root") or "(unknown)"
+        status = item.get("status") or "FAILED"
+        reason = item.get("reason") or ""
+        branch = item.get("branch") or "unknown"
+        default_branch = item.get("default_branch") or "unknown"
+        detail = f" ({reason})" if reason else ""
+        print(f"   - {status}: {root}{detail} [{branch} -> {default_branch}]")
+        if item.get("next_action") and item.get("next_action") != "none":
+            print(f"     next: {item.get('next_action')}")
     if payload.get("next_commands"):
         print(" - next commands:")
         for command in payload["next_commands"]:
@@ -10279,6 +10849,24 @@ def build_parser() -> argparse.ArgumentParser:
     closeout_fix_parser.add_argument("--agent-command", help="Explicit command for --agent custom. No runner is inferred from adapters.")
     closeout_fix_parser.add_argument("--timeout-seconds", type=int, default=3600, help="Maximum seconds for each supervised closeout step.")
     closeout_fix_parser.add_argument("--no-push", action="store_true", help="Leave successful commits local instead of pushing the current branch.")
+
+    finish_parser = subparsers.add_parser(
+        "finish",
+        help="Run the strict per-thread finish gate and optionally apply gated closeout.",
+    )
+    add_common_repo_args(finish_parser)
+    finish_parser.add_argument("--format", choices=["text", "json"], default=None)
+    finish_parser.add_argument("--apply", action="store_true", help="Apply gated closeout when closeout-plan marks the repo eligible.")
+    finish_parser.add_argument("--jsonl", action="store_true", help="Stream closeout-fix JSONL events and the final finish payload when applying.")
+    finish_parser.add_argument(
+        "--agent",
+        choices=("auto", "codex", "custom"),
+        default="auto",
+        help="Headless runner to launch when --apply delegates to closeout-fix.",
+    )
+    finish_parser.add_argument("--agent-command", help="Explicit command for --agent custom.")
+    finish_parser.add_argument("--timeout-seconds", type=int, default=3600, help="Maximum seconds for each supervised closeout step.")
+    finish_parser.add_argument("--no-push", action="store_true", help="Leave successful closeout commits local instead of pushing the current branch.")
 
     self_cmd = subparsers.add_parser("self", help="Inspect or update the global repo-contract-kit tool checkout.")
     self_subparsers = self_cmd.add_subparsers(dest="self_command", required=True, parser_class=KitArgumentParser)
@@ -10729,6 +11317,24 @@ def build_parser() -> argparse.ArgumentParser:
     target_update_all.add_argument("--runtime-adapters")
     target_update_all.add_argument("--metadata-only", action="store_true")
     target_update_all.add_argument("--force-managed", action="store_true")
+    target_closeout_all = target_subparsers.add_parser(
+        "closeout-all",
+        help="Dry-run or apply gated closeout across every registered target repo.",
+    )
+    target_closeout_all.add_argument("--json", action="store_true", help="Emit machine-readable JSON.")
+    add_style_arg(target_closeout_all)
+    target_closeout_all.add_argument("--dry-run", action="store_true", help="Report every registered target closeout state without writes. This is the default.")
+    target_closeout_all.add_argument("--apply", action="store_true", help="Apply closeout only to policy-eligible targets.")
+    target_closeout_all.add_argument("--policy", choices=("gated",), default="gated", help="Closeout policy. Only gated is supported.")
+    target_closeout_all.add_argument(
+        "--agent",
+        choices=("auto", "codex", "custom"),
+        default="auto",
+        help="Headless runner to launch for eligible dirty repos.",
+    )
+    target_closeout_all.add_argument("--agent-command", help="Explicit command for --agent custom.")
+    target_closeout_all.add_argument("--timeout-seconds", type=int, default=3600, help="Maximum seconds for each supervised closeout step.")
+    target_closeout_all.add_argument("--no-push", action="store_true", help="Leave successful closeout commits local instead of pushing branches.")
     target_prune_missing = target_subparsers.add_parser(
         "prune-missing",
         help="Remove registered target repos whose paths no longer exist.",
@@ -10877,6 +11483,10 @@ def main(argv: list[str] | None = None) -> int:
         payload, exit_code = target_update_all_payload(args)
         render_json(payload) if args.json else render_target_update_all(payload, style=render_style(args))
         return exit_code
+    if args.command == "target" and getattr(args, "target_command", "") == "closeout-all":
+        payload, exit_code = target_closeout_all_payload(args)
+        render_json(payload) if args.json else render_target_closeout_all(payload, style=render_style(args))
+        return exit_code
     if args.command == "target" and getattr(args, "target_command", "") == "list":
         payload, exit_code = target_list_payload(args)
         render_json(payload) if args.json else render_target_list(payload, style=render_style(args))
@@ -10981,6 +11591,19 @@ def main(argv: list[str] | None = None) -> int:
             render_json(payload)
         else:
             print(closeout_fix.render_text(payload))
+        return exit_code
+    if args.command == "finish":
+        event_sink = None
+        if args.jsonl:
+            def event_sink(event: dict[str, Any]) -> None:
+                print(json.dumps(event, sort_keys=True), flush=True)
+
+        payload, exit_code = finish_payload(args, repo, event_sink=event_sink)
+        if args.jsonl:
+            print(json.dumps({"event": "final-payload", "payload": payload}, sort_keys=True), flush=True)
+        else:
+            output_format = args.format or ("json" if args.json else "text")
+            render_json(payload) if output_format == "json" else render_closeout_plan(payload["closeout_plan"])
         return exit_code
     if args.command == "branch-readiness":
         payload, exit_code = branch_readiness.build_report(args, repo)

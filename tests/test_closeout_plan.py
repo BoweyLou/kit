@@ -100,6 +100,12 @@ class CloseoutPlanTests(unittest.TestCase):
             self.assertFalse(payload["write_guarantees"]["target_repo_writes"]["performed"])
             self.assertFalse(payload["write_guarantees"]["sidecar_writes"]["performed"])
             self.assertEqual(payload["next_action"]["command"], "none")
+            self.assertIn(payload["default_branch"]["name"], {"main", "master"})
+            self.assertEqual(payload["merge_readiness"]["status"], "on-default-branch")
+            self.assertFalse(payload["autoclose_eligibility"]["eligible"])
+            self.assertEqual(payload["autoclose_eligibility"]["reason"], "already-clean")
+            self.assertFalse(payload["docs_required"]["required"])
+            self.assertIsNone(payload["unfinished_reason"])
             self.assertFalse((state_home / "repo-contract-kit").exists())
 
     def test_dirty_primary_checkout_blocks_done_claim(self):
@@ -120,6 +126,9 @@ class CloseoutPlanTests(unittest.TestCase):
             self.assertEqual(payload["next_action"]["command"], "git status --short")
             blocker_codes = {item["code"] for item in payload["claim_blockers"]}
             self.assertIn("dirty_primary_checkout", blocker_codes)
+            self.assertTrue(payload["autoclose_eligibility"]["eligible"])
+            self.assertEqual(payload["docs_required"]["state"], "requires-change-classification")
+            self.assertIn("dirty_primary_checkout", payload["unfinished_reason"])
             self.assertEqual(payload["human_summary"]["title"], "Closeout blocked: source changes need integration")
             self.assertIn("preserve real work", payload["human_summary"]["recommended_action"])
             explanation_codes = {item["code"] for item in payload["blocker_explanations"]}

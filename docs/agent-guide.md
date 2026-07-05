@@ -115,6 +115,7 @@ For normal work:
 kit task-packet --harness-mode auto --json
 kit verify --harness-mode auto --json
 kit closeout-plan --json
+kit finish --json
 ```
 
 Before the final response for write-capable work, run
@@ -123,7 +124,13 @@ Before the final response for write-capable work, run
 `blocker_explanations`, and `next_action` instead. Use
 `kit closeout-plan --strict --json` when a shell gate should fail until dirty
 primary state, active tasks, missing receipts, and closeout blockers are
-resolved.
+resolved. The JSON payload includes `autoclose_eligibility`, `default_branch`,
+`merge_readiness`, `docs_required`, and `unfinished_reason` for automation
+policy. Do not infer these from prose.
+
+Use `kit finish --json` as the per-thread completion gate before a final
+response. `kit finish --apply --jsonl` may run writes only by delegating to
+`closeout-fix`, and only when `autoclose_eligibility.eligible=true`.
 
 Use `kit closeout-fix` only when the requested task is to close out a dirty repo
 as a supervised workflow:
@@ -144,6 +151,19 @@ Kit Companion can queue guided closeout for multiple dirty targets with a
 concurrency limit of two, but each job still invokes the same one-repo
 `closeout-fix --apply --jsonl` command and keeps separate job events, receipts,
 and final payloads.
+
+For registry-wide local maintenance, use the batch primitive rather than
+scanning filesystem roots:
+
+```bash
+kit target closeout-all --dry-run --json
+kit target closeout-all --apply --policy gated --json
+```
+
+Dry-run is report-only. Apply mode reads the kit target registry, leaves active
+or ambiguous work untouched, and invokes the same gated one-repo closeout
+supervisor only for eligible targets. Status values are `CLEAN`, `CLEANED`,
+`LEFT-UNFINISHED`, `NEEDS-REVIEW`, and `FAILED`.
 
 The launched closeout agent must not run force-push, reset, clean, destructive
 checkout, stash/drop, dirty-worktree deletion, or source-file deletion. A

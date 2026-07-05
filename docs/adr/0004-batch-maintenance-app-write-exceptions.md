@@ -26,11 +26,17 @@ Add dedicated Batch tab write actions for these exact command shapes:
 - `kit target prune-missing --apply --json`
 - `kit worktree prune --root <selected-target> --apply --json`
 - `kit target update-all --apply --json`
+- `kit target closeout-all --apply --policy gated --json`
 
 Add batch guided closeout for dirty target repos by queueing separate
 `kit closeout-fix --repo <target> --apply --jsonl` jobs with a concurrency
 limit of two. The app must keep per-repo job cards, events, result payloads,
 receipts, and blockers separate.
+
+Use `target closeout-all` for all-registry overnight closeout automation. It
+must read registered targets only, use the gated closeout policy, and report
+`CLEAN`, `CLEANED`, `LEFT-UNFINISHED`, `NEEDS-REVIEW`, or `FAILED` without
+normalizing ambiguous work.
 
 Do not allow the app write runner to execute setup, install, global tool
 updates, self updates, custom closeout agents, arbitrary target writes,

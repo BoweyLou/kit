@@ -169,6 +169,36 @@ class AgentTaskFinalizeTests(unittest.TestCase):
             updated = json.loads(metadata_path.read_text(encoding="utf-8"))
             self.assertEqual(updated["status"], "in-progress")
 
+    def test_finalize_skip_ready_still_blocks_uncommitted_task_changes(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            repo = Path(tmp) / "repo"
+            repo.mkdir()
+            init_repo(repo)
+            install_agentic(repo)
+            metadata_path, _metadata, worktree = prepare_task(repo, "AGW-096")
+            receipt = write_receipt(repo, "AGW-096")
+            (worktree / "README.md").write_text("# Dirty task work\n", encoding="utf-8")
+
+            result = run(
+                [
+                    "make",
+                    "agent-task-finalize",
+                    "TASK=AGW-096",
+                    f"TASK_RECEIPT={receipt}",
+                    "TASK_FINALIZE_SKIP_READY=1",
+                    "TASK_FINALIZE_JSON=1",
+                ],
+                repo,
+            )
+
+            self.assertNotEqual(result.returncode, 0)
+            payload = json.loads(result.stdout)
+            self.assertEqual(payload["result"], "blocked")
+            self.assertEqual(payload["steps"]["publication"]["returncode"], 1)
+            self.assertIn("Commit evidence required before finish", payload["steps"]["publication"]["stderr"])
+            updated = json.loads(metadata_path.read_text(encoding="utf-8"))
+            self.assertEqual(updated["status"], "in-progress")
+
     def test_finalize_block_skips_readiness_and_records_blocked_status(self):
         with tempfile.TemporaryDirectory() as tmp:
             repo = Path(tmp) / "repo"

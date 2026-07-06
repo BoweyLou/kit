@@ -72,9 +72,10 @@ Rules:
 - Include acceptance criteria that can be verified by commands, file checks, or
   review steps.
 - Include closeout requirements before handoff: expected final receipt path,
-  readiness check command/result, lifecycle action, final `agent-task-status`
-  command/result, `agent-task-closeout` preview command/result, and an explicit
-  dirty-state explanation.
+  publication policy (`commit_required`, `publish_required`, `push_required`,
+  and reason), readiness check command/result, lifecycle action, final
+  `agent-task-status` command/result, `agent-task-closeout` preview
+  command/result, and an explicit dirty-state explanation.
 - Include docs impact and waiver rules even for docs-only work.
 - For public CLI, API, config, schema, generated-doc, or release-impacting
   work, name exact documentation and release metadata surfaces before handoff:

@@ -389,6 +389,7 @@
       "additionalProperties": false,
       "required": [
         "final_receipt_path",
+        "publication_policy",
         "readiness_check",
         "lifecycle_action",
         "final_task_status",
@@ -400,6 +401,29 @@
           "type": "string",
           "minLength": 1,
           "description": "Expected durable final receipt path to link before task handoff."
+        },
+        "publication_policy": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["commit_required", "publish_required", "push_required", "reason"],
+          "properties": {
+            "commit_required": {
+              "type": "boolean",
+              "description": "Whether finish readiness requires no uncommitted non-artifact task worktree changes."
+            },
+            "publish_required": {
+              "type": "boolean",
+              "description": "Whether the task must be published for handoff or integration."
+            },
+            "push_required": {
+              "type": "boolean",
+              "description": "Whether a task branch push to its upstream is required before finish."
+            },
+            "reason": {
+              "type": "string",
+              "minLength": 1
+            }
+          }
         },
         "readiness_check": {
           "type": "object",

@@ -123,8 +123,24 @@ def prepare_task(repo: Path, task_id: str, scope: str):
     result = run(["make", "agent-task-prepare", f"TASK={task_id}", f"SCOPE={scope}", f"BASE_REF={base}"], repo)
     if result.returncode != 0:
         raise AssertionError(result.stdout + result.stderr)
-    metadata = json.loads((repo / ".agent-workflows" / "tasks" / f"{task_id.lower()}.json").read_text(encoding="utf-8"))
+    metadata = json.loads(metadata_path(repo, task_id).read_text(encoding="utf-8"))
     return Path(metadata["worktree"]), base
+
+
+def metadata_path(repo: Path, task_id: str):
+    return repo / ".agent-workflows" / "tasks" / f"{task_id.lower()}.json"
+
+
+def update_publication_policy(repo: Path, task_id: str, *, publish_required=False, commit_required=True):
+    path = metadata_path(repo, task_id)
+    metadata = json.loads(path.read_text(encoding="utf-8"))
+    metadata["publication_policy"] = {
+        "commit_required": commit_required,
+        "publish_required": publish_required,
+        "push_required": publish_required,
+        "reason": "test policy",
+    }
+    path.write_text(json.dumps(metadata, indent=2, sort_keys=True) + "\n", encoding="utf-8")
 
 
 class AgentTaskReadyTests(unittest.TestCase):
@@ -163,6 +179,78 @@ class AgentTaskReadyTests(unittest.TestCase):
             self.assertTrue(report["receipt_validation"]["passed"])
             self.assertEqual(report["goal_check"]["summary"]["unknown"], 1)
             self.assertTrue(any("Goal-check found changed paths" in warning for warning in report["warnings"]))
+            self.assertTrue(report["publication"]["commit"]["satisfied"])
+            self.assertFalse(report["publication"]["publish"]["required"])
+
+    def test_agent_task_ready_blocks_uncommitted_task_changes_when_commit_required(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            repo = Path(tmp) / "repo"
+            repo.mkdir()
+            init_repo(repo)
+            install_agentic(repo)
+            worktree, _ = prepare_task(repo, "AGW-096", "README.md")
+
+            (worktree / "README.md").write_text("# Dirty task change\n", encoding="utf-8")
+            write_valid_receipt(worktree, "AGW-096", ["README.md"])
+
+            result = run(["make", "agent-task-ready", "TASK_READY_JSON=1"], worktree)
+
+            self.assertNotEqual(result.returncode, 0, result.stdout + result.stderr)
+            report = json.loads(result.stdout)
+            self.assertFalse(report["publication"]["commit"]["satisfied"])
+            self.assertIn("README.md", report["publication"]["commit"]["dirty_files"])
+            self.assertIn(
+                "Commit evidence required before finish: task worktree has uncommitted changes.",
+                report["blockers"],
+            )
+
+    def test_agent_task_ready_requires_push_when_publish_required(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            repo = Path(tmp) / "repo"
+            repo.mkdir()
+            init_repo(repo)
+            install_agentic(repo)
+            remote = Path(tmp) / "remote.git"
+            run(["git", "init", "-q", "--bare", str(remote)], repo, check=True)
+            run(["git", "remote", "add", "origin", str(remote)], repo, check=True)
+            worktree, _ = prepare_task(repo, "AGW-097", "README.md")
+            update_publication_policy(repo, "AGW-097", publish_required=True)
+
+            (worktree / "README.md").write_text("# Publish required task\n", encoding="utf-8")
+            run(["git", "add", "README.md"], worktree, check=True)
+            run(
+                [
+                    "git",
+                    "-c",
+                    "user.name=repo-contract-kit test",
+                    "-c",
+                    "user.email=repo-contract-kit@example.invalid",
+                    "commit",
+                    "-qm",
+                    "Task change",
+                ],
+                worktree,
+                check=True,
+            )
+            write_valid_receipt(worktree, "AGW-097", ["README.md"])
+
+            blocked = run(["make", "agent-task-ready", "TASK_READY_JSON=1"], worktree)
+
+            self.assertNotEqual(blocked.returncode, 0, blocked.stdout + blocked.stderr)
+            blocked_report = json.loads(blocked.stdout)
+            self.assertFalse(blocked_report["publication"]["publish"]["satisfied"])
+            self.assertIn(
+                "Publish evidence required before finish: task branch has not been pushed to its upstream.",
+                blocked_report["blockers"],
+            )
+
+            run(["git", "push", "-u", "origin", "HEAD"], worktree, check=True)
+            passed = run(["make", "agent-task-ready", "TASK_READY_JSON=1"], worktree)
+
+            self.assertEqual(passed.returncode, 0, passed.stdout + passed.stderr)
+            passed_report = json.loads(passed.stdout)
+            self.assertTrue(passed_report["publication"]["publish"]["satisfied"])
+            self.assertTrue(passed_report["publication"]["publish"]["push"]["pushed"])
 
     def test_agent_task_ready_blocks_goal_check_conflict(self):
         with tempfile.TemporaryDirectory() as tmp:

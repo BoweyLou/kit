@@ -605,6 +605,19 @@ def ensure_parallel_start_allowed(root: Path, task_id: str, scope: list[str], js
     return status_report, parallel_context
 
 
+def publication_policy(args):
+    publish_required = bool(args.publish_required)
+    return {
+        "commit_required": not bool(args.no_commit_required),
+        "publish_required": publish_required,
+        "push_required": publish_required,
+        "reason": (
+            "Write-capable task completion requires committed changes before finish. "
+            "Push evidence is required only when publish_required is true."
+        ),
+    }
+
+
 def build_task_packet(
     args,
     root: Path,
@@ -619,6 +632,7 @@ def build_task_packet(
 ):
     title = args.title.strip() if args.title.strip() else f"Implement {args.task}"
     goal_report = goal_check.build_goal_check_report(worktree_path, scope)
+    publish_policy = publication_policy(args)
     return {
         "schema_version": 1,
         "task": {
@@ -682,9 +696,10 @@ def build_task_packet(
         },
         "closeout_requirements": {
             "final_receipt_path": f".agent-workflows/tasks/{task_slug}/receipt.json",
+            "publication_policy": publish_policy,
             "readiness_check": {
                 "command": "make agent-task-ready TASK_READY_JSON=1",
-                "expected_result": "readiness passes or blockers are recorded before handoff",
+                "expected_result": "readiness passes with required commit and publish evidence, or blockers are recorded before handoff",
             },
             "lifecycle_action": {
                 "action": "finish",
@@ -756,6 +771,7 @@ def build_task_packet(
         "coordination": active_task_context(existing_tasks, warnings),
         "parallel_context": parallel_context,
         "primary_checkout_baseline": primary_baseline,
+        "publication_policy": publish_policy,
         "handoff": {
             "recommended_prompt": "fix-implementer.md",
             "owner": None,
@@ -856,6 +872,7 @@ def build_receipt_template(
             "next_actions": [
                 "Implement only the approved task scope.",
                 "Record validation output and docs impact before closing the task.",
+                "Commit task changes before finish; push only when the task publication policy requires it.",
                 "Ask before staging, committing, pushing, or mutating pull requests.",
             ],
             "human_approval_required": True,
@@ -896,6 +913,7 @@ def build_metadata(
         "source_repo": str(root),
         "base_ref": args.base_ref,
         "primary_checkout_baseline": primary_baseline,
+        "publication_policy": publication_policy(args),
         "branch": branch,
         "worktree": str(worktree_path),
         "scope": scope,
@@ -934,6 +952,8 @@ def parse_args():
     parser.add_argument("--overlap-policy", default="warn", choices=["warn", "block", "ignore"])
     parser.add_argument("--dirty-primary-baseline", action="store_true", help="Allow a dirty primary checkout by recording a baseline that readiness/finalize must later compare")
     parser.add_argument("--allow-dirty", action="store_true", help="Deprecated alias for --dirty-primary-baseline")
+    parser.add_argument("--publish-required", action="store_true", help="Require task branch push evidence before finish")
+    parser.add_argument("--no-commit-required", action="store_true", help="Do not require a clean task worktree before finish")
     parser.add_argument("--owner", default="", help="Human or agent owner recorded in task metadata")
     parser.add_argument("--owner-label", default="", help="Human-readable owner label recorded in task attribution")
     parser.add_argument("--session-id", default="", help="Calling session/thread id recorded in task metadata")

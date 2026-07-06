@@ -183,6 +183,10 @@ decide when a repo is safe to close without scraping prose.
 Use `kit finish --json` as the stricter per-thread final gate. Apply mode is
 narrow: it delegates to `closeout-fix` only when the closeout plan marks the
 repo eligible for gated autoclose.
+Prepared task worktrees also carry a `publication_policy`: commit-required
+tasks must be clean of uncommitted non-artifact changes before finish, while
+publish-required tasks must also have a pushed upstream task branch. Kit reports
+missing evidence as a blocker instead of committing or pushing automatically.
 
 ```bash
 kit finish --repo /path/to/repo --apply --jsonl

@@ -336,8 +336,11 @@ worktree. Run it from the task worktree before opening or updating a PR, or
 before handing the branch back for merge. It compares actual changed files to
 the declared task scope, reports goal-check status, checks base-branch
 freshness, validates receipt and docs-impact evidence in strict mode, and
-blocks overlap with other in-progress task scopes. Unknown goal-check areas are
-warnings; paths declared as `conflict` are readiness blockers. Set
+blocks overlap with other in-progress task scopes. It also enforces the task
+`publication_policy`: commit-required tasks must have no uncommitted
+non-artifact worktree changes, and publish-required tasks must have a pushed
+upstream task branch. Unknown goal-check areas are warnings; paths declared as
+`conflict` are readiness blockers. Set
 `BASE_REF=<branch>` when the default branch cannot be inferred correctly and
 `TASK_READY_JSON=1` for machine-readable output.
 Run `make agent-branch-readiness BRANCH_READY_JSON=1` after per-task readiness
@@ -347,7 +350,9 @@ docs waiver, and changelog/version disposition in one JSON object.
 `make agent-task-finalize TASK=<id> TASK_RECEIPT=<path>` closes one prepared
 task by running readiness, lifecycle update, final task status, and closeout
 preview in one command. Finish mode requires a receipt and readiness unless
-`TASK_FINALIZE_SKIP_READY=1` is set. Use `TASK_FINALIZE_ACTION=block|abandon`
+`TASK_FINALIZE_SKIP_READY=1` is set, but the publication policy still blocks
+finish if required commit or push evidence is missing. Use
+`TASK_FINALIZE_ACTION=block|abandon`
 for terminal non-passing states, `TASK_FINALIZE_JSON=1` for the full local
 finalizer receipt, and `TASK_FINALIZE_CLOSEOUT_APPLY=1` only when eligible
 worktree removal should be applied.

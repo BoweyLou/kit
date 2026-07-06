@@ -6835,6 +6835,19 @@ def task_packet_docs_impact_payload(args: argparse.Namespace) -> dict[str, Any]:
     }
 
 
+def task_packet_publication_policy(args: argparse.Namespace) -> dict[str, Any]:
+    publish_required = bool(getattr(args, "publish_required", False))
+    return {
+        "commit_required": not bool(getattr(args, "no_commit_required", False)),
+        "publish_required": publish_required,
+        "push_required": publish_required,
+        "reason": (
+            "Write-capable task completion requires committed changes before finish. "
+            "Push evidence is required only when publish_required is true."
+        ),
+    }
+
+
 def task_packet_payload(args: argparse.Namespace, repo: Path) -> dict[str, Any]:
     requested_harness_mode = getattr(args, "harness_mode", "standard")
     mode_selection = harness_mode_selection(repo, requested_harness_mode)
@@ -6899,9 +6912,10 @@ def task_packet_payload(args: argparse.Namespace, repo: Path) -> dict[str, Any]:
         },
         "closeout_requirements": {
             "final_receipt_path": f".agent-workflows/tasks/{task_slug}/receipt.json or sidecar equivalent",
+            "publication_policy": task_packet_publication_policy(args),
             "readiness_check": {
                 "command": f"make agent-task-ready TASK={args.task_id} TASK_READY_JSON=1 or record why unavailable",
-                "expected_result": "readiness passes or blocker is recorded before handoff",
+                "expected_result": "readiness passes with required commit and publish evidence, or blocker is recorded before handoff",
             },
             "lifecycle_action": {
                 "action": "finish",
@@ -7017,6 +7031,8 @@ def backlog_task_packet_payload(args: argparse.Namespace, repo: Path) -> dict[st
         generated_doc=args.generated_doc,
         contract_reference=args.contract_reference,
         docs_validation_command=args.docs_validation_command,
+        publish_required=args.publish_required,
+        no_commit_required=args.no_commit_required,
         risk=args.risk,
         known_risk=args.known_risk or [],
         stop_condition=args.stop_condition or [],
@@ -11427,6 +11443,8 @@ def build_parser() -> argparse.ArgumentParser:
     task_packet.add_argument("--generated-doc", action="append")
     task_packet.add_argument("--contract-reference", action="append")
     task_packet.add_argument("--docs-validation-command", action="append")
+    task_packet.add_argument("--publish-required", action="store_true", help="Require task branch push evidence before finish")
+    task_packet.add_argument("--no-commit-required", action="store_true", help="Do not require a clean task worktree before finish")
     task_packet.add_argument("--risk", choices=["low", "medium", "high"], default="medium")
     task_packet.add_argument("--known-risk", action="append")
     task_packet.add_argument("--stop-condition", action="append")
@@ -11462,6 +11480,8 @@ def build_parser() -> argparse.ArgumentParser:
     from_backlog.add_argument("--generated-doc", action="append")
     from_backlog.add_argument("--contract-reference", action="append")
     from_backlog.add_argument("--docs-validation-command", action="append")
+    from_backlog.add_argument("--publish-required", action="store_true", help="Require task branch push evidence before finish")
+    from_backlog.add_argument("--no-commit-required", action="store_true", help="Do not require a clean task worktree before finish")
     from_backlog.add_argument("--risk", choices=["low", "medium", "high"], default="medium")
     from_backlog.add_argument("--known-risk", action="append")
     from_backlog.add_argument("--stop-condition", action="append")

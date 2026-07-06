@@ -131,6 +131,11 @@ policy. Do not infer these from prose.
 Use `kit finish --json` as the per-thread completion gate before a final
 response. `kit finish --apply --jsonl` may run writes only by delegating to
 `closeout-fix`, and only when `autoclose_eligibility.eligible=true`.
+For prepared task worktrees, `agent-task-ready` and `agent-task-finalize`
+enforce the task `publication_policy` before finish: commit-required tasks must
+have no uncommitted non-artifact worktree changes, while publish-required tasks
+must also have a pushed upstream task branch. Lifecycle commands report missing
+evidence as blockers; they do not auto-commit or auto-push.
 
 Use `kit closeout-fix` only when the requested task is to close out a dirty repo
 as a supervised workflow:

@@ -4273,6 +4273,7 @@ echo "refreshed"
                     "workflows/schemas/task-packet.schema.json",
                     "--docs-validation-command",
                     "make docs-freshness",
+                    "--publish-required",
                 ],
                 cwd=ROOT,
                 capture_output=True,
@@ -4313,6 +4314,9 @@ echo "refreshed"
             self.assertIn("extends", payload["goal_alignment"]["area_contracts"][0]["notes"])
             self.assertIn("closeout_requirements", payload)
             self.assertEqual(payload["closeout_requirements"]["lifecycle_action"]["action"], "finish")
+            self.assertEqual(payload["closeout_requirements"]["publication_policy"]["commit_required"], True)
+            self.assertEqual(payload["closeout_requirements"]["publication_policy"]["publish_required"], True)
+            self.assertEqual(payload["closeout_requirements"]["publication_policy"]["push_required"], True)
 
     def test_goal_check_unknown_policy_block_fails_unknown_paths(self):
         with tempfile.TemporaryDirectory() as tmp:
@@ -4479,6 +4483,9 @@ echo "refreshed"
             self.assertTrue(
                 any("schema" in reference for reference in payload["docs_impact"]["contract_references"])
             )
+            self.assertEqual(payload["closeout_requirements"]["publication_policy"]["commit_required"], True)
+            self.assertEqual(payload["closeout_requirements"]["publication_policy"]["publish_required"], False)
+            self.assertEqual(payload["closeout_requirements"]["publication_policy"]["push_required"], False)
             self.assertIn("make docs-freshness", payload["docs_impact"]["verification_commands"])
 
     def test_automation_handoff_writes_patch_for_allowed_worktree_changes(self):

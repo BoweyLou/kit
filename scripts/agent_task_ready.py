@@ -337,6 +337,124 @@ def changed_files(root: Path, base_ref: str | None):
     return sorted(set(normalized))
 
 
+def is_ignored_local_artifact(path: str):
+    value = normalize_scope_path(path)
+    return any(value.startswith(prefix) for prefix in IGNORED_LOCAL_ARTIFACT_PREFIXES)
+
+
+def task_worktree_dirty_entries(root: Path):
+    return [entry for entry in git_status_entries(root) if not is_ignored_local_artifact(entry["path"])]
+
+
+def publication_policy(metadata: dict):
+    raw_policy = metadata.get("publication_policy")
+    policy = raw_policy if isinstance(raw_policy, dict) else {}
+    publish_required = bool(policy.get("publish_required", False))
+    return {
+        "commit_required": bool(policy.get("commit_required", True)),
+        "publish_required": publish_required,
+        "push_required": bool(policy.get("push_required", publish_required)),
+        "reason": policy.get("reason") or "Prepared write-capable tasks require committed changes before finish; push is required only when publication is declared.",
+    }
+
+
+def push_evidence(root: Path):
+    branch = current_branch(root)
+    if not branch:
+        return {
+            "checked": True,
+            "branch": "",
+            "upstream": None,
+            "pushed": False,
+            "ahead": None,
+            "behind": None,
+            "message": "Current task worktree is detached; no upstream branch can prove publication.",
+        }
+    upstream, stderr, code = git_output(["rev-parse", "--abbrev-ref", "--symbolic-full-name", "@{u}"], root, check=False)
+    if code != 0 or not upstream:
+        return {
+            "checked": True,
+            "branch": branch,
+            "upstream": None,
+            "pushed": False,
+            "ahead": None,
+            "behind": None,
+            "message": "No upstream branch is configured for this task branch.",
+            "stderr": stderr,
+        }
+    counts, counts_stderr, counts_code = git_output(["rev-list", "--left-right", "--count", f"{upstream}...HEAD"], root, check=False)
+    if counts_code != 0:
+        return {
+            "checked": True,
+            "branch": branch,
+            "upstream": upstream,
+            "pushed": False,
+            "ahead": None,
+            "behind": None,
+            "message": counts_stderr or "Unable to compare task branch to upstream.",
+        }
+    parts = counts.split()
+    behind = int(parts[0]) if len(parts) >= 1 and parts[0].isdigit() else None
+    ahead = int(parts[1]) if len(parts) >= 2 and parts[1].isdigit() else None
+    pushed = ahead == 0
+    return {
+        "checked": True,
+        "branch": branch,
+        "upstream": upstream,
+        "pushed": pushed,
+        "ahead": ahead,
+        "behind": behind,
+        "message": "Task branch HEAD is present on its upstream." if pushed else f"Task branch has {ahead} unpushed commit(s).",
+    }
+
+
+def publication_evidence(root: Path, metadata: dict):
+    policy = publication_policy(metadata)
+    dirty_entries = task_worktree_dirty_entries(root)
+    commit_required = policy["commit_required"]
+    push_required = policy["push_required"]
+    push_report = push_evidence(root) if push_required else {
+        "checked": False,
+        "branch": current_branch(root),
+        "upstream": None,
+        "pushed": None,
+        "ahead": None,
+        "behind": None,
+        "message": "Push evidence is not required for this task.",
+    }
+    return {
+        "policy": policy,
+        "commit": {
+            "required": commit_required,
+            "satisfied": (not commit_required) or not dirty_entries,
+            "dirty": bool(dirty_entries),
+            "dirty_count": len(dirty_entries),
+            "dirty_files": [entry["path"] for entry in dirty_entries],
+            "status_entries": dirty_entries,
+            "message": (
+                "Task worktree has no uncommitted non-artifact changes."
+                if not dirty_entries
+                else "Task worktree has uncommitted non-artifact changes."
+            ),
+        },
+        "publish": {
+            "required": bool(policy["publish_required"]),
+            "push_required": push_required,
+            "satisfied": (not push_required) or bool(push_report.get("pushed")),
+            "push": push_report,
+        },
+    }
+
+
+def publication_blockers(evidence: dict):
+    blockers = []
+    if evidence["commit"]["required"] and not evidence["commit"]["satisfied"]:
+        blockers.append("Commit evidence required before finish: task worktree has uncommitted changes.")
+    if evidence["publish"]["push_required"] and not evidence["publish"]["satisfied"]:
+        blockers.append("Publish evidence required before finish: task branch has not been pushed to its upstream.")
+    return blockers
+
+
 def scope_drift(changed: list[str], scope: list[str]):
     if not scope:
         return changed
@@ -437,6 +555,7 @@ def build_report(args, current_root: Path):
     primary_baseline, primary_baseline_blockers = primary_baseline_guard(metadata, primary)
     base_ref = resolve_base_ref(current_root, metadata, args.base_ref)
     changed = changed_files(current_root, base_ref)
+    publication = publication_evidence(current_root, metadata)
     declared_scope = metadata.get("scope") or []
     drift = scope_drift(changed, declared_scope)
     freshness = branch_freshness(current_root, base_ref)
@@ -459,6 +578,7 @@ def build_report(args, current_root: Path):
     if not declared_scope:
         blockers.append("Task metadata has no declared scope.")
     blockers.extend(primary_baseline_blockers)
+    blockers.extend(publication_blockers(publication))
     if drift:
         blockers.append("Changed files fall outside the declared task scope.")
     if not freshness["fresh"]:
@@ -505,6 +625,7 @@ def build_report(args, current_root: Path):
         "declared_scope": declared_scope,
         "scope_drift_files": drift,
         "branch_freshness": freshness,
+        "publication": publication,
         "active_overlap": overlaps,
         "unknown_scope_tasks": unknown_scope_tasks,
         "receipt_validation": {
@@ -538,6 +659,21 @@ def render_text(report: dict):
         lines.append(f" - freshness: {'fresh' if report['branch_freshness']['fresh'] else 'stale'}")
     else:
         lines.append(" - freshness: not checked")
+    publication = report.get("publication") or {}
+    policy = publication.get("policy") or {}
+    commit = publication.get("commit") or {}
+    publish = publication.get("publish") or {}
+    if policy:
+        lines.append(
+            " - publication policy: "
+            f"commit_required={str(policy.get('commit_required')).lower()}, "
+            f"publish_required={str(policy.get('publish_required')).lower()}"
+        )
+    if commit:
+        lines.append(f" - commit evidence: {'clean' if commit.get('satisfied') else 'missing'}")
+    if publish and publish.get("push_required"):
+        push = publish.get("push") or {}
+        lines.append(f" - push evidence: {'pushed' if publish.get('satisfied') else push.get('message', 'missing')}")
     if report.get("primary_checkout_baseline"):
         comparison = report["primary_checkout_baseline"]["comparison"]
         lines.append(

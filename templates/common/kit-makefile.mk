@@ -21,6 +21,8 @@ WORKTREE_ROOT ?=
 OVERLAP ?= warn
 ALLOW_DIRTY ?= 0
 DIRTY_PRIMARY_BASELINE ?= 0
+TASK_PUBLISH_REQUIRED ?= 0
+TASK_COMMIT_REQUIRED ?= 1
 TASK_PREPARE_JSON ?= 0
 TASK_STATUS_JSON ?= 0
 TASK_STATUS_STRICT ?= 0
@@ -269,6 +271,8 @@ agent-task-prepare:
 		--automation-id "$(TASK_AUTOMATION_ID)" \
 		--lease-minutes "$(TASK_LEASE_MINUTES)" \
 		$(if $(filter 1 true yes,$(TASK_PREPARE_JSON)),--json,) \
+		$(if $(filter 1 true yes,$(TASK_PUBLISH_REQUIRED)),--publish-required,) \
+		$(if $(filter 0 false no,$(TASK_COMMIT_REQUIRED)),--no-commit-required,) \
 		$(if $(filter 1 true yes,$(DIRTY_PRIMARY_BASELINE)),--dirty-primary-baseline,) \
 		$(if $(filter 1 true yes,$(ALLOW_DIRTY)),--dirty-primary-baseline,)
 

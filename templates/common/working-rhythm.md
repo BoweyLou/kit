@@ -181,16 +181,19 @@ files overlap the declared task scope; commit or park those files first.
 `agent-task-ready` then checks actual changed files against declared scope,
 reports goal-check status, validates strict receipt/docs-impact evidence,
 verifies base branch freshness, blocks primary-checkout drift after a dirty
-baseline, and blocks overlap with other in-progress tasks before PR update or
-merge handoff. The worker edits in the
+baseline, enforces the task `publication_policy`, and blocks overlap with other
+in-progress tasks before PR update or merge handoff. Commit-required tasks must
+have no uncommitted non-artifact worktree changes; publish-required tasks must
+also have a pushed upstream task branch. The worker edits in the
 task worktree, refreshes the
 lease with `agent-task-heartbeat` during long work, checks `agent-task-status`
 before handoff, then captures validation evidence and closes the task with
 `agent-task-finalize`, or directly with `agent-task-finish`,
 `agent-task-block`, or `agent-task-abandon`. `agent-task-finalize` combines
-readiness, lifecycle update, final status, and closeout preview in one local
-receipt; set `TASK_FINALIZE_CLOSEOUT_APPLY=1` only when removal should be
-applied. After review or merge, `agent-task-closeout` previews finished sibling
+publication-policy evidence, readiness, lifecycle update, final status, and
+closeout preview in one local receipt; it does not auto-commit or auto-push.
+Set `TASK_FINALIZE_CLOSEOUT_APPLY=1` only when removal should be applied.
+After review or merge, `agent-task-closeout` previews finished sibling
 worktrees that are safe to remove; set `TASK_CLOSEOUT_APPLY=1` only after
 reviewing the dry run.
 For recurring automation that edits backlog or research files in a disposable

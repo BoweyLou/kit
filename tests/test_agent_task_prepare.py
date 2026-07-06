@@ -122,6 +122,9 @@ class AgentTaskPrepareTests(unittest.TestCase):
             self.assertEqual(packet["goal_alignment"]["area_contracts"][0]["status"], "unknown")
             self.assertEqual(packet["closeout_requirements"]["lifecycle_action"]["action"], "finish")
             self.assertIn("agent-task-finalize", packet["closeout_requirements"]["lifecycle_action"]["command"])
+            self.assertEqual(packet["closeout_requirements"]["publication_policy"]["commit_required"], True)
+            self.assertEqual(packet["closeout_requirements"]["publication_policy"]["publish_required"], False)
+            self.assertEqual(packet["closeout_requirements"]["publication_policy"]["push_required"], False)
             self.assertEqual(packet["coordination"]["active_task_count"], 0)
             self.assertEqual(packet["parallel_context"]["active_task_count"], 0)
             self.assertTrue(packet["parallel_context"]["can_start_write_task"])
@@ -130,6 +133,8 @@ class AgentTaskPrepareTests(unittest.TestCase):
             self.assertEqual(receipt["run"]["id"], metadata["run_id"])
             self.assertEqual(receipt["coordination"]["active_task_count"], 0)
             self.assertTrue(receipt["parallel_context"]["can_start_write_task"])
+            self.assertEqual(metadata["publication_policy"]["commit_required"], True)
+            self.assertEqual(metadata["publication_policy"]["publish_required"], False)
 
             status = run(["git", "status", "--short"], repo)
             self.assertEqual(status.stdout.strip(), "")

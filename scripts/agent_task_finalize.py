@@ -213,6 +213,7 @@ def build_payload(args, primary: Path, worktree: Path, metadata: dict, steps: di
         "final_receipt": args.receipt,
         "attribution": attribution_object(metadata, args),
         "ready": parse_json_output(steps["readiness"]) if steps.get("readiness") else None,
+        "publication": parse_json_output(steps["publication"]) if steps.get("publication") else None,
         "primary_checkout_baseline": parse_json_output(steps["primary_baseline"]) if steps.get("primary_baseline") else None,
         "lifecycle": parse_json_output(steps["lifecycle"]) if steps.get("lifecycle") else None,
         "task_status": parse_json_output(steps["task_status"]) if steps.get("task_status") else None,
@@ -250,7 +251,7 @@ def render_text(payload: dict):
         f" - worktree: {payload['worktree']}",
         f" - finalizer receipt: {payload.get('finalizer_receipt', '(not written)')}",
     ]
-    for name in ("primary_baseline", "readiness", "lifecycle", "task_status", "closeout"):
+    for name in ("primary_baseline", "publication", "readiness", "lifecycle", "task_status", "closeout"):
         step = payload["steps"].get(name)
         if step:
             lines.append(f" - {name}: exit {step['returncode']}")
@@ -291,6 +292,31 @@ def main():
         write_json(receipt, payload)
         print(json.dumps(payload, indent=2, sort_keys=True) if args.json else render_text(payload))
         return 1
+
+    if args.action == "finish":
+        publication_report = agent_task_ready.publication_evidence(worktree, metadata)
+        publication_blockers = agent_task_ready.publication_blockers(publication_report)
+        steps["publication"] = {
+            "command": "publication policy guard",
+            "cwd": str(worktree),
+            "returncode": 1 if publication_blockers else 0,
+            "stdout": json.dumps(
+                {
+                    "publication": publication_report,
+                    "blockers": publication_blockers,
+                },
+                indent=2,
+                sort_keys=True,
+            ),
+            "stderr": "\n".join(publication_blockers),
+        }
+        if publication_blockers:
+            payload = build_payload(args, primary, worktree, metadata, steps, "blocked", 1)
+            receipt = finalizer_receipt_path(primary, args.task)
+            payload["finalizer_receipt"] = str(receipt)
+            write_json(receipt, payload)
+            print(json.dumps(payload, indent=2, sort_keys=True) if args.json else render_text(payload))
+            return 1
 
     if args.action == "finish" and not args.skip_ready:
         steps["readiness"] = readiness_command(args, worktree)

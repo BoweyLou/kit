@@ -229,6 +229,8 @@ Flags:
 - `--generated-doc`
 - `--contract-reference`
 - `--docs-validation-command`
+- `--publish-required` - Require task branch push evidence before finish
+- `--no-commit-required` - Do not require a clean task worktree before finish
 - `--risk`
 - `--known-risk`
 - `--stop-condition`
@@ -1650,6 +1652,8 @@ Flags:
 - `--generated-doc`
 - `--contract-reference`
 - `--docs-validation-command`
+- `--publish-required` - Require task branch push evidence before finish
+- `--no-commit-required` - Do not require a clean task worktree before finish
 - `--risk`
 - `--known-risk`
 - `--stop-condition`

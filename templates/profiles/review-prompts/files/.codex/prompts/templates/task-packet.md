@@ -108,6 +108,11 @@ human request into work an agent can execute without guessing.
 ## Closeout Requirements
 
 - Final receipt path: `<.agent-workflows/tasks/<id>/receipt.json or sidecar receipt path>`
+- Publication policy:
+  - Commit required: `yes | no`
+  - Publish required: `yes | no`
+  - Push required: `yes | no`
+  - Reason: `<why commit and/or publish evidence is required before finish>`
 - Readiness check:
   - Command: `<make agent-task-ready TASK=<id> TASK_READY_JSON=1 or reason unavailable>`
   - Expected result: `<ready report passes, or blocker is recorded>`

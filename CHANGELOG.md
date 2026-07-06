@@ -1,5 +1,17 @@
 # Changelog
 
+## 0.6.53 - 2026-07-06
+
+- Add task publication policies to task packets and prepared task metadata so
+  closeout can distinguish required commit evidence from optional publish
+  evidence.
+- Block `agent-task-ready` and `agent-task-finalize finish` when
+  commit-required task worktrees have uncommitted non-artifact changes or when
+  publish-required branches are not pushed to their upstream.
+- Document the conditional push policy and add regression coverage for task
+  packet generation, readiness checks, finalizer enforcement, and CLI task
+  packet output.
+
 ## 0.6.52 - 2026-07-03
 
 - Add Batch Guided Closeout to Kit Companion so dirty target repos can run

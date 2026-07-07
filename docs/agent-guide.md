@@ -169,6 +169,12 @@ default branch, merges the branch, runs `kit verify --harness-mode auto
 passes. Status values are `CLEAN`, `CLEANED`, `LEFT-UNFINISHED`,
 `NEEDS-REVIEW`, and `FAILED`.
 
+When a registered repo is otherwise clean but blocked only by recoverable task
+metadata, apply mode may run the guarded `agent-self-heal` lane first. That
+metadata-only repair currently relinks missing terminal task receipts and
+blocks stale in-progress tasks whose recorded worktree is already gone, then
+re-runs `closeout-plan` before deciding whether the repo is now `CLEANED`.
+
 The launched closeout agent must not run force-push, reset, clean, destructive
 checkout, stash/drop, dirty-worktree deletion, or source-file deletion. A
 `result` of `applied` is valid only when the final strict closeout payload

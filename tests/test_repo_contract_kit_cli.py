@@ -1599,6 +1599,61 @@ echo "refreshed"
             self.assertEqual(feature_on_default.returncode, 0, feature_on_default.stderr)
             self.assertEqual(feature_on_default.stdout, "done\n")
 
+    def test_target_closeout_all_apply_self_heals_missing_receipt_to_cleaned(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            repo = root / "repo"
+            repo.mkdir()
+            init_git_repo(repo)
+            state_home = root / "state"
+            env = {**os.environ, "XDG_STATE_HOME": str(state_home)}
+
+            setup = subprocess.run(
+                [sys.executable, str(CLI), "setup", "--repo", str(repo), "--preset", "minimal", "--json"],
+                cwd=ROOT,
+                env=env,
+                capture_output=True,
+                text=True,
+                check=False,
+            )
+            self.assertEqual(setup.returncode, 0, setup.stderr)
+            commit_all(repo, "Install repo-contract-kit")
+
+            task_dir = repo / ".agent-workflows" / "tasks"
+            metadata_path = task_dir / "agw-201.json"
+            metadata_path.write_text(
+                json.dumps({"task_id": "AGW-201", "status": "done", "worktree": str(repo)}),
+                encoding="utf-8",
+            )
+            canonical_receipt = task_dir / "agw-201" / "finalize-receipt.json"
+            canonical_receipt.parent.mkdir(parents=True)
+            canonical_receipt.write_text(json.dumps({"task_id": "AGW-201", "result": "done"}), encoding="utf-8")
+
+            result = subprocess.run(
+                [sys.executable, str(CLI), "target", "closeout-all", "--apply", "--policy", "gated", "--json"],
+                cwd=root,
+                env=env,
+                capture_output=True,
+                text=True,
+                check=False,
+            )
+
+            self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+            payload = json.loads(result.stdout)
+            self.assertEqual(payload["summary"]["statuses"]["CLEANED"], 1)
+            item = payload["targets"][0]
+            self.assertEqual(item["status"], "CLEANED")
+            self.assertEqual(item["reason"], "metadata-self-heal-applied")
+            self.assertEqual(item["initial_closeout_plan"]["completion_state"], "needs-receipt")
+            blocker_codes = {entry["code"] for entry in item["initial_closeout_plan"]["claim_blockers"]}
+            self.assertIn("missing_final_receipts", blocker_codes)
+            self.assertEqual(item["self_heal"]["result"], "applied")
+            self.assertTrue(any(action["action"] == "link-final-receipt" for action in item["self_heal"]["applied_actions"]))
+            self.assertTrue(item["closeout_plan"]["can_claim_done"])
+            self.assertTrue(item["target_repo_writes"]["performed"])
+            saved_metadata = json.loads(metadata_path.read_text(encoding="utf-8"))
+            self.assertEqual(saved_metadata["final_receipt"], ".agent-workflows/tasks/agw-201/finalize-receipt.json")
+
     def test_finish_preview_reports_gated_apply_for_finishable_dirty_repo(self):
         with tempfile.TemporaryDirectory() as tmp:
             repo = Path(tmp) / "repo"
@@ -3600,6 +3655,92 @@ echo "refreshed"
             saved = json.loads(Path(payload["receipt"]["path"]).read_text(encoding="utf-8"))
             self.assertEqual(saved["target_repo_writes"]["paths"], [".agent-workflows/tasks/agw-096.json"])
             self.assertTrue(any("quarantine" in path for path in saved["sidecar_writes"]["paths"]))
+
+    def test_agent_self_heal_apply_links_canonical_receipt_for_terminal_task(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            target = Path(tmp) / "target"
+            target.mkdir()
+            init_git_repo(target)
+            state_home = Path(tmp) / "state"
+            task_dir = target / ".agent-workflows" / "tasks"
+            task_dir.mkdir(parents=True)
+            (task_dir / ".gitignore").write_text("*\n!.gitignore\n", encoding="utf-8")
+            metadata_path = task_dir / "agw-201.json"
+            metadata_path.write_text(
+                json.dumps({"task_id": "AGW-201", "status": "done", "worktree": str(target)}),
+                encoding="utf-8",
+            )
+            canonical_receipt = task_dir / "agw-201" / "finalize-receipt.json"
+            canonical_receipt.parent.mkdir(parents=True)
+            canonical_receipt.write_text(json.dumps({"task_id": "AGW-201", "result": "done"}), encoding="utf-8")
+
+            result = subprocess.run(
+                [str(CLI), "agent-self-heal", "--repo", str(target), "--apply", "--json"],
+                cwd=ROOT,
+                env={**os.environ, "XDG_STATE_HOME": str(state_home)},
+                capture_output=True,
+                text=True,
+                check=False,
+            )
+
+            self.assertEqual(result.returncode, 0, result.stderr)
+            payload = json.loads(result.stdout)
+            self.assertEqual(payload["result"], "applied")
+            self.assertTrue(payload["target_repo_writes"]["performed"])
+            self.assertEqual(payload["target_repo_writes"]["paths"], [".agent-workflows/tasks/agw-201.json"])
+            linked = [action for action in payload["applied_actions"] if action["action"] == "link-final-receipt"]
+            self.assertEqual(len(linked), 1)
+            self.assertEqual(linked[0]["receipt_path"], ".agent-workflows/tasks/agw-201/finalize-receipt.json")
+            self.assertEqual(linked[0]["receipt_provenance"], "canonical-target-receipt")
+            saved_metadata = json.loads(metadata_path.read_text(encoding="utf-8"))
+            self.assertEqual(saved_metadata["final_receipt"], ".agent-workflows/tasks/agw-201/finalize-receipt.json")
+            self.assertEqual(saved_metadata["attribution"]["latest_receipt"]["path"], ".agent-workflows/tasks/agw-201/finalize-receipt.json")
+            self.assertEqual(saved_metadata["lifecycle_events"][-1]["event"], "link-receipt")
+
+    def test_agent_self_heal_apply_blocks_stale_missing_worktree_task(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            target = Path(tmp) / "target"
+            target.mkdir()
+            init_git_repo(target)
+            state_home = Path(tmp) / "state"
+            task_dir = target / ".agent-workflows" / "tasks"
+            task_dir.mkdir(parents=True)
+            (task_dir / ".gitignore").write_text("*\n!.gitignore\n", encoding="utf-8")
+            metadata_path = task_dir / "agw-301.json"
+            metadata_path.write_text(
+                json.dumps(
+                    {
+                        "task_id": "AGW-301",
+                        "status": "in-progress",
+                        "worktree": str(Path(tmp) / "missing-worktree"),
+                        "lease_expires_at": "2026-01-01T00:00:00+00:00",
+                    }
+                ),
+                encoding="utf-8",
+            )
+
+            result = subprocess.run(
+                [str(CLI), "agent-self-heal", "--repo", str(target), "--apply", "--json"],
+                cwd=ROOT,
+                env={**os.environ, "XDG_STATE_HOME": str(state_home)},
+                capture_output=True,
+                text=True,
+                check=False,
+            )
+
+            self.assertEqual(result.returncode, 0, result.stderr)
+            payload = json.loads(result.stdout)
+            self.assertEqual(payload["result"], "applied")
+            self.assertTrue(payload["target_repo_writes"]["performed"])
+            self.assertEqual(payload["target_repo_writes"]["paths"], [".agent-workflows/tasks/agw-301.json"])
+            blocked = [action for action in payload["applied_actions"] if action["action"] == "block-stale-missing-worktree-task"]
+            self.assertEqual(len(blocked), 1)
+            self.assertEqual(blocked[0]["lifecycle"]["action"], "block")
+            saved_metadata = json.loads(metadata_path.read_text(encoding="utf-8"))
+            self.assertEqual(saved_metadata["status"], "blocked")
+            self.assertEqual(saved_metadata["automation_id"], "agent-self-heal")
+            self.assertIn("blocked_at", saved_metadata)
+            self.assertEqual(saved_metadata["lifecycle_events"][-1]["event"], "block")
 
     def test_agent_self_heal_apply_refuses_unrelated_tracked_source_changes(self):
         with tempfile.TemporaryDirectory() as tmp:

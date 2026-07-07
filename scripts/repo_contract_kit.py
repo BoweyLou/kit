@@ -17,7 +17,7 @@ import shutil
 import shlex
 import subprocess
 import sys
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from typing import Any
 
@@ -70,6 +70,8 @@ import closeout_explanations  # noqa: E402
 import docs_explain  # noqa: E402
 import goal_check  # noqa: E402
 from agent_parallel_coordination import build_parallel_context  # noqa: E402
+import agent_task_lifecycle  # noqa: E402
+import agent_task_status  # noqa: E402
 import kit_status  # noqa: E402
 import lint_agent_docs  # noqa: E402
 
@@ -105,6 +107,9 @@ SELF_HEAL_GENERATED_EXACT_PATHS = {
     ".agent-workflows/tasks/.gitignore",
     ".doc-contract-kit/updates/.gitignore",
 }
+SELF_HEAL_RECEIPT_FILENAMES = ("finalize-receipt.json", "receipt.json")
+SELF_HEAL_STALE_BLOCK_AGE = timedelta(hours=24)
+TARGET_CLOSEOUT_SELF_HEAL_CODES = {"missing_final_receipts", "blocked_task_state"}
 CONTEXT_BUNDLE_DEFAULT_LIMITS = {
     "files": 25,
     "open_items": 5,
@@ -3727,6 +3732,132 @@ def self_heal_stale_prepare_lock(repo: Path) -> list[dict[str, Any]]:
     ]
 
 
+def self_heal_receipt_candidate_entries(repo: Path, sidecar: dict[str, Any], task: dict[str, Any]) -> list[dict[str, Any]]:
+    task_id = str(task.get("task_id") or task.get("id") or "").strip()
+    if not task_id:
+        return []
+    metadata_path = str(task.get("_metadata_path") or "")
+    slug = Path(metadata_path).stem if metadata_path else safe_slug(task_id)
+    candidates: list[dict[str, Any]] = []
+    seen: set[str] = set()
+
+    def add(path_value: str, resolved: Path, provenance: str, priority: int) -> None:
+        key = str(resolved.resolve())
+        if key in seen or not resolved.exists():
+            return
+        seen.add(key)
+        candidates.append(
+            {
+                "path": path_value,
+                "resolved_path": key,
+                "provenance": provenance,
+                "priority": priority,
+            }
+        )
+
+    linked = resolve_task_receipt(repo, task)
+    if linked.get("exists") and linked.get("resolved_path"):
+        add(str(linked.get("path") or linked["resolved_path"]), Path(linked["resolved_path"]), "linked-final-receipt", 0)
+
+    latest = task.get("attribution") if isinstance(task.get("attribution"), dict) else attribution_from_task(task)
+    latest_receipt = latest.get("latest_receipt") if isinstance(latest.get("latest_receipt"), dict) else {}
+    latest_path = str(latest_receipt.get("path") or "").strip()
+    if latest_path:
+        latest_raw = Path(latest_path).expanduser()
+        latest_candidates = [latest_raw] if latest_raw.is_absolute() else [repo / latest_raw]
+        worktree_value = str(task.get("worktree") or "").strip()
+        if worktree_value and not latest_raw.is_absolute():
+            latest_candidates.append(Path(worktree_value).expanduser() / latest_raw)
+        for candidate in latest_candidates:
+            if candidate.exists():
+                add(latest_path, candidate, latest_receipt.get("provenance") or "attribution-latest-receipt", 1)
+                break
+
+    for index, filename in enumerate(SELF_HEAL_RECEIPT_FILENAMES, start=2):
+        relpath = f".agent-workflows/tasks/{slug}/{filename}"
+        candidate = repo / relpath
+        if candidate.exists():
+            add(relpath, candidate, "canonical-target-receipt", index)
+
+    paths = sidecar.get("paths") or {}
+    receipts_dir = paths.get("receipts_dir")
+    if receipts_dir and Path(receipts_dir).is_dir():
+        receipt_scan = scan_json_receipts([(Path(receipts_dir), "sidecar-receipts", "*.json")])
+        sidecar_matches = [
+            item
+            for item in receipt_scan.get("items", [])
+            if item.get("task_id") == task_id and item.get("category") in {"final_receipt", "finalizer"}
+        ]
+        for offset, item in enumerate(sorted(sidecar_matches, key=receipt_sort_key, reverse=True), start=10):
+            candidate = Path(str(item.get("path") or "")).expanduser()
+            if candidate.exists():
+                add(str(candidate), candidate, f"sidecar-{item.get('category')}", offset)
+
+    return sorted(candidates, key=lambda item: (int(item.get("priority") or 999), str(item.get("resolved_path") or "")))
+
+
+def self_heal_missing_final_receipts(repo: Path, sidecar: dict[str, Any]) -> list[dict[str, Any]]:
+    candidates = []
+    for task in task_metadata_items(repo):
+        status = str(task.get("status") or "").strip().lower()
+        if not task_terminal(status):
+            continue
+        resolved = resolve_task_receipt(repo, task)
+        if resolved.get("exists"):
+            continue
+        receipt_candidates = self_heal_receipt_candidate_entries(repo, sidecar, task)
+        if not receipt_candidates:
+            continue
+        chosen = receipt_candidates[0]
+        candidates.append(
+            {
+                "action": "link-final-receipt",
+                "path": str(task.get("_metadata_path") or ""),
+                "task_id": task.get("task_id") or task.get("id") or Path(str(task.get("_metadata_path") or "")).stem,
+                "status": status,
+                "receipt_path": str(chosen["path"]),
+                "resolved_receipt_path": str(chosen["resolved_path"]),
+                "receipt_provenance": chosen["provenance"],
+                "candidate_count": len(receipt_candidates),
+                "reason": "terminal task has a recoverable receipt path that can be linked into metadata",
+            }
+        )
+    return candidates
+
+
+def self_heal_stale_missing_worktree_tasks(repo: Path) -> list[dict[str, Any]]:
+    candidates = []
+    now = datetime.now(timezone.utc)
+    for task in task_metadata_items(repo):
+        status = str(task.get("status") or "").strip().lower()
+        if status != "in-progress":
+            continue
+        worktree_value = str(task.get("worktree") or "").strip()
+        if not worktree_value:
+            continue
+        worktree_path = Path(worktree_value).expanduser()
+        if worktree_path.exists():
+            continue
+        expires_at = agent_task_status.parse_datetime(task.get("lease_expires_at"))
+        if not expires_at or expires_at >= now - SELF_HEAL_STALE_BLOCK_AGE:
+            continue
+        receipt = resolve_task_receipt(repo, task)
+        if receipt.get("exists"):
+            continue
+        candidates.append(
+            {
+                "action": "block-stale-missing-worktree-task",
+                "path": str(task.get("_metadata_path") or ""),
+                "task_id": task.get("task_id") or task.get("id") or Path(str(task.get("_metadata_path") or "")).stem,
+                "status": status,
+                "worktree": str(worktree_path),
+                "lease_expires_at": task.get("lease_expires_at"),
+                "reason": "in-progress task lease expired more than 24h ago and the recorded worktree is missing",
+            }
+        )
+    return candidates
+
+
 def self_heal_sidecar_needs_init(sidecar: dict[str, Any]) -> bool:
     if not sidecar.get("available"):
         return True
@@ -3753,6 +3884,8 @@ def self_heal_plan(args: argparse.Namespace, repo: Path, sidecar: dict[str, Any]
                 "reason": "sidecar state directory is not initialized",
             }
         )
+    actions.extend(self_heal_missing_final_receipts(repo, sidecar))
+    actions.extend(self_heal_stale_missing_worktree_tasks(repo))
     actions.extend(self_heal_stale_task_metadata(repo))
     actions.extend(self_heal_stale_prepare_lock(repo))
     blockers = []
@@ -3786,6 +3919,24 @@ def apply_self_heal_actions(repo: Path, state: dict[str, Any], actions: list[dic
     quarantine_root = Path(state["paths"]["quarantine_dir"]) / stamp
     for action in actions:
         if action["action"] == "sidecar-init":
+            continue
+        if action["action"] in {"link-final-receipt", "block-stale-missing-worktree-task"}:
+            lifecycle_args = argparse.Namespace(
+                task=action["task_id"],
+                action="link-receipt" if action["action"] == "link-final-receipt" else "block",
+                reason=action["reason"],
+                receipt=action.get("receipt_path") or "",
+                owner="",
+                owner_label="",
+                session_id="",
+                thread_id="",
+                automation_id="agent-self-heal",
+                lease_minutes=240,
+            )
+            lifecycle = agent_task_lifecycle.update_task(repo, lifecycle_args)
+            relpath = action["path"]
+            target_paths.append(relpath)
+            applied.append({**action, "applied": True, "lifecycle": lifecycle})
             continue
         relpath = action["path"]
         source = repo / relpath
@@ -10242,6 +10393,41 @@ def target_closeout_status_for_plan(plan: dict[str, Any], *, apply: bool) -> tup
     return "NEEDS-REVIEW", plan.get("unfinished_reason") or state or "closeout-review-required", (plan.get("next_action") or {}).get("command") or ""
 
 
+def target_closeout_should_attempt_self_heal(plan: dict[str, Any]) -> bool:
+    if plan.get("dirty", {}).get("dirty"):
+        return False
+    blocker_codes = {item.get("code") for item in plan.get("claim_blockers") or []}
+    return bool(blocker_codes & TARGET_CLOSEOUT_SELF_HEAL_CODES)
+
+
+def target_closeout_self_heal(repo: Path) -> tuple[dict[str, Any] | None, int]:
+    preview_args = argparse.Namespace(apply=False, allow_path=[])
+    preview_payload, preview_exit = agent_self_heal_payload(preview_args, repo)
+    if preview_exit != 0 or not preview_payload.get("actions"):
+        return preview_payload, preview_exit
+    apply_args = argparse.Namespace(apply=True, allow_path=[])
+    apply_payload, apply_exit = agent_self_heal_payload(apply_args, repo)
+    return apply_payload, apply_exit
+
+
+def merge_write_guarantees(*writes: dict[str, Any]) -> dict[str, Any]:
+    performed = any(bool(item.get("performed")) for item in writes if isinstance(item, dict))
+    paths: list[str] = []
+    reasons: list[str] = []
+    for item in writes:
+        if not isinstance(item, dict):
+            continue
+        paths.extend(item.get("paths") or [])
+        reason = str(item.get("reason") or "").strip()
+        if reason:
+            reasons.append(reason)
+    return {
+        "performed": performed,
+        "paths": sorted(set(paths)),
+        "reason": "; ".join(reasons) if reasons else "",
+    }
+
+
 def target_closeout_integrate_default_branch(
     args: argparse.Namespace,
     repo: Path,
@@ -10465,7 +10651,23 @@ def target_closeout_all_run_target(args: argparse.Namespace, entry: dict[str, An
 
     before_head = current_commit(repo)
     before_branch = current_branch_name(repo)
-    plan = closeout_plan_for_repo(repo, strict=False)
+    initial_plan = closeout_plan_for_repo(repo, strict=False)
+    self_heal_payload = None
+    self_heal_exit = 0
+    plan = initial_plan
+    if apply and target_closeout_should_attempt_self_heal(initial_plan):
+        self_heal_payload, self_heal_exit = target_closeout_self_heal(repo)
+        if self_heal_payload is not None:
+            result["self_heal"] = {
+                "result": self_heal_payload.get("result"),
+                "actions": self_heal_payload.get("actions") or [],
+                "applied_actions": self_heal_payload.get("applied_actions") or [],
+                "blockers": self_heal_payload.get("blockers") or [],
+                "warnings": self_heal_payload.get("warnings") or [],
+                "receipt": self_heal_payload.get("receipt"),
+            }
+        if self_heal_payload and self_heal_exit == 0 and self_heal_payload.get("result") == "applied":
+            plan = closeout_plan_for_repo(repo, strict=False)
     status, reason, next_action = target_closeout_status_for_plan(plan, apply=apply)
     result.update(
         {
@@ -10475,6 +10677,12 @@ def target_closeout_all_run_target(args: argparse.Namespace, entry: dict[str, An
             "default_branch": (plan.get("default_branch") or {}).get("name"),
             "before_head": before_head or None,
             "after_head": before_head or None,
+            "initial_closeout_plan": {
+                "can_claim_done": initial_plan.get("can_claim_done"),
+                "completion_state": initial_plan.get("completion_state"),
+                "claim_blockers": initial_plan.get("claim_blockers") or [],
+                "next_action": initial_plan.get("next_action"),
+            },
             "closeout_plan": {
                 "can_claim_done": plan.get("can_claim_done"),
                 "completion_state": plan.get("completion_state"),
@@ -10486,18 +10694,27 @@ def target_closeout_all_run_target(args: argparse.Namespace, entry: dict[str, An
                 "next_action": plan.get("next_action"),
             },
             "next_action": next_action,
-            "target_repo_writes": target_repo_writes(False, reason="batch closeout dry-run or skipped"),
-            "sidecar_writes": sidecar_writes(False, reason="batch closeout dry-run or skipped"),
+            "target_repo_writes": self_heal_payload.get("target_repo_writes") if self_heal_payload and self_heal_payload.get("result") == "applied" else target_repo_writes(False, reason="batch closeout dry-run or skipped"),
+            "sidecar_writes": self_heal_payload.get("sidecar_writes") if self_heal_payload and self_heal_payload.get("result") == "applied" else sidecar_writes(False, reason="batch closeout dry-run or skipped"),
             "exit_code": 0 if status == "CLEAN" or (not apply and status == "LEFT-UNFINISHED") else 1,
         }
     )
+    if self_heal_payload and self_heal_payload.get("result") == "applied" and status == "CLEAN":
+        result.update(
+            {
+                "status": "CLEANED",
+                "reason": "metadata-self-heal-applied",
+                "next_action": "none",
+                "exit_code": 0,
+            }
+        )
 
     merge_readiness = plan.get("merge_readiness") or {}
     if apply and status == "NEEDS-REVIEW" and reason == "default-branch-integration-required":
         integration = target_closeout_integrate_default_branch(args, repo, plan)
         result["default_branch_integration"] = integration
-        result["target_repo_writes"] = integration.get("target_repo_writes") or target_repo_writes(False)
-        result["sidecar_writes"] = integration.get("sidecar_writes") or sidecar_writes(False)
+        result["target_repo_writes"] = merge_write_guarantees(result.get("target_repo_writes") or {}, integration.get("target_repo_writes") or {})
+        result["sidecar_writes"] = merge_write_guarantees(result.get("sidecar_writes") or {}, integration.get("sidecar_writes") or {})
         if integration.get("status") == "CLEANED":
             result.update(
                 {
@@ -10546,28 +10763,18 @@ def target_closeout_all_run_target(args: argparse.Namespace, entry: dict[str, An
     after_head = current_commit(repo)
     result["after_head"] = after_head or None
     result["closeout_fix"] = closeout_fix_result_summary(closeout_payload)
-    result["target_repo_writes"] = closeout_payload.get("target_repo_writes") or target_repo_writes(False)
-    result["sidecar_writes"] = closeout_payload.get("sidecar_writes") or sidecar_writes(False)
+    result["target_repo_writes"] = merge_write_guarantees(result.get("target_repo_writes") or {}, closeout_payload.get("target_repo_writes") or {})
+    result["sidecar_writes"] = merge_write_guarantees(result.get("sidecar_writes") or {}, closeout_payload.get("sidecar_writes") or {})
     final_closeout = closeout_payload.get("final_closeout") if closeout_payload else None
     final_merge = (final_closeout or {}).get("merge_readiness") or {}
     if closeout_exit == 0 and isinstance(final_closeout, dict) and final_closeout.get("can_claim_done"):
         if final_merge.get("requires_integration_worktree"):
             integration = target_closeout_integrate_default_branch(args, repo, final_closeout)
             result["default_branch_integration"] = integration
-            integration_writes = integration.get("target_repo_writes") or target_repo_writes(False)
-            integration_sidecar = integration.get("sidecar_writes") or sidecar_writes(False)
-            closeout_writes = result.get("target_repo_writes") or target_repo_writes(False)
-            closeout_sidecar = result.get("sidecar_writes") or sidecar_writes(False)
-            result["target_repo_writes"] = target_repo_writes(
-                bool(closeout_writes.get("performed") or integration_writes.get("performed")),
-                paths=sorted(set((closeout_writes.get("paths") or []) + (integration_writes.get("paths") or []))),
-                reason="closeout-fix and default branch integration",
-            )
-            result["sidecar_writes"] = sidecar_writes(
-                bool(closeout_sidecar.get("performed") or integration_sidecar.get("performed")),
-                paths=sorted(set((closeout_sidecar.get("paths") or []) + (integration_sidecar.get("paths") or []))),
-                reason="closeout-fix and default branch integration receipts",
-            )
+            integration_writes = integration.get("target_repo_writes") or {}
+            integration_sidecar = integration.get("sidecar_writes") or {}
+            result["target_repo_writes"] = merge_write_guarantees(result.get("target_repo_writes") or {}, integration_writes)
+            result["sidecar_writes"] = merge_write_guarantees(result.get("sidecar_writes") or {}, integration_sidecar)
             if integration.get("status") == "CLEANED":
                 result.update(
                     {

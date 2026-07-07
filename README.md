@@ -264,7 +264,10 @@ prune-missing`, clean-target `target update-all`, all-target gated
 `target closeout-all`, and clean disposable `worktree prune` through narrow
 allowlists. `target closeout-all --apply --policy gated` uses temporary
 integration worktrees and local verification before any non-force default-branch
-push.
+push. When a registered repo is otherwise clean but blocked only by recoverable
+task metadata, that batch closeout lane may first run guarded metadata
+self-heal for missing terminal task receipts or stale in-progress tasks whose
+recorded worktree is already gone.
 
 Build it only when wanted:
 

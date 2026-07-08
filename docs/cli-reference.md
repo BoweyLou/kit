@@ -1347,6 +1347,10 @@ Examples:
 - `kit target closeout-all --dry-run --json`
 - `kit target closeout-all --apply --policy gated --json`
 
+Behavior notes:
+
+- Apply mode reports LEFT-UNFINISHED and NEEDS-REVIEW targets in the JSON summary without making the batch command fail. Non-zero shell exit is reserved for one or more FAILED targets.
+
 Flags:
 
 - `--json` - Emit machine-readable JSON.

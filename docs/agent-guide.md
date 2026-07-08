@@ -167,7 +167,8 @@ pushes the branch, creates a temporary integration worktree from the detected
 default branch, merges the branch, runs `kit verify --harness-mode auto
 --json`, and pushes the default branch without force only after verification
 passes. Status values are `CLEAN`, `CLEANED`, `LEFT-UNFINISHED`,
-`NEEDS-REVIEW`, and `FAILED`.
+`NEEDS-REVIEW`, and `FAILED`. Batch shell exit is non-zero only when one or
+more targets are `FAILED`; unfinished follow-up states stay in the JSON summary.
 
 When a registered repo is otherwise clean but blocked only by recoverable task
 metadata, apply mode may run the guarded `agent-self-heal` lane first. That

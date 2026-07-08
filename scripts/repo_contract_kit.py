@@ -2431,6 +2431,9 @@ def command_map_annotations() -> dict[tuple[str, ...], dict[str, Any]]:
                 "sidecar_writes",
                 "exit_code",
             ],
+            "behavior_notes": [
+                "Apply mode reports LEFT-UNFINISHED and NEEDS-REVIEW targets in the JSON summary without making the batch command fail. Non-zero shell exit is reserved for one or more FAILED targets.",
+            ],
         },
         ("target", "update-all"): {
             "audience": ["human", "agent"],
@@ -10818,6 +10821,7 @@ def target_closeout_all_payload(args: argparse.Namespace) -> tuple[dict[str, Any
     failed_count = status_counts.get("FAILED", 0)
     needs_review_count = status_counts.get("NEEDS-REVIEW", 0)
     unfinished_count = status_counts.get("LEFT-UNFINISHED", 0)
+    follow_up_count = needs_review_count + unfinished_count
     write_paths = [item["root"] for item in results if (item.get("target_repo_writes") or {}).get("performed")]
     sidecar_paths: list[str] = []
     for item in results:
@@ -10834,7 +10838,7 @@ def target_closeout_all_payload(args: argparse.Namespace) -> tuple[dict[str, Any
         next_commands.append(public_command("target", "closeout-all", "--apply", "--policy", getattr(args, "policy", "gated"), "--json"))
     if status_counts.get("FAILED"):
         next_commands.append(public_command("target", "list", "--json"))
-    exit_code = 1 if apply and (failed_count or needs_review_count or unfinished_count) else 0
+    exit_code = 1 if failed_count else 0
     payload = {
         "schema_version": 1,
         "command": "target-closeout-all",
@@ -10853,6 +10857,7 @@ def target_closeout_all_payload(args: argparse.Namespace) -> tuple[dict[str, Any
             "cleaned": status_counts.get("CLEANED", 0),
             "left_unfinished": unfinished_count,
             "needs_review": needs_review_count,
+            "requires_follow_up": follow_up_count,
             "failed": failed_count,
             "default_branch_integrations": len(default_branch_integrations),
             "statuses": status_counts,

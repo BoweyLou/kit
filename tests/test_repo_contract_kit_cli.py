@@ -1,3 +1,4 @@
+import argparse
 import json
 import contextlib
 import hashlib
@@ -1653,6 +1654,45 @@ echo "refreshed"
             self.assertTrue(item["target_repo_writes"]["performed"])
             saved_metadata = json.loads(metadata_path.read_text(encoding="utf-8"))
             self.assertEqual(saved_metadata["final_receipt"], ".agent-workflows/tasks/agw-201/finalize-receipt.json")
+
+    def test_target_closeout_all_apply_returns_zero_when_only_follow_up_statuses_remain(self):
+        module = load_cli_module()
+        args = argparse.Namespace(apply=True, dry_run=False, policy="gated")
+        registry = {
+            "targets": [
+                {"root": "/tmp/repo-a", "name": "repo-a"},
+                {"root": "/tmp/repo-b", "name": "repo-b"},
+            ],
+            "updated_at": "2026-07-08T00:00:00Z",
+        }
+        results = [
+            {
+                "root": "/tmp/repo-a",
+                "name": "repo-a",
+                "status": "LEFT-UNFINISHED",
+                "target_repo_writes": {"performed": False},
+                "sidecar_writes": {"performed": False},
+            },
+            {
+                "root": "/tmp/repo-b",
+                "name": "repo-b",
+                "status": "NEEDS-REVIEW",
+                "target_repo_writes": {"performed": False},
+                "sidecar_writes": {"performed": False},
+            },
+        ]
+
+        with mock.patch.object(module, "read_target_registry", return_value=registry), mock.patch.object(
+            module, "target_registry_path", return_value=Path("/tmp/target-registry.json")
+        ), mock.patch.object(module, "target_closeout_all_run_target", side_effect=results):
+            payload, exit_code = module.target_closeout_all_payload(args)
+
+        self.assertEqual(exit_code, 0)
+        self.assertEqual(payload["exit_code"], 0)
+        self.assertEqual(payload["summary"]["left_unfinished"], 1)
+        self.assertEqual(payload["summary"]["needs_review"], 1)
+        self.assertEqual(payload["summary"]["requires_follow_up"], 2)
+        self.assertEqual(payload["summary"]["failed"], 0)
 
     def test_finish_preview_reports_gated_apply_for_finishable_dirty_repo(self):
         with tempfile.TemporaryDirectory() as tmp:

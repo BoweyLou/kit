@@ -1,5 +1,17 @@
 # Changelog
 
+## 0.6.53 - 2026-07-09
+
+- Promote e2e testing to a first-class test-first boundary decision: task
+  packets now include `test_strategy`, validation command kinds, and
+  `--test-boundary` / `--e2e-required` / `--e2e-scope` CLI controls.
+- Extend session receipts and strict receipt validation with selected test
+  boundary, boundary rationale, e2e-required evidence or skip reasons, and test
+  artifact references.
+- Refresh installed prompts, schemas, generated CLI reference, testing docs, and
+  harness docs so agents choose the outermost reliable boundary instead of
+  treating TDD as unit-test-only.
+
 ## 0.6.52 - 2026-07-03
 
 - Add Batch Guided Closeout to Kit Companion so dirty target repos can run

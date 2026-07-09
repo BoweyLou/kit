@@ -4442,6 +4442,13 @@ echo "refreshed"
                     "The packet records story context before implementation starts.",
                     "--scope",
                     "scripts/repo_contract_kit.py",
+                    "--test-boundary",
+                    "cli-e2e",
+                    "--test-rationale",
+                    "The packet changes public CLI behavior and must be proven through the command surface.",
+                    "--e2e-required",
+                    "--e2e-scope",
+                    "kit task-packet emits machine-readable strategy evidence",
                     "--docs-impact",
                     "yes",
                     "--docs-surface",
@@ -4487,6 +4494,14 @@ echo "refreshed"
             self.assertEqual(payload["docs_impact"]["generated_docs"], ["docs/cli-reference.md"])
             self.assertEqual(payload["docs_impact"]["contract_references"], ["workflows/schemas/task-packet.schema.json"])
             self.assertEqual(payload["docs_impact"]["verification_commands"], ["make docs-freshness"])
+            self.assertEqual(payload["test_strategy"]["decision_state"], "selected")
+            self.assertEqual(payload["test_strategy"]["selected_boundary"], "cli-e2e")
+            self.assertTrue(payload["test_strategy"]["e2e_required"])
+            self.assertEqual(
+                payload["test_strategy"]["e2e_scope"],
+                ["kit task-packet emits machine-readable strategy evidence"],
+            )
+            self.assertEqual(payload["validation"]["commands"][0]["kind"], "unit")
             self.assertEqual(payload["goal_alignment"]["repo_goal"], "Ship installed CLI behavior.")
             self.assertEqual(payload["goal_alignment"]["alignment_decision"], "adaptation-needed")
             self.assertTrue(payload["goal_alignment"]["adaptation_needed"])
@@ -4632,6 +4647,12 @@ echo "refreshed"
                     "AGW-010",
                     "--json",
                     "--approved",
+                    "--test-boundary",
+                    "integration",
+                    "--test-rationale",
+                    "Backlog handoff can be proven by generated packet structure.",
+                    "--validation",
+                    "make agent-verify",
                 ],
                 cwd=ROOT,
                 capture_output=True,
@@ -4661,6 +4682,9 @@ echo "refreshed"
                 any("schema" in reference for reference in payload["docs_impact"]["contract_references"])
             )
             self.assertIn("make docs-freshness", payload["docs_impact"]["verification_commands"])
+            self.assertEqual(payload["test_strategy"]["selected_boundary"], "integration")
+            self.assertFalse(payload["test_strategy"]["e2e_required"])
+            self.assertEqual(payload["test_strategy"]["validation_kinds"][0]["kind"], "verification")
 
     def test_automation_handoff_writes_patch_for_allowed_worktree_changes(self):
         with tempfile.TemporaryDirectory() as tmp:

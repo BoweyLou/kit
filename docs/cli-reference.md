@@ -222,6 +222,10 @@ Flags:
 - `--non-goal`
 - `--acceptance`
 - `--validation`
+- `--test-boundary`
+- `--test-rationale`
+- `--e2e-required`
+- `--e2e-scope` - User flow, runtime surface, or scenario that e2e must cover.
 - `--docs-impact`
 - `--docs-path`
 - `--docs-surface`
@@ -1647,6 +1651,10 @@ Flags:
 - `--non-goal`
 - `--acceptance`
 - `--validation`
+- `--test-boundary`
+- `--test-rationale`
+- `--e2e-required`
+- `--e2e-scope` - User flow, runtime surface, or scenario that e2e must cover.
 - `--docs-impact`
 - `--docs-path`
 - `--docs-surface`

@@ -15,6 +15,7 @@
     "scope",
     "acceptance_criteria",
     "validation",
+    "test_strategy",
     "closeout_requirements",
     "docs_impact",
     "risk",
@@ -372,6 +373,24 @@
               },
               "skip_policy": {
                 "type": "string"
+              },
+              "kind": {
+                "type": "string",
+                "enum": [
+                  "docs",
+                  "version",
+                  "unit",
+                  "integration",
+                  "contract",
+                  "cli-e2e",
+                  "api-e2e",
+                  "ui-e2e",
+                  "runtime-smoke",
+                  "manual",
+                  "verification",
+                  "unspecified"
+                ],
+                "description": "Best-effort category for routing validation evidence and e2e expectations."
               }
             }
           }
@@ -380,6 +399,87 @@
           "type": "array",
           "items": {
             "type": "string"
+          }
+        }
+      }
+    },
+    "test_strategy": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "decision_state",
+        "selected_boundary",
+        "e2e_required",
+        "rationale",
+        "e2e_scope",
+        "automation_policy",
+        "validation_kinds"
+      ],
+      "properties": {
+        "decision_state": {
+          "type": "string",
+          "enum": ["needs-selection", "selected", "not-applicable"]
+        },
+        "selected_boundary": {
+          "type": "string",
+          "enum": [
+            "unit",
+            "integration",
+            "contract",
+            "cli-e2e",
+            "api-e2e",
+            "ui-e2e",
+            "runtime-e2e",
+            "manual",
+            "unknown",
+            "not-applicable"
+          ]
+        },
+        "e2e_required": {
+          "type": "boolean"
+        },
+        "rationale": {
+          "type": "string"
+        },
+        "e2e_scope": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "automation_policy": {
+          "type": "string",
+          "minLength": 1
+        },
+        "validation_kinds": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["command", "kind"],
+            "properties": {
+              "command": {
+                "type": "string",
+                "minLength": 1
+              },
+              "kind": {
+                "type": "string",
+                "enum": [
+                  "docs",
+                  "version",
+                  "unit",
+                  "integration",
+                  "contract",
+                  "cli-e2e",
+                  "api-e2e",
+                  "ui-e2e",
+                  "runtime-smoke",
+                  "manual",
+                  "verification",
+                  "unspecified"
+                ]
+              }
+            }
           }
         }
       }

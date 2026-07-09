@@ -61,10 +61,16 @@ def valid_receipt():
             },
             "tests": {
                 "result": "not-applicable",
+                "selected_boundary": "not-applicable",
+                "boundary_rationale": "Receipt-only validation has no behavior boundary under test.",
+                "e2e_required": False,
                 "failing_test_evidence": None,
                 "passing_test_evidence": None,
                 "generated_test_provenance": None,
                 "skip_reason": "Receipt-only validation; no behavior change under test.",
+                "e2e_evidence": None,
+                "e2e_skip_reason": None,
+                "artifacts": [],
             },
         },
         "findings": [
@@ -214,6 +220,79 @@ class VerifyAgentReceiptTests(unittest.TestCase):
             self.assertNotEqual(result.returncode, 0)
             output = json.loads(result.stdout)
             self.assertTrue(any("behavior-changing work" in error for error in output["errors"]))
+
+    def test_strict_receipt_fails_behavior_change_without_selected_boundary(self):
+        receipt = valid_receipt()
+        receipt["scope"]["behavior_change"] = True
+        receipt["evidence"]["tests"].update(
+            {
+                "result": "red-green",
+                "selected_boundary": None,
+                "boundary_rationale": "",
+                "failing_test_evidence": "pytest failed before implementation",
+                "passing_test_evidence": "pytest passed after implementation",
+                "skip_reason": None,
+            }
+        )
+
+        self.assert_error_contains(receipt, "selected_boundary")
+
+    def test_strict_receipt_requires_e2e_evidence_when_e2e_required_passes(self):
+        receipt = valid_receipt()
+        receipt["scope"]["behavior_change"] = True
+        receipt["evidence"]["tests"].update(
+            {
+                "result": "red-green",
+                "selected_boundary": "unit",
+                "boundary_rationale": "Only unit coverage was captured.",
+                "e2e_required": True,
+                "failing_test_evidence": "pytest failed before implementation",
+                "passing_test_evidence": "pytest passed after implementation",
+                "skip_reason": None,
+                "e2e_evidence": None,
+            }
+        )
+
+        self.assert_error_contains(receipt, "e2e_required")
+        self.assert_error_contains(receipt, "e2e_evidence")
+
+    def test_strict_receipt_accepts_required_e2e_with_evidence(self):
+        receipt = valid_receipt()
+        receipt["scope"]["behavior_change"] = True
+        receipt["evidence"]["tests"].update(
+            {
+                "result": "red-green",
+                "selected_boundary": "cli-e2e",
+                "boundary_rationale": "The CLI flow is the outermost reliable automated boundary.",
+                "e2e_required": True,
+                "failing_test_evidence": "kit task-packet fixture failed before implementation",
+                "passing_test_evidence": "kit task-packet fixture passed after implementation",
+                "skip_reason": None,
+                "e2e_evidence": "PYTHONDONTWRITEBYTECODE=1 python3 -m unittest tests.test_repo_contract_kit_cli",
+            }
+        )
+
+        self.assert_valid(receipt)
+
+    def test_strict_receipt_accepts_blocked_required_e2e_with_skip_reason(self):
+        receipt = valid_receipt()
+        receipt["run"]["status"] = "blocked"
+        receipt["scope"]["behavior_change"] = True
+        receipt["evidence"]["tests"].update(
+            {
+                "result": "blocked",
+                "selected_boundary": "ui-e2e",
+                "boundary_rationale": "The user-visible flow requires browser automation.",
+                "e2e_required": True,
+                "failing_test_evidence": None,
+                "passing_test_evidence": None,
+                "skip_reason": "Browser fixture was unavailable in the current sandbox.",
+                "e2e_evidence": None,
+                "e2e_skip_reason": "Browser fixture was unavailable in the current sandbox.",
+            }
+        )
+
+        self.assert_valid(receipt)
 
     def test_strict_learning_comments_accepts_comment_only_proof(self):
         self.assert_valid(learning_receipt())

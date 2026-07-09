@@ -6951,6 +6951,48 @@ DEFAULT_TASK_PACKET_DOCS_VALIDATION_COMMANDS = [
     "make docs-as-tests when docs-as-tests claims apply",
 ]
 
+TEST_BOUNDARY_CHOICES = [
+    "unit",
+    "integration",
+    "contract",
+    "cli-e2e",
+    "api-e2e",
+    "ui-e2e",
+    "runtime-e2e",
+    "manual",
+    "unknown",
+    "not-applicable",
+]
+
+E2E_TEST_BOUNDARIES = {"cli-e2e", "api-e2e", "ui-e2e", "runtime-e2e"}
+
+
+def infer_validation_kind(command: str) -> str:
+    text = command.lower()
+    if "docs-freshness" in text or "docs-check" in text or "doc_impact" in text or "doc-impact" in text:
+        return "docs"
+    if "version-check" in text or "version.py check" in text:
+        return "version"
+    if "playwright" in text or "cypress" in text or "selenium" in text or "browser" in text or "ui-e2e" in text:
+        return "ui-e2e"
+    if "api-e2e" in text or "postman" in text or "newman" in text:
+        return "api-e2e"
+    if "cli-e2e" in text or "cli_ux" in text or "command-map" in text or "kit " in text:
+        return "cli-e2e"
+    if "runtime-e2e" in text or "launchd" in text or "systemctl" in text or "smoke" in text:
+        return "runtime-smoke"
+    if "contract" in text or "schema" in text:
+        return "contract"
+    if "integration" in text:
+        return "integration"
+    if "unittest" in text or "pytest" in text or "swift test" in text or "make test" in text:
+        return "unit"
+    if "manual" in text:
+        return "manual"
+    if "verify" in text or "check" in text:
+        return "verification"
+    return "unspecified"
+
 
 def task_packet_story_payload(args: argparse.Namespace, acceptance_items: list[str]) -> dict[str, Any]:
     source = getattr(args, "source_reference", None) or getattr(args, "task_id", "")
@@ -6989,6 +7031,33 @@ def task_packet_docs_impact_payload(args: argparse.Namespace) -> dict[str, Any]:
     }
 
 
+def task_packet_test_strategy_payload(args: argparse.Namespace, validation_commands: list[str]) -> dict[str, Any]:
+    selected_boundary = getattr(args, "test_boundary", None) or "unknown"
+    e2e_required = bool(getattr(args, "e2e_required", False)) or selected_boundary in E2E_TEST_BOUNDARIES
+    if selected_boundary == "not-applicable":
+        decision_state = "not-applicable"
+    elif selected_boundary == "unknown":
+        decision_state = "needs-selection"
+    else:
+        decision_state = "selected"
+    return {
+        "decision_state": decision_state,
+        "selected_boundary": selected_boundary,
+        "e2e_required": e2e_required,
+        "rationale": getattr(args, "test_rationale", None) or "",
+        "e2e_scope": getattr(args, "e2e_scope", None) or [],
+        "automation_policy": (
+            "Select the outermost reliable automated boundary for changed behavior. "
+            "Use CLI/API/UI/runtime e2e for user-visible, multi-component, stateful, deployment, "
+            "or external-tool behavior that smaller tests cannot prove."
+        ),
+        "validation_kinds": [
+            {"command": command, "kind": infer_validation_kind(command)}
+            for command in validation_commands
+        ],
+    }
+
+
 def task_packet_payload(args: argparse.Namespace, repo: Path) -> dict[str, Any]:
     requested_harness_mode = getattr(args, "harness_mode", "standard")
     mode_selection = harness_mode_selection(repo, requested_harness_mode)
@@ -7000,6 +7069,7 @@ def task_packet_payload(args: argparse.Namespace, repo: Path) -> dict[str, Any]:
     task_slug = safe_artifact_name(args.task_id)
     non_goals = args.non_goal or list(DEFAULT_TASK_PACKET_NON_GOALS)
     acceptance_items = args.acceptance or ["Implementation scope is explicit and verifiable."]
+    validation_commands = args.validation or ["make test", "make docs-check", "make version-check"]
     payload = {
         "schema_version": 1,
         "command": "task-packet",
@@ -7042,8 +7112,8 @@ def task_packet_payload(args: argparse.Namespace, repo: Path) -> dict[str, Any]:
         ],
         "validation": {
             "commands": [
-                {"command": command, "required": True}
-                for command in (args.validation or ["make test", "make docs-check", "make version-check"])
+                {"command": command, "required": True, "kind": infer_validation_kind(command)}
+                for command in validation_commands
             ],
             "evidence_to_capture": [
                 "git diff --check",
@@ -7051,6 +7121,7 @@ def task_packet_payload(args: argparse.Namespace, repo: Path) -> dict[str, Any]:
                 "docs-impact result",
             ],
         },
+        "test_strategy": task_packet_test_strategy_payload(args, validation_commands),
         "closeout_requirements": {
             "final_receipt_path": f".agent-workflows/tasks/{task_slug}/receipt.json or sidecar equivalent",
             "readiness_check": {
@@ -7164,6 +7235,10 @@ def backlog_task_packet_payload(args: argparse.Namespace, repo: Path) -> dict[st
         non_goal=args.non_goal or [],
         acceptance=args.acceptance or [f"Backlog item {item['id']} is implemented and its status can be marked done."],
         validation=args.validation or ["make agent-verify"],
+        test_boundary=args.test_boundary,
+        test_rationale=args.test_rationale,
+        e2e_required=args.e2e_required,
+        e2e_scope=args.e2e_scope,
         docs_impact=args.docs_impact,
         docs_path=args.docs_path or [],
         docs_surface=args.docs_surface,
@@ -11632,6 +11707,10 @@ def build_parser() -> argparse.ArgumentParser:
     task_packet.add_argument("--non-goal", action="append")
     task_packet.add_argument("--acceptance", action="append")
     task_packet.add_argument("--validation", action="append")
+    task_packet.add_argument("--test-boundary", choices=TEST_BOUNDARY_CHOICES)
+    task_packet.add_argument("--test-rationale")
+    task_packet.add_argument("--e2e-required", action="store_true")
+    task_packet.add_argument("--e2e-scope", action="append", help="User flow, runtime surface, or scenario that e2e must cover.")
     task_packet.add_argument("--docs-impact", choices=["yes", "no", "unknown"], default="unknown")
     task_packet.add_argument("--docs-path", action="append")
     task_packet.add_argument("--docs-surface", action="append")
@@ -11667,6 +11746,10 @@ def build_parser() -> argparse.ArgumentParser:
     from_backlog.add_argument("--non-goal", action="append")
     from_backlog.add_argument("--acceptance", action="append")
     from_backlog.add_argument("--validation", action="append")
+    from_backlog.add_argument("--test-boundary", choices=TEST_BOUNDARY_CHOICES)
+    from_backlog.add_argument("--test-rationale")
+    from_backlog.add_argument("--e2e-required", action="store_true")
+    from_backlog.add_argument("--e2e-scope", action="append", help="User flow, runtime surface, or scenario that e2e must cover.")
     from_backlog.add_argument("--docs-impact", choices=["yes", "no", "unknown"], default="unknown")
     from_backlog.add_argument("--docs-path", action="append")
     from_backlog.add_argument("--docs-surface", action="append")

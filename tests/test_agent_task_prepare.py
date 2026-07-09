@@ -130,6 +130,8 @@ class AgentTaskPrepareTests(unittest.TestCase):
             self.assertEqual(receipt["run"]["id"], metadata["run_id"])
             self.assertEqual(receipt["coordination"]["active_task_count"], 0)
             self.assertTrue(receipt["parallel_context"]["can_start_write_task"])
+            self.assertEqual(receipt["evidence"]["tests"]["selected_boundary"], "unknown")
+            self.assertFalse(receipt["evidence"]["tests"]["e2e_required"])
 
             status = run(["git", "status", "--short"], repo)
             self.assertEqual(status.stdout.strip(), "")

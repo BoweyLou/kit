@@ -129,9 +129,21 @@ contract checked in.
    context templates for agent use.
 10. Add `--profile docs-as-tests` only when the repo has local JSON OpenAPI
    specs and explicit API docs assertions to check.
-11. Add hooks if you want faster local feedback.
-12. Add CI adapters only if your host supports them. The core workflow must still run locally.
-13. Later, add generated docs and broader executable doc tests.
+11. Add `--profile supervised-learning` only when the repository owner accepts
+   a target-owned human-approval policy for future local sidecar learning
+   records. Inspect the installed boundary first:
+
+   ```bash
+   kit setup --profile supervised-learning
+   kit learn status --json
+   ```
+
+   Phase 1 creates no learning events, proposals, decisions, or context
+   records. `kit learn status` is read-only and creates no target files,
+   sidecar directories, or global tool state.
+12. Add hooks if you want faster local feedback.
+13. Add CI adapters only if your host supports them. The core workflow must still run locally.
+14. Later, add generated docs and broader executable doc tests.
 
 The optional `.github/workflows/docs-contract-comment.yml` adapter comments on
 pull requests with docs-contract status, policy links, and next actions. It

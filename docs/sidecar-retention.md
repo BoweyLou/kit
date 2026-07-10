@@ -17,3 +17,16 @@ Archive receipts that support release decisions, migration proof, rollback decis
 ## Purge Preview
 
 Use `kit retention --json` to list sidecar directories, privacy labels, retention windows, and candidate counts. Review the preview manually before deleting anything with external tools.
+
+## Supervised Learning Records
+
+The opt-in `supervised-learning` profile keeps its policy in the target repo,
+but future learning events, proposals, decisions, and context belong under the
+target's repository-specific local Kit sidecar. Their default privacy label and
+retention window come from the target-owned policy; Phase 1 only reports these
+paths through `kit learn status --json` and does not create records or
+directories.
+
+Do not move learning records into global kit state, source code, Git history,
+or a hosted model by default. Preserve approved proposal and decision evidence
+before any later purge workflow is introduced.

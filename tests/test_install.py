@@ -332,7 +332,7 @@ class InstallTests(unittest.TestCase):
                 self.assertTrue(manifest_files[rel_path]["managed"])
                 self.assertEqual(manifest_files[rel_path]["profile"], "python")
 
-    def test_stack_profiles_are_absent_from_presets_and_default_install(self):
+    def test_opt_in_profiles_are_absent_from_presets_and_default_install(self):
         cases = [
             ("default", []),
             ("minimal", ["--preset", "minimal"]),
@@ -360,9 +360,12 @@ class InstallTests(unittest.TestCase):
                     self.assertFalse((target / ".agent-workflows" / "stack-profiles" / "python.json").exists())
                     self.assertFalse((target / "docs" / "ops" / "node-stack-profile.md").exists())
                     self.assertFalse((target / "docs" / "ops" / "python-stack-profile.md").exists())
+                    self.assertFalse((target / ".agent-workflows" / "learning-policy.json").exists())
+                    self.assertFalse((target / "docs" / "ops" / "supervised-learning.md").exists())
                     receipt = json.loads((target / ".doc-contract-kit" / "install.json").read_text(encoding="utf-8"))
                     self.assertNotIn("node", receipt["profiles"])
                     self.assertNotIn("python", receipt["profiles"])
+                    self.assertNotIn("supervised-learning", receipt["profiles"])
 
     def test_install_private_context_profile_writes_examples_and_ignores_real_context(self):
         with tempfile.TemporaryDirectory() as tmp:

@@ -1,0 +1,20 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://example.local/repo-contract-kit/learning-proposal.schema.json",
+  "title": "Supervised Learning Proposal",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema_version", "proposal_id", "created_at", "policy_id", "title", "summary", "evidence", "status", "human_approval_required"],
+  "properties": {
+    "schema_version": {"type": "integer", "const": 1},
+    "proposal_id": {"type": "string", "minLength": 1},
+    "created_at": {"type": "string", "format": "date-time"},
+    "policy_id": {"type": "string", "const": "supervised-learning"},
+    "title": {"type": "string", "minLength": 1},
+    "summary": {"type": "string", "minLength": 1},
+    "evidence": {"type": "array", "minItems": 1, "items": {"type": "string"}},
+    "status": {"type": "string", "enum": ["draft", "pending-review", "accepted", "rejected", "withdrawn"]},
+    "human_approval_required": {"type": "boolean", "const": true},
+    "decision_id": {"type": ["string", "null"]}
+  }
+}

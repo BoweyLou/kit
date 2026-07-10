@@ -39,6 +39,7 @@ the split remains.
 | Docs contract | `make docs-check`, `scripts/check_doc_impact.py` | documentation impact for source, workflow, config, API, and operations changes | pass/fail docs-impact output |
 | Docs explainer | `make agent-docs-explain`, `scripts/docs_explain.py` | local README/docs/policy files before waiver or docs-patch decisions | cited JSON/text snippets and a ready local prompt, with no target, sidecar, model, or network writes/calls |
 | Docs-as-tests profile | `make docs-as-tests`, `.agent-workflows/docs-as-tests.json` | explicit high-confidence local OpenAPI and JSON config/reference assertions | JSON/text report with claim ids, source docs, evidence paths, passed/failed/skipped/unsupported/refused results, `target_repo_writes=false`, and `network_used=false` |
+| Supervised learning foundation | `kit learn status`, `.agent-workflows/learning-policy.json`, `schemas/learning-*.schema.json` | explicit target policy ownership plus future sidecar record shapes | read-only JSON with policy state, ownership paths, safe next commands, and false target/sidecar/global write guarantees; no learning record writes in Phase 1 |
 | Instruction hygiene | `make agent-docs-lint` | concise, safe, non-stale agent-facing instructions | instruction lint warnings or failures |
 | Instruction diet | `make agent-instruction-diet` | no-write proposals for moving bulky or duplicated agent-facing detail into scoped owner surfaces | JSON/text audit with recommendation categories and offload targets |
 | Token budget | `make agent-token-budget` | estimated context footprint for agent-facing files | JSON/text report and optional strict budget failure |
@@ -78,6 +79,12 @@ Start in the target repo when changing:
 - target-owned Makefile behavior
 - local overrides
 - repo-specific version notes
+- the opt-in supervised-learning policy, approval requirements, or retention
+  window for that repository
+
+Supervised-learning records are not target source files or global kit state.
+When later phases add approved record writes, they must write to the
+repository-specific sidecar and retain the policy's human-approval boundary.
 
 ## Next Safe Improvements
 

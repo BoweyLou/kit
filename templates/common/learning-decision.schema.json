@@ -1,0 +1,19 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://example.local/repo-contract-kit/learning-decision.schema.json",
+  "title": "Supervised Learning Decision",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema_version", "decision_id", "decided_at", "policy_id", "proposal_id", "outcome", "rationale", "decider"],
+  "properties": {
+    "schema_version": {"type": "integer", "const": 1},
+    "decision_id": {"type": "string", "minLength": 1},
+    "decided_at": {"type": "string", "format": "date-time"},
+    "policy_id": {"type": "string", "const": "supervised-learning"},
+    "proposal_id": {"type": "string", "minLength": 1},
+    "outcome": {"type": "string", "enum": ["approved", "rejected", "deferred"]},
+    "rationale": {"type": "string", "minLength": 1},
+    "decider": {"type": "string", "minLength": 1},
+    "follow_up": {"type": "array", "items": {"type": "string"}}
+  }
+}

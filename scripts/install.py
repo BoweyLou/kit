@@ -74,6 +74,11 @@ FILE_MAP = {
     "research-synthesis.schema.json": "schemas/research-synthesis.schema.json",
     "persona-manifest.schema.json": "schemas/persona-manifest.schema.json",
     "agent-permission-policy.schema.json": "schemas/agent-permission-policy.schema.json",
+    "learning-policy.schema.json": "schemas/learning-policy.schema.json",
+    "learning-event.schema.json": "schemas/learning-event.schema.json",
+    "learning-proposal.schema.json": "schemas/learning-proposal.schema.json",
+    "learning-decision.schema.json": "schemas/learning-decision.schema.json",
+    "learning-context.schema.json": "schemas/learning-context.schema.json",
     "agent-permission-policy.json": ".agent-workflows/agent-permission-policy.json",
     "area-contracts.json": ".agent-workflows/area-contracts.json",
     "instruction-budgets.json": ".agent-workflows/instruction-budgets.json",
@@ -120,6 +125,7 @@ TARGET_OWNED_PATHS = {
     "Makefile",
     "VERSION",
     "CHANGELOG.md",
+    ".agent-workflows/learning-policy.json",
 }
 
 MAKEFILE_BRIDGE_PATH = ".doc-contract-kit/make/repo-contract.mk"

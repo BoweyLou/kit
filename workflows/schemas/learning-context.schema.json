@@ -1,0 +1,19 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://example.local/repo-contract-kit/learning-context.schema.json",
+  "title": "Supervised Learning Context",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema_version", "context_id", "captured_at", "policy_id", "scope", "summary", "privacy_label", "retention_days"],
+  "properties": {
+    "schema_version": {"type": "integer", "const": 1},
+    "context_id": {"type": "string", "minLength": 1},
+    "captured_at": {"type": "string", "format": "date-time"},
+    "policy_id": {"type": "string", "const": "supervised-learning"},
+    "scope": {"type": "string", "enum": ["project", "area", "task", "incident", "operator"]},
+    "summary": {"type": "string", "minLength": 1},
+    "evidence_refs": {"type": "array", "items": {"type": "string"}},
+    "privacy_label": {"type": "string", "enum": ["public-ok", "internal", "private-local", "sensitive-local"]},
+    "retention_days": {"type": "integer", "minimum": 1}
+  }
+}

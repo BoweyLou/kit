@@ -721,6 +721,101 @@ class RepoContractKitCliTests(unittest.TestCase):
         self.assertTrue(agent_payload["non_interactive"])
         self.assertTrue(agent_payload["agent_mode"])
 
+    def test_learn_status_json_is_read_only_for_an_unenrolled_target(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            target = Path(tmp) / "target"
+            state_home = Path(tmp) / "xdg-state"
+            target.mkdir()
+            init_git_repo(target)
+            before_paths = sorted(path.relative_to(target).as_posix() for path in target.rglob("*") if ".git" not in path.parts)
+            env = os.environ.copy()
+            env["XDG_STATE_HOME"] = str(state_home)
+
+            result = subprocess.run(
+                [sys.executable, str(CLI), "learn", "status", "--repo", str(target), "--json"],
+                cwd=ROOT,
+                env=env,
+                capture_output=True,
+                text=True,
+                check=False,
+            )
+
+            self.assertEqual(result.returncode, 0, result.stderr)
+            payload = json.loads(result.stdout)
+            self.assertEqual(payload["schema_version"], 1)
+            self.assertEqual(payload["command"], "learn status")
+            self.assertEqual(payload["repo"], str(target.resolve()))
+            self.assertEqual(payload["policy"]["state"], "not-installed")
+            self.assertIn("policy", payload["learning_paths"])
+            self.assertIn("kit setup", " ".join(payload["safe_next_commands"]))
+            self.assertFalse(payload["target_repo_writes"]["performed"])
+            self.assertFalse(payload["sidecar_writes"]["performed"])
+            self.assertEqual(
+                before_paths,
+                sorted(path.relative_to(target).as_posix() for path in target.rglob("*") if ".git" not in path.parts),
+            )
+            self.assertFalse(state_home.exists())
+
+    def test_supervised_learning_profile_installs_target_policy_and_learn_status_stays_read_only(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            target = Path(tmp) / "target"
+            state_home = Path(tmp) / "xdg-state"
+            target.mkdir()
+            init_git_repo(target)
+            env = os.environ.copy()
+            env["XDG_STATE_HOME"] = str(state_home)
+
+            install = subprocess.run(
+                [sys.executable, str(CLI), "setup", "--repo", str(target), "--profile", "supervised-learning", "--json"],
+                cwd=ROOT,
+                env=env,
+                capture_output=True,
+                text=True,
+                check=False,
+            )
+
+            self.assertEqual(install.returncode, 0, install.stderr)
+            policy_path = target / ".agent-workflows" / "learning-policy.json"
+            self.assertTrue(policy_path.exists())
+            for name in (
+                "learning-policy.schema.json",
+                "learning-event.schema.json",
+                "learning-proposal.schema.json",
+                "learning-decision.schema.json",
+                "learning-context.schema.json",
+            ):
+                self.assertTrue((target / "schemas" / name).exists(), name)
+            policy = json.loads(policy_path.read_text(encoding="utf-8"))
+            self.assertEqual(policy["policy_id"], "supervised-learning")
+            manifest = json.loads((target / ".doc-contract-kit" / "manifest.json").read_text(encoding="utf-8"))
+            policy_manifest = next(item for item in manifest["files"] if item["path"] == ".agent-workflows/learning-policy.json")
+            self.assertFalse(policy_manifest["managed"])
+            self.assertEqual(policy_manifest["owner"], "target")
+            before_target_paths = sorted(path.relative_to(target).as_posix() for path in target.rglob("*") if ".git" not in path.parts)
+
+            result = subprocess.run(
+                [sys.executable, str(CLI), "learn", "status", "--repo", str(target), "--json"],
+                cwd=ROOT,
+                env=env,
+                capture_output=True,
+                text=True,
+                check=False,
+            )
+
+            self.assertEqual(result.returncode, 0, result.stderr)
+            payload = json.loads(result.stdout)
+            self.assertEqual(payload["policy_state"], "active")
+            self.assertEqual(payload["policy"]["ownership"], "target")
+            self.assertFalse(payload["target_repo_writes"]["performed"])
+            self.assertFalse(payload["sidecar_writes"]["performed"])
+            self.assertFalse(payload["global_writes"]["performed"])
+            self.assertFalse(Path(payload["sidecar_state"]["repo_state_dir"]).exists())
+            self.assertEqual(
+                before_target_paths,
+                sorted(path.relative_to(target).as_posix() for path in target.rglob("*") if ".git" not in path.parts),
+            )
+            self.assertTrue((state_home / "repo-contract-kit" / "enrolled-targets.json").exists())
+
     def test_command_map_json_catalogs_commands_without_repo_writes(self):
         with tempfile.TemporaryDirectory() as tmp:
             result = subprocess.run(

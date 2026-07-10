@@ -4,7 +4,7 @@ Generated from `kit command-map --json`.
 Do not edit command sections by hand; run `kit cli-reference --write docs/cli-reference.md`.
 
 - Schema version: `1`
-- Command count: `68`
+- Command count: `70`
 
 ## Commands
 
@@ -904,6 +904,47 @@ Flags:
 - `--strict-paths` - Treat missing path references as strict evidence.
 - `--budget-config` - Instruction budget config relative to the repo root.
 - `--format`
+
+### kit learn
+
+Inspect supervised-learning policy and ownership state.
+
+- Audience: `human, agent`
+- Mutation: `namespace`
+- Target writes: `never`
+- Sidecar writes: `never`
+- JSON: `no`
+- Output schema: `subcommand_namespace`
+- Route role: `namespace`
+- Canonical command: `learn`
+- Docs: `docs/backlog.md, docs/adr/0005-supervised-learning-ownership-boundaries.md`
+
+Examples:
+
+- `kit learn status --repo /path/to/repo --json`
+
+### kit learn status
+
+Show supervised-learning policy, schema, and future sidecar paths without writes.
+
+- Audience: `human, agent`
+- Mutation: `read-only`
+- Target writes: `never`
+- Sidecar writes: `never`
+- JSON: `yes`
+- Output schema: `learn_status_payload`
+- Route role: `canonical`
+- Canonical command: `learn status`
+- Docs: `docs/backlog.md, docs/harness-engineering.md, docs/sidecar-retention.md, docs/adr/0005-supervised-learning-ownership-boundaries.md`
+
+Examples:
+
+- `kit learn status --repo /path/to/repo --json`
+
+Flags:
+
+- `--repo` - Target git repository. Defaults to the current directory.
+- `--json` - Emit machine-readable JSON.
 
 ### kit migrate-config
 

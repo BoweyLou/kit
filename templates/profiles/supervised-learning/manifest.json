@@ -1,0 +1,14 @@
+{
+  "name": "supervised-learning",
+  "description": "Opt-in supervised-learning foundation with a target-owned policy and read-only status surface.",
+  "files": [
+    {
+      "source": "files/.agent-workflows/learning-policy.json",
+      "target": ".agent-workflows/learning-policy.json"
+    },
+    {
+      "source": "files/docs/ops/supervised-learning.md",
+      "target": "docs/ops/supervised-learning.md"
+    }
+  ]
+}

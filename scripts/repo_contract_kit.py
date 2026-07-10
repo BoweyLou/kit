@@ -28,6 +28,14 @@ STATE_APP_DIR = "repo-contract-kit"
 TARGET_REGISTRY_FILENAME = "enrolled-targets.json"
 PUBLIC_COMMAND = "kit"
 INTERNAL_PRODUCT_NAME = "repo-contract-kit"
+LEARNING_POLICY_PATH = ".agent-workflows/learning-policy.json"
+LEARNING_SCHEMA_FILENAMES = (
+    "learning-policy.schema.json",
+    "learning-event.schema.json",
+    "learning-proposal.schema.json",
+    "learning-decision.schema.json",
+    "learning-context.schema.json",
+)
 DEFAULT_TARGET_IMPORT_EXCLUDES = ("*agent-worktrees*", "*/archive/*")
 DEFAULT_WORKTREE_SCAN_EXCLUDES = (
     ".git",
@@ -2093,6 +2101,47 @@ def command_map_annotations() -> dict[tuple[str, ...], dict[str, Any]]:
                 "install",
                 "local_kit",
                 "kit_drift",
+            ],
+        },
+        ("learn",): {
+            "audience": ["human", "agent"],
+            "mutation": "namespace",
+            "json_supported": False,
+            "route_role": "namespace",
+            "canonical_command": "learn",
+            "examples": [public_command("learn", "status", "--repo", "/path/to/repo", "--json")],
+            "output_schema": "subcommand_namespace",
+            "docs": ["docs/backlog.md", "docs/adr/0005-supervised-learning-ownership-boundaries.md"],
+        },
+        ("learn", "status"): {
+            "audience": ["human", "agent"],
+            "mutation": "read-only",
+            "target_repo_write": "never",
+            "sidecar_write": "never",
+            "route_role": "canonical",
+            "canonical_command": "learn status",
+            "route_note": "Reports supervised-learning policy ownership and future artifact paths without creating target, sidecar, or global state.",
+            "examples": [public_command("learn", "status", "--repo", "/path/to/repo", "--json")],
+            "output_schema": "learn_status_payload",
+            "docs": [
+                "docs/backlog.md",
+                "docs/harness-engineering.md",
+                "docs/sidecar-retention.md",
+                "docs/adr/0005-supervised-learning-ownership-boundaries.md",
+            ],
+            "stable_payload_fields": [
+                "schema_version",
+                "command",
+                "repo",
+                "policy_state",
+                "policy",
+                "learning_paths",
+                "safe_next_commands",
+                "write_guarantees",
+                "target_repo_writes",
+                "sidecar_writes",
+                "global_writes",
+                "exit_code",
             ],
         },
         ("backlog-status",): {
@@ -4268,6 +4317,87 @@ def status_payload(repo: Path) -> dict[str, Any]:
             "prompt_snapshot": local_kit["prompt_snapshot"],
         },
         "kit_drift": kit_drift_diagnostics(repo, install, local_kit),
+    }
+
+
+def learning_policy_payload(policy_path: Path) -> dict[str, Any]:
+    policy = read_json(policy_path)
+    base = {
+        "path": str(policy_path),
+        "ownership": "target",
+        "state": "not-installed",
+        "policy_id": None,
+        "schema_version": None,
+        "enabled": None,
+    }
+    if policy is None:
+        return base
+    if not isinstance(policy, dict) or policy.get("_error"):
+        return {**base, "state": "invalid"}
+    if policy.get("schema_version") != 1 or policy.get("policy_id") != "supervised-learning":
+        return {
+            **base,
+            "state": "unsupported",
+            "policy_id": policy.get("policy_id"),
+            "schema_version": policy.get("schema_version"),
+            "enabled": policy.get("enabled"),
+        }
+    return {
+        **base,
+        "state": "active" if policy.get("enabled", False) else "disabled",
+        "policy_id": policy["policy_id"],
+        "schema_version": policy["schema_version"],
+        "enabled": policy.get("enabled", False),
+    }
+
+
+def learn_status_payload(repo: Path) -> dict[str, Any]:
+    sidecar = sidecar_state(repo)
+    sidecar_root = Path(str(sidecar["repo_state_dir"])) / "learning"
+    policy_path = repo / LEARNING_POLICY_PATH
+    policy = learning_policy_payload(policy_path)
+    schema_paths = {
+        name.removesuffix(".schema.json").replace("-", "_"): str(repo / "schemas" / name)
+        for name in LEARNING_SCHEMA_FILENAMES
+    }
+    safe_next_commands = [
+        public_command("learn", "status", "--repo", str(repo), "--json"),
+        public_command("status", "--repo", str(repo), "--json"),
+    ]
+    if policy["state"] == "not-installed":
+        safe_next_commands.insert(
+            0,
+            public_command("setup", "--repo", str(repo), "--profile", "supervised-learning"),
+        )
+    return {
+        "schema_version": 1,
+        "command": "learn status",
+        "repo": str(repo),
+        "policy_state": policy["state"],
+        "policy": policy,
+        "learning_paths": {
+            "policy": str(policy_path),
+            "schemas": schema_paths,
+            "sidecar": {
+                "root": str(sidecar_root),
+                "events": str(sidecar_root / "events"),
+                "proposals": str(sidecar_root / "proposals"),
+                "decisions": str(sidecar_root / "decisions"),
+                "context": str(sidecar_root / "context"),
+            },
+        },
+        "safe_next_commands": safe_next_commands,
+        "write_guarantees": {
+            "target_repo_writes": False,
+            "sidecar_writes": False,
+            "global_tool_writes": False,
+            "note": "learn status only reads target policy/schema paths and reports future sidecar paths.",
+        },
+        "target_repo_writes": target_repo_writes(False, reason="learn status is read-only"),
+        "sidecar_writes": sidecar_writes(False, reason="learn status is read-only"),
+        "global_writes": {"performed": False, "paths": [], "reason": "learn status is read-only"},
+        "sidecar_state": sidecar,
+        "exit_code": 0,
     }
 
 
@@ -11454,6 +11584,14 @@ def build_parser() -> argparse.ArgumentParser:
     status = subparsers.add_parser("status", help="Show git, install, and kit state.")
     add_common_repo_args(status)
 
+    learn = subparsers.add_parser("learn", help="Inspect supervised-learning policy and ownership state.")
+    learn_subparsers = learn.add_subparsers(dest="learn_command", required=True, parser_class=KitArgumentParser)
+    learn_status = learn_subparsers.add_parser(
+        "status",
+        help="Show supervised-learning policy, schema, and future sidecar paths without writes.",
+    )
+    add_common_repo_args(learn_status)
+
     mode_check = subparsers.add_parser("mode-check", help="Select lite, standard, or release-gated harness mode without writes.")
     add_common_repo_args(mode_check)
     mode_check.add_argument("--mode", choices=HARNESS_MODE_CHOICES, default="auto", help="Requested harness mode. auto lets kit choose.")
@@ -12086,6 +12224,17 @@ def main(argv: list[str] | None = None) -> int:
     if args.command == "status":
         payload = apply_runtime_mode(status_payload(repo), raw_argv, args)
         render_json(payload) if args.json else render_status(payload)
+        return 0
+    if args.command == "learn" and args.learn_command == "status":
+        payload = apply_runtime_mode(learn_status_payload(repo), raw_argv, args)
+        if args.json:
+            render_json(payload)
+        else:
+            print(f"supervised-learning policy: {payload['policy_state']}")
+            print(f"policy path: {payload['learning_paths']['policy']}")
+            print("safe next commands:")
+            for command in payload["safe_next_commands"]:
+                print(f" - {command}")
         return 0
     if args.command == "mode-check":
         payload = apply_runtime_mode(mode_check_payload(args, repo), raw_argv, args)

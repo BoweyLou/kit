@@ -1,0 +1,30 @@
+{
+  "schema_version": 1,
+  "policy_id": "supervised-learning",
+  "enabled": true,
+  "mode": "supervised",
+  "human_approval_required": true,
+  "ownership": {
+    "policy": "target",
+    "schemas": "kit-managed",
+    "events": "sidecar",
+    "proposals": "sidecar",
+    "decisions": "sidecar",
+    "context": "sidecar"
+  },
+  "retention": {
+    "privacy_label": "private-local",
+    "default_days": 90
+  },
+  "phase_boundary": {
+    "enabled_commands": [
+      "learn status"
+    ],
+    "deferred_commands": [
+      "learn event",
+      "learn proposal",
+      "learn decision",
+      "learn context"
+    ]
+  }
+}

@@ -81,6 +81,21 @@
       ]
     },
     {
+      "id": "learn-status-json-is-read-only-before-opt-in",
+      "fixture": "git_repo",
+      "args": ["learn", "status", "--repo", "{repo}", "--json"],
+      "returncode": 0,
+      "stdout_json_equals": [
+        {"path": "schema_version", "value": 1},
+        {"path": "command", "value": "learn status"},
+        {"path": "policy_state", "value": "not-installed"},
+        {"path": "target_repo_writes.performed", "value": false},
+        {"path": "sidecar_writes.performed", "value": false},
+        {"path": "global_writes.performed", "value": false},
+        {"path": "write_guarantees.global_tool_writes", "value": false}
+      ]
+    },
+    {
       "id": "start-json-source-maintainer-journey",
       "fixture": "source_repo",
       "args": ["start", "--repo", "{repo}", "--json"],

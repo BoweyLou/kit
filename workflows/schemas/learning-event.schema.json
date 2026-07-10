@@ -1,0 +1,27 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://example.local/repo-contract-kit/learning-event.schema.json",
+  "title": "Supervised Learning Event",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema_version", "event_id", "occurred_at", "policy_id", "repo", "kind", "summary", "supervision"],
+  "properties": {
+    "schema_version": {"type": "integer", "const": 1},
+    "event_id": {"type": "string", "minLength": 1},
+    "occurred_at": {"type": "string", "format": "date-time"},
+    "policy_id": {"type": "string", "const": "supervised-learning"},
+    "repo": {"type": "string", "minLength": 1},
+    "kind": {"type": "string", "enum": ["observation", "validation", "feedback", "incident"]},
+    "summary": {"type": "string", "minLength": 1},
+    "evidence": {"type": "array", "items": {"type": "string"}},
+    "supervision": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["human_approval_required", "approval_state"],
+      "properties": {
+        "human_approval_required": {"type": "boolean", "const": true},
+        "approval_state": {"type": "string", "enum": ["not-requested", "pending", "approved", "rejected"]}
+      }
+    }
+  }
+}

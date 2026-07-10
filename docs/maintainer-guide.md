@@ -41,6 +41,20 @@ make docs-freshness
 Then run the relevant install/update tests so generated target surfaces are
 covered.
 
+### Supervised learning foundation
+
+The `supervised-learning` profile is opt-in. Keep its initial target policy at
+`.agent-workflows/learning-policy.json` target-owned, while the five learning
+schemas remain canonical under `workflows/schemas/` and mirrored into
+`templates/common/` for installation. After changing a learning schema, run
+`make workflow-source-export`, then verify the profile installer and
+`kit learn status --repo <temp-target> --json` with an isolated XDG state
+directory.
+
+Do not add `supervised-learning` to a default or named preset without an
+explicit approved rollout decision. Phase 1 must not add proposal or decision
+write commands.
+
 ## CLI Or Installer Changes
 
 When changing public command behavior, install/update behavior, schemas,

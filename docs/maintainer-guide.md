@@ -41,7 +41,7 @@ make docs-freshness
 Then run the relevant install/update tests so generated target surfaces are
 covered.
 
-### Supervised learning events
+### Supervised learning records
 
 The `supervised-learning` profile is opt-in. Keep its initial target policy at
 `.agent-workflows/learning-policy.json` target-owned, while the five learning
@@ -49,16 +49,27 @@ schemas remain canonical under `workflows/schemas/` and mirrored into
 `templates/common/` for installation. After changing a learning schema, run
 `make workflow-source-export`, then verify the profile installer and
 `kit learn status --repo <temp-target> --json` with an isolated XDG state
-directory. Phase 2 also requires an isolated-XDG temporary committed target
-CLI e2e that proves the policy gate, rejected and unapproved no-write paths,
-an approved `kit learn event record --approved`, read-only `kit learn event
-list`, and the caveated derived event count in `kit calibration`.
+directory. Phase 2 requires an isolated-XDG temporary committed target CLI e2e
+that proves the policy gate, rejected and unapproved no-write paths, an
+approved `kit learn event record --approved`, read-only `kit learn event list`,
+and the caveated derived event count in `kit calibration`.
+
+Phase 3 requires that same isolated-XDG committed-target CLI e2e to prove:
+profile installation; an approved event; a proposal from existing valid event
+IDs; rejected invalid evidence without sidecar initialization; the negative
+human-review gate; an explicit named-human decision; read-only proposal and
+decision lists; and unchanged target contents plus global target registry.
+Proposal and decision schemas must retain stable IDs, lineage, privacy,
+bounded explicit CLI fields, and the no-execution guarantee. Do not add
+task-packet or receipt linkage in this phase.
 
 Do not add `supervised-learning` to a default or named preset without an
 explicit approved rollout decision. Event records are bounded, explicit CLI
 input only: do not repurpose `kit feedback`, mine threads, harvest
 conversations, inject context, add network calls, or add global writes.
-Proposal, decision, and context write commands remain deferred.
+Proposal and decision commands remain recommendation-only sidecar records;
+context writes remain deferred. An approved decision must not be treated as
+permission to modify AGENTS.md, policy files, target files, or global state.
 
 ## CLI Or Installer Changes
 

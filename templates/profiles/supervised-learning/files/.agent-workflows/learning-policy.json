@@ -20,11 +20,13 @@
     "enabled_commands": [
       "learn status",
       "learn event record",
-      "learn event list"
+      "learn event list",
+      "learn proposal create",
+      "learn proposal list",
+      "learn decision record",
+      "learn decision list"
     ],
     "deferred_commands": [
-      "learn proposal",
-      "learn decision",
       "learn context"
     ]
   }

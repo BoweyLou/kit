@@ -39,7 +39,7 @@ the split remains.
 | Docs contract | `make docs-check`, `scripts/check_doc_impact.py` | documentation impact for source, workflow, config, API, and operations changes | pass/fail docs-impact output |
 | Docs explainer | `make agent-docs-explain`, `scripts/docs_explain.py` | local README/docs/policy files before waiver or docs-patch decisions | cited JSON/text snippets and a ready local prompt, with no target, sidecar, model, or network writes/calls |
 | Docs-as-tests profile | `make docs-as-tests`, `.agent-workflows/docs-as-tests.json` | explicit high-confidence local OpenAPI and JSON config/reference assertions | JSON/text report with claim ids, source docs, evidence paths, passed/failed/skipped/unsupported/refused results, `target_repo_writes=false`, and `network_used=false` |
-| Supervised learning events | `kit learn status`, `kit learn event record`, `kit learn event list`, `.agent-workflows/learning-policy.json`, `schemas/learning-*.schema.json` | target-owned supervised policy gates bounded explicit event capture; valid records stay in the repository sidecar | `--approved` plus enabled installed policy is required for a schema-valid local event; list/calibration are read-only; no target/global writes, feedback migration, implicit capture, context injection, or network calls |
+| Supervised learning records | `kit learn status`, `kit learn event record/list`, `kit learn proposal create/list`, `kit learn decision record/list`, `.agent-workflows/learning-policy.json`, `schemas/learning-*.schema.json` | target-owned supervised policy gates bounded event capture, traceable pending-review proposals, and explicit human decisions in the repository sidecar | approved events are the only proposal evidence; proposals begin `pending-review`; decisions require named decider, rationale, and `--human-review-confirmed`; lists are read-only; approved outcomes never execute recommendations or write target/global state |
 | Instruction hygiene | `make agent-docs-lint` | concise, safe, non-stale agent-facing instructions | instruction lint warnings or failures |
 | Instruction diet | `make agent-instruction-diet` | no-write proposals for moving bulky or duplicated agent-facing detail into scoped owner surfaces | JSON/text audit with recommendation categories and offload targets |
 | Token budget | `make agent-token-budget` | estimated context footprint for agent-facing files | JSON/text report and optional strict budget failure |
@@ -83,8 +83,10 @@ Start in the target repo when changing:
   window for that repository
 
 Supervised-learning records are not target source files or global kit state.
-When later phases add approved record writes, they must write to the
-repository-specific sidecar and retain the policy's human-approval boundary.
+Phase 3 writes only bounded explicit proposals and human-review-confirmed
+decisions to the repository-specific sidecar. An approved outcome is
+recommendation-only: it cannot write AGENTS.md, policy, target, or global
+state, execute a recommendation, or create task-packet/receipt linkage.
 
 ## Next Safe Improvements
 

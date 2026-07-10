@@ -22,19 +22,31 @@ Use `kit retention --json` to list sidecar directories, privacy labels, retentio
 
 The opt-in `supervised-learning` profile keeps its policy in the target repo,
 but learning events, proposals, decisions, and context belong under the
-target's repository-specific local Kit sidecar. Phase 2 stores approved events
-as schema-valid JSON files under `<sidecar>/learning/events/`; their default
+target's repository-specific local Kit sidecar. Approved events are stored as
+schema-valid JSON files under `<sidecar>/learning/events/`; their default
 privacy label and retention window come from the target-owned policy.
 
 `kit learn event record` accepts only bounded explicit CLI fields and requires
 both an installed enabled policy and `--approved`. It records stable IDs,
 timestamps, provenance, privacy labels, outcomes, and approved supervision.
-Rejected, unapproved, invalid, disabled, or unenrolled attempts do not create
-sidecar state. `kit learn event list` and `kit calibration` read existing local
-events without creating paths; calibration labels its event count as derived
-and caveated.
+`kit learn proposal create` stores only a schema-valid pending-review proposal
+under `<sidecar>/learning/proposals/` after it validates every supplied event
+ID against an existing local approved event. Proposals keep stable IDs, bounded
+scope/classification/recommendation fields, event lineage, privacy, and an
+explicit no-execution guarantee. `kit learn decision record` requires a named
+human decider, non-empty rationale, `--human-review-confirmed`, and an existing
+pending proposal; it writes the decision under `<sidecar>/learning/decisions/`
+and updates the linked proposal status to approved, rejected, or deferred.
+
+Rejected, unapproved, invalid, disabled, unenrolled, invalid-evidence,
+missing-proposal, non-pending-proposal, or missing-human-review attempts do not
+create or update sidecar state. Event, proposal, and decision lists plus
+`kit calibration` remain read-only; calibration labels its event count as
+derived and caveated.
 
 Do not move learning records into global kit state, source code, Git history,
 or a hosted model by default. Do not reinterpret, migrate, or implicitly copy
-the separate `kit feedback` ledger into learning events. Preserve approved
+the separate `kit feedback` ledger into learning events. Approved decisions are
+not execution authority: they cannot write AGENTS.md, policy, target files, or
+global tool state, and Kit never executes recommendations. Preserve approved
 proposal and decision evidence before any later purge workflow is introduced.

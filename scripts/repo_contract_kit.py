@@ -44,6 +44,21 @@ LEARNING_PRIVACY_LABELS = ("public-ok", "internal", "private-local", "sensitive-
 LEARNING_EVENT_MAX_SUMMARY_LENGTH = 500
 LEARNING_EVENT_MAX_EVIDENCE_ITEMS = 10
 LEARNING_EVENT_MAX_EVIDENCE_LENGTH = 500
+LEARNING_PROPOSAL_CLASSIFICATIONS = ("documentation", "workflow", "policy", "harness", "process", "other")
+LEARNING_PROPOSAL_MAX_TITLE_LENGTH = 160
+LEARNING_PROPOSAL_MAX_SCOPE_ITEMS = 10
+LEARNING_PROPOSAL_MAX_SCOPE_LENGTH = 200
+LEARNING_PROPOSAL_MAX_CHANGE_LENGTH = 500
+LEARNING_PROPOSAL_MAX_EVIDENCE_EVENTS = 10
+LEARNING_DECISION_OUTCOMES = ("approved", "rejected", "deferred")
+LEARNING_DECISION_MAX_DECIDER_LENGTH = 120
+LEARNING_DECISION_MAX_RATIONALE_LENGTH = 500
+LEARNING_DECISION_MAX_FOLLOW_UP_ITEMS = 10
+LEARNING_DECISION_MAX_FOLLOW_UP_LENGTH = 500
+LEARNING_NON_EXECUTION_NOTE = (
+    "An approved proposal or decision records a review outcome only. It is not permission to write AGENTS.md, "
+    "policy files, target files, or global tool state, and Kit will not execute the recommendation."
+)
 DEFAULT_TARGET_IMPORT_EXCLUDES = ("*agent-worktrees*", "*/archive/*")
 DEFAULT_WORKTREE_SCAN_EXCLUDES = (
     ".git",
@@ -1364,6 +1379,8 @@ def cli_metadata() -> dict[str, Any]:
             "agent-doctor --write-sidecar",
             "feedback",
             "learn event record --approved",
+            "learn proposal create",
+            "learn decision record --human-review-confirmed",
             "orient --write-sidecar",
             "review-plan --write-sidecar",
             "docs-propose --write-sidecar",
@@ -2203,6 +2220,111 @@ def command_map_annotations() -> dict[tuple[str, ...], dict[str, Any]]:
             "route_note": "Lists locally stored schema-valid learning events without creating sidecar state.",
             "examples": [public_command("learn", "event", "list", "--repo", "/path/to/repo", "--json")],
             "output_schema": "learn_event_list_payload",
+            "docs": ["docs/sidecar-retention.md", "docs/adr/0005-supervised-learning-ownership-boundaries.md"],
+        },
+        ("learn", "proposal"): {
+            "audience": ["human", "agent"],
+            "mutation": "namespace",
+            "json_supported": False,
+            "route_role": "namespace",
+            "canonical_command": "learn proposal",
+            "examples": [public_command("learn", "proposal", "list", "--repo", "/path/to/repo", "--json")],
+            "output_schema": "subcommand_namespace",
+            "docs": ["docs/backlog.md", "docs/sidecar-retention.md", "docs/adr/0005-supervised-learning-ownership-boundaries.md"],
+        },
+        ("learn", "proposal", "create"): {
+            "audience": ["human", "agent"],
+            "mutation": "writes-sidecar-on-schema-valid-evidence",
+            "target_repo_write": "never",
+            "sidecar_write": "conditional",
+            "route_role": "canonical",
+            "canonical_command": "learn proposal create",
+            "route_note": "Creates only a pending-review local sidecar proposal from bounded explicit CLI fields and existing schema-valid event IDs; it never executes the recommendation or writes target/global state.",
+            "examples": [
+                public_command(
+                    "learn",
+                    "proposal",
+                    "create",
+                    "--repo",
+                    "/path/to/repo",
+                    "--title",
+                    "Document local review path",
+                    "--classification",
+                    "documentation",
+                    "--scope",
+                    "docs/ops/supervised-learning.md",
+                    "--recommended-change",
+                    "Document reviewable local proposals.",
+                    "--evidence-event",
+                    "evt-0123456789abcdef0123",
+                    "--json",
+                )
+            ],
+            "output_schema": "learn_proposal_create_payload",
+            "docs": ["docs/backlog.md", "docs/harness-engineering.md", "docs/sidecar-retention.md", "docs/adr/0005-supervised-learning-ownership-boundaries.md"],
+        },
+        ("learn", "proposal", "list"): {
+            "audience": ["human", "agent"],
+            "mutation": "read-only",
+            "target_repo_write": "never",
+            "sidecar_write": "never",
+            "route_role": "canonical",
+            "canonical_command": "learn proposal list",
+            "route_note": "Lists locally stored schema-valid learning proposals without creating sidecar state or executing recommendations.",
+            "examples": [public_command("learn", "proposal", "list", "--repo", "/path/to/repo", "--json")],
+            "output_schema": "learn_proposal_list_payload",
+            "docs": ["docs/sidecar-retention.md", "docs/adr/0005-supervised-learning-ownership-boundaries.md"],
+        },
+        ("learn", "decision"): {
+            "audience": ["human", "agent"],
+            "mutation": "namespace",
+            "json_supported": False,
+            "route_role": "namespace",
+            "canonical_command": "learn decision",
+            "examples": [public_command("learn", "decision", "list", "--repo", "/path/to/repo", "--json")],
+            "output_schema": "subcommand_namespace",
+            "docs": ["docs/backlog.md", "docs/sidecar-retention.md", "docs/adr/0005-supervised-learning-ownership-boundaries.md"],
+        },
+        ("learn", "decision", "record"): {
+            "audience": ["human", "agent"],
+            "mutation": "writes-sidecar-on-explicit-human-review",
+            "target_repo_write": "never",
+            "sidecar_write": "conditional",
+            "route_role": "canonical",
+            "canonical_command": "learn decision record",
+            "route_note": "Records only an explicit human-reviewed approved/rejected/deferred decision for an existing pending proposal, then updates that sidecar proposal; approval never authorizes target/global writes or recommendation execution.",
+            "examples": [
+                public_command(
+                    "learn",
+                    "decision",
+                    "record",
+                    "--repo",
+                    "/path/to/repo",
+                    "--proposal-id",
+                    "prop-0123456789abcdef0123",
+                    "--outcome",
+                    "approved",
+                    "--decider",
+                    "Repository owner",
+                    "--rationale",
+                    "The local evidence supports this bounded recommendation.",
+                    "--human-review-confirmed",
+                    "--json",
+                )
+            ],
+            "output_schema": "learn_decision_record_payload",
+            "docs": ["docs/backlog.md", "docs/harness-engineering.md", "docs/sidecar-retention.md", "docs/adr/0005-supervised-learning-ownership-boundaries.md"],
+        },
+        ("learn", "decision", "list"): {
+            "audience": ["human", "agent"],
+            "mutation": "read-only",
+            "target_repo_write": "never",
+            "sidecar_write": "never",
+            "route_role": "canonical",
+            "canonical_command": "learn decision list",
+            "route_note": "Lists locally stored schema-valid learning decisions without creating sidecar state or executing recommendations.",
+            "examples": [public_command("learn", "decision", "list", "--repo", "/path/to/repo", "--json")],
+            "output_schema": "learn_decision_list_payload",
             "docs": ["docs/sidecar-retention.md", "docs/adr/0005-supervised-learning-ownership-boundaries.md"],
         },
         ("backlog-status",): {
@@ -4462,6 +4584,498 @@ def learning_paths_for(repo: Path, state: dict[str, Any] | None = None) -> dict[
         "decisions": str(root / "decisions"),
         "context": str(root / "context"),
     }
+
+
+def learning_non_execution_guarantee() -> dict[str, Any]:
+    return {
+        "enforced": True,
+        "recommendation_execution_permitted": False,
+        "prohibited_writes": ["AGENTS.md", "policy files", "target files", "global tool state"],
+        "note": LEARNING_NON_EXECUTION_NOTE,
+    }
+
+
+def learning_task_packet_receipt_linkage() -> dict[str, Any]:
+    return {
+        "supported": False,
+        "state": "deferred",
+        "note": "Task-packet and receipt linkage are deferred to a later supervised-learning phase.",
+    }
+
+
+def learning_sidecar_write_gate(repo: Path, schema_filename: str) -> tuple[dict[str, Any], dict[str, Any], dict[str, Any]]:
+    state = sidecar_state(repo)
+    policy_path = repo / LEARNING_POLICY_PATH
+    policy = read_json(policy_path)
+    policy_status = learning_policy_payload(policy_path)
+    learning_paths = learning_paths_for(repo, state)
+    schema_path = repo / "schemas" / schema_filename
+    install = read_json(repo / ".doc-contract-kit" / "install.json")
+    gate: dict[str, Any] = {
+        "state": "approved",
+        "policy_path": str(policy_path),
+        "schema_path": str(schema_path),
+        "reason": "installed target-owned supervised-learning policy accepted bounded explicit sidecar input",
+    }
+    if not isinstance(policy, dict) or policy.get("_error") or policy_status["state"] == "not-installed":
+        gate.update({"state": "not-enrolled", "reason": "supervised-learning policy is not installed in the target repository"})
+    elif not isinstance(install, dict) or "supervised-learning" not in (install.get("profiles") or []):
+        gate.update({"state": "not-enrolled", "reason": "target repository is not enrolled with the supervised-learning profile"})
+    elif not schema_path.is_file():
+        gate.update({"state": "schema-missing", "reason": f"installed {schema_filename} is missing"})
+    else:
+        ownership = policy.get("ownership")
+        expected_ownership = {
+            "policy": "target",
+            "schemas": "kit-managed",
+            "events": "sidecar",
+            "proposals": "sidecar",
+            "decisions": "sidecar",
+            "context": "sidecar",
+        }
+        if (
+            policy.get("schema_version") != 1
+            or policy.get("policy_id") != "supervised-learning"
+            or policy.get("enabled") is not True
+            or policy.get("mode") != "supervised"
+            or policy.get("human_approval_required") is not True
+            or ownership != expected_ownership
+        ):
+            gate.update(
+                {
+                    "state": "policy-invalid",
+                    "reason": "policy must be enabled, supervised, target-owned, and keep learning records in the repository sidecar",
+                }
+            )
+    return gate, policy_status, {"state": state, "paths": learning_paths, "policy": policy}
+
+
+def learning_write_error_payload(
+    command: str,
+    repo: Path,
+    state: dict[str, Any],
+    learning_paths: dict[str, str],
+    policy: dict[str, Any],
+    gate: dict[str, Any],
+    *,
+    errors: list[str] | None = None,
+) -> tuple[dict[str, Any], int]:
+    return (
+        {
+            "schema_version": 1,
+            "command": command,
+            "action": "error",
+            "repo": str(repo),
+            "policy_state": policy["state"],
+            "policy": policy,
+            "learning_paths": {"sidecar": learning_paths},
+            "gate": gate,
+            "errors": errors or [],
+            "non_execution_guarantee": learning_non_execution_guarantee(),
+            "task_packet_receipt_linkage": learning_task_packet_receipt_linkage(),
+            "target_repo_writes": target_repo_writes(False, reason=f"{command} failed before target writes"),
+            "sidecar_writes": sidecar_writes(False, reason=f"{command} failed before sidecar writes"),
+            "global_writes": {"performed": False, "paths": [], "reason": f"{command} does not write global state"},
+            "sidecar_state": state,
+            "exit_code": 2,
+        },
+        2,
+    )
+
+
+def learning_is_timestamp(value: Any) -> bool:
+    return isinstance(value, str) and bool(re.fullmatch(r"[^\\s]+T[^\\s]+Z", value))
+
+
+def learning_proposal_from_args(args: argparse.Namespace, repo: Path, policy: dict[str, Any]) -> dict[str, Any]:
+    evidence_event_ids = [item.strip() for item in (args.evidence_event or []) if item.strip()]
+    scope = [item.strip() for item in (args.scope or []) if item.strip()]
+    proposal = {
+        "schema_version": 1,
+        "proposal_id": "prop-" + uuid.uuid4().hex[:20],
+        "created_at": now(),
+        "policy_id": "supervised-learning",
+        "repo": str(repo),
+        "title": args.title.strip(),
+        "classification": args.classification,
+        "scope": scope,
+        "recommended_change": args.recommended_change.strip(),
+        "lineage": {"evidence_event_ids": evidence_event_ids},
+        "privacy_label": args.privacy_label or ((policy.get("retention") or {}).get("privacy_label")),
+        "status": "pending-review",
+        "human_approval_required": True,
+        "decision_id": None,
+        "non_execution_guarantee": learning_non_execution_guarantee(),
+    }
+    return proposal
+
+
+def learning_proposal_validation_errors(proposal: Any) -> list[str]:
+    if not isinstance(proposal, dict):
+        return ["proposal must be an object"]
+    required = {
+        "schema_version",
+        "proposal_id",
+        "created_at",
+        "policy_id",
+        "repo",
+        "title",
+        "classification",
+        "scope",
+        "recommended_change",
+        "lineage",
+        "privacy_label",
+        "status",
+        "human_approval_required",
+        "decision_id",
+        "non_execution_guarantee",
+    }
+    errors: list[str] = []
+    if set(proposal) != required:
+        errors.append("proposal fields do not match learning-proposal schema")
+    if proposal.get("schema_version") != 1:
+        errors.append("schema_version must be 1")
+    if not isinstance(proposal.get("proposal_id"), str) or not re.fullmatch(r"prop-[0-9a-f]{20}", proposal["proposal_id"]):
+        errors.append("proposal_id must be a stable prop- identifier")
+    if not learning_is_timestamp(proposal.get("created_at")):
+        errors.append("created_at must be an RFC3339 UTC timestamp")
+    if proposal.get("policy_id") != "supervised-learning" or not isinstance(proposal.get("repo"), str) or not proposal["repo"]:
+        errors.append("policy_id and repo must identify the supervised-learning target")
+    title = proposal.get("title")
+    if not isinstance(title, str) or not title.strip() or len(title) > LEARNING_PROPOSAL_MAX_TITLE_LENGTH:
+        errors.append("title must be non-empty and at most 160 characters")
+    if proposal.get("classification") not in LEARNING_PROPOSAL_CLASSIFICATIONS:
+        errors.append("classification is not allowed by learning-proposal schema")
+    scope = proposal.get("scope")
+    if not isinstance(scope, list) or not scope or len(scope) > LEARNING_PROPOSAL_MAX_SCOPE_ITEMS or any(
+        not isinstance(item, str) or not item.strip() or len(item) > LEARNING_PROPOSAL_MAX_SCOPE_LENGTH for item in scope
+    ):
+        errors.append("scope must contain one to ten explicit entries of 200 characters or fewer")
+    recommended_change = proposal.get("recommended_change")
+    if not isinstance(recommended_change, str) or not recommended_change.strip() or len(recommended_change) > LEARNING_PROPOSAL_MAX_CHANGE_LENGTH:
+        errors.append("recommended_change must be non-empty and at most 500 characters")
+    lineage = proposal.get("lineage")
+    evidence_event_ids = lineage.get("evidence_event_ids") if isinstance(lineage, dict) else None
+    if (
+        not isinstance(lineage, dict)
+        or set(lineage) != {"evidence_event_ids"}
+        or not isinstance(evidence_event_ids, list)
+        or not evidence_event_ids
+        or len(evidence_event_ids) > LEARNING_PROPOSAL_MAX_EVIDENCE_EVENTS
+        or len(set(evidence_event_ids)) != len(evidence_event_ids)
+        or any(not isinstance(item, str) or not re.fullmatch(r"evt-[0-9a-f]{20}", item) for item in evidence_event_ids)
+    ):
+        errors.append("lineage must contain one to ten unique stable evidence event IDs")
+    if proposal.get("privacy_label") not in LEARNING_PRIVACY_LABELS:
+        errors.append("privacy_label is not allowed by learning-proposal schema")
+    if proposal.get("status") not in ("pending-review", "approved", "rejected", "deferred"):
+        errors.append("status is not allowed by learning-proposal schema")
+    decision_id = proposal.get("decision_id")
+    if decision_id is not None and (not isinstance(decision_id, str) or not re.fullmatch(r"dec-[0-9a-f]{20}", decision_id)):
+        errors.append("decision_id must be null or a stable dec- identifier")
+    if proposal.get("human_approval_required") is not True:
+        errors.append("human_approval_required must be true")
+    if proposal.get("non_execution_guarantee") != learning_non_execution_guarantee():
+        errors.append("non_execution_guarantee must preserve the no-execution boundary")
+    return errors
+
+
+def read_learning_proposals(proposals_dir: Path, limit: int = 0) -> tuple[list[dict[str, Any]], list[str]]:
+    if not proposals_dir.exists():
+        return [], []
+    proposals: list[dict[str, Any]] = []
+    warnings: list[str] = []
+    for path in sorted(proposals_dir.glob("*.json")):
+        payload = read_json(path)
+        errors = learning_proposal_validation_errors(payload)
+        if errors:
+            warnings.append(f"Skipped invalid learning proposal {path.name}: {'; '.join(errors)}")
+            continue
+        proposals.append(payload)
+    proposals.sort(key=lambda proposal: (proposal["created_at"], proposal["proposal_id"]))
+    if limit > 0:
+        proposals = proposals[-limit:]
+    return proposals, warnings
+
+
+def learn_proposal_create_payload(args: argparse.Namespace, repo: Path) -> tuple[dict[str, Any], int]:
+    gate, policy_status, context = learning_sidecar_write_gate(repo, "learning-proposal.schema.json")
+    state = context["state"]
+    learning_paths = context["paths"]
+    policy = context["policy"]
+    if gate["state"] != "approved":
+        return learning_write_error_payload("learn proposal create", repo, state, learning_paths, policy_status, gate)
+    proposal = learning_proposal_from_args(args, repo, policy)
+    errors = learning_proposal_validation_errors(proposal)
+    if errors:
+        gate = {"state": "schema-invalid", "reason": "proposal failed local learning-proposal schema validation"}
+        return learning_write_error_payload("learn proposal create", repo, state, learning_paths, policy_status, gate, errors=errors)
+    events, _warnings = read_learning_events(Path(learning_paths["events"]))
+    valid_event_ids = {event["event_id"] for event in events}
+    evidence_event_ids = proposal["lineage"]["evidence_event_ids"]
+    missing_event_ids = [event_id for event_id in evidence_event_ids if event_id not in valid_event_ids]
+    if missing_event_ids:
+        gate = {
+            "state": "invalid-evidence",
+            "reason": "every proposal evidence event must already exist as a schema-valid local learning event",
+            "missing_event_ids": missing_event_ids,
+        }
+        return learning_write_error_payload("learn proposal create", repo, state, learning_paths, policy_status, gate)
+    state, init_paths = ensure_sidecar(repo, "learn proposal create")
+    learning_paths = learning_paths_for(repo, state)
+    proposals_dir = Path(learning_paths["proposals"])
+    proposals_dir.mkdir(parents=True, exist_ok=True)
+    proposal_path = proposals_dir / f"{proposal['proposal_id']}.json"
+    write_json_file(proposal_path, proposal)
+    paths = init_paths + [learning_paths["root"], learning_paths["proposals"], str(proposal_path)]
+    return (
+        {
+            "schema_version": 1,
+            "command": "learn proposal create",
+            "action": "create",
+            "repo": str(repo),
+            "policy_state": policy_status["state"],
+            "policy": policy_status,
+            "learning_paths": {"sidecar": learning_paths},
+            "gate": gate,
+            "proposal": proposal,
+            "proposal_path": str(proposal_path),
+            "non_execution_guarantee": learning_non_execution_guarantee(),
+            "task_packet_receipt_linkage": learning_task_packet_receipt_linkage(),
+            "target_repo_writes": target_repo_writes(False, reason="learning proposals are stored only in the repository sidecar"),
+            "sidecar_writes": sidecar_writes(True, paths=paths, reason="explicit schema-valid learning proposal with local event evidence"),
+            "global_writes": {"performed": False, "paths": [], "reason": "learning proposal create does not write global state"},
+            "sidecar_state": state,
+            "exit_code": 0,
+        },
+        0,
+    )
+
+
+def learn_proposal_list_payload(args: argparse.Namespace, repo: Path) -> tuple[dict[str, Any], int]:
+    state = sidecar_state(repo)
+    learning_paths = learning_paths_for(repo, state)
+    proposals_path = Path(learning_paths["proposals"])
+    proposals, warnings = read_learning_proposals(proposals_path, max(args.limit, 0))
+    return (
+        {
+            "schema_version": 1,
+            "command": "learn proposal list",
+            "action": "list",
+            "repo": str(repo),
+            "proposals_path": str(proposals_path),
+            "proposals": proposals,
+            "count": len(proposals),
+            "warnings": warnings,
+            "non_execution_guarantee": learning_non_execution_guarantee(),
+            "task_packet_receipt_linkage": learning_task_packet_receipt_linkage(),
+            "target_repo_writes": target_repo_writes(False, reason="learn proposal list is read-only"),
+            "sidecar_writes": sidecar_writes(False, reason="learn proposal list is read-only"),
+            "global_writes": {"performed": False, "paths": [], "reason": "learn proposal list does not write global state"},
+            "sidecar_state": state,
+            "exit_code": 0,
+        },
+        0,
+    )
+
+
+def learning_decision_from_args(args: argparse.Namespace, repo: Path, proposal: dict[str, Any]) -> dict[str, Any]:
+    follow_up = [item.strip() for item in (args.follow_up or []) if item.strip()]
+    return {
+        "schema_version": 1,
+        "decision_id": "dec-" + uuid.uuid4().hex[:20],
+        "decided_at": now(),
+        "policy_id": "supervised-learning",
+        "repo": str(repo),
+        "proposal_id": proposal["proposal_id"],
+        "outcome": args.outcome,
+        "rationale": args.rationale.strip(),
+        "decider": args.decider.strip(),
+        "human_review": {"required": True, "confirmed": True, "capture": "explicit-cli-input"},
+        "lineage": {
+            "proposal_id": proposal["proposal_id"],
+            "evidence_event_ids": proposal["lineage"]["evidence_event_ids"],
+        },
+        "privacy_label": proposal["privacy_label"],
+        "follow_up": follow_up,
+        "non_execution_guarantee": learning_non_execution_guarantee(),
+    }
+
+
+def learning_decision_validation_errors(decision: Any) -> list[str]:
+    if not isinstance(decision, dict):
+        return ["decision must be an object"]
+    required = {
+        "schema_version",
+        "decision_id",
+        "decided_at",
+        "policy_id",
+        "repo",
+        "proposal_id",
+        "outcome",
+        "rationale",
+        "decider",
+        "human_review",
+        "lineage",
+        "privacy_label",
+        "follow_up",
+        "non_execution_guarantee",
+    }
+    errors: list[str] = []
+    if set(decision) != required:
+        errors.append("decision fields do not match learning-decision schema")
+    if decision.get("schema_version") != 1:
+        errors.append("schema_version must be 1")
+    if not isinstance(decision.get("decision_id"), str) or not re.fullmatch(r"dec-[0-9a-f]{20}", decision["decision_id"]):
+        errors.append("decision_id must be a stable dec- identifier")
+    if not learning_is_timestamp(decision.get("decided_at")):
+        errors.append("decided_at must be an RFC3339 UTC timestamp")
+    if decision.get("policy_id") != "supervised-learning" or not isinstance(decision.get("repo"), str) or not decision["repo"]:
+        errors.append("policy_id and repo must identify the supervised-learning target")
+    if not isinstance(decision.get("proposal_id"), str) or not re.fullmatch(r"prop-[0-9a-f]{20}", decision["proposal_id"]):
+        errors.append("proposal_id must be a stable prop- identifier")
+    if decision.get("outcome") not in LEARNING_DECISION_OUTCOMES:
+        errors.append("outcome is not allowed by learning-decision schema")
+    rationale = decision.get("rationale")
+    if not isinstance(rationale, str) or not rationale.strip() or len(rationale) > LEARNING_DECISION_MAX_RATIONALE_LENGTH:
+        errors.append("rationale must be non-empty and at most 500 characters")
+    decider = decision.get("decider")
+    if not isinstance(decider, str) or not decider.strip() or len(decider) > LEARNING_DECISION_MAX_DECIDER_LENGTH:
+        errors.append("decider must be non-empty and at most 120 characters")
+    if decision.get("human_review") != {"required": True, "confirmed": True, "capture": "explicit-cli-input"}:
+        errors.append("human_review must record explicit confirmed human review")
+    lineage = decision.get("lineage")
+    evidence_event_ids = lineage.get("evidence_event_ids") if isinstance(lineage, dict) else None
+    if (
+        not isinstance(lineage, dict)
+        or set(lineage) != {"proposal_id", "evidence_event_ids"}
+        or lineage.get("proposal_id") != decision.get("proposal_id")
+        or not isinstance(evidence_event_ids, list)
+        or not evidence_event_ids
+        or any(not isinstance(item, str) or not re.fullmatch(r"evt-[0-9a-f]{20}", item) for item in evidence_event_ids)
+    ):
+        errors.append("lineage must preserve the proposal and its stable evidence event IDs")
+    if decision.get("privacy_label") not in LEARNING_PRIVACY_LABELS:
+        errors.append("privacy_label is not allowed by learning-decision schema")
+    follow_up = decision.get("follow_up")
+    if not isinstance(follow_up, list) or len(follow_up) > LEARNING_DECISION_MAX_FOLLOW_UP_ITEMS or any(
+        not isinstance(item, str) or not item.strip() or len(item) > LEARNING_DECISION_MAX_FOLLOW_UP_LENGTH for item in follow_up
+    ):
+        errors.append("follow_up must contain at most ten explicit entries of 500 characters or fewer")
+    if decision.get("non_execution_guarantee") != learning_non_execution_guarantee():
+        errors.append("non_execution_guarantee must preserve the no-execution boundary")
+    return errors
+
+
+def read_learning_decisions(decisions_dir: Path, limit: int = 0) -> tuple[list[dict[str, Any]], list[str]]:
+    if not decisions_dir.exists():
+        return [], []
+    decisions: list[dict[str, Any]] = []
+    warnings: list[str] = []
+    for path in sorted(decisions_dir.glob("*.json")):
+        payload = read_json(path)
+        errors = learning_decision_validation_errors(payload)
+        if errors:
+            warnings.append(f"Skipped invalid learning decision {path.name}: {'; '.join(errors)}")
+            continue
+        decisions.append(payload)
+    decisions.sort(key=lambda decision: (decision["decided_at"], decision["decision_id"]))
+    if limit > 0:
+        decisions = decisions[-limit:]
+    return decisions, warnings
+
+
+def learn_decision_record_payload(args: argparse.Namespace, repo: Path) -> tuple[dict[str, Any], int]:
+    gate, policy_status, context = learning_sidecar_write_gate(repo, "learning-decision.schema.json")
+    state = context["state"]
+    learning_paths = context["paths"]
+    if gate["state"] != "approved":
+        return learning_write_error_payload("learn decision record", repo, state, learning_paths, policy_status, gate)
+    proposal_id = args.proposal_id.strip()
+    if not re.fullmatch(r"prop-[0-9a-f]{20}", proposal_id):
+        gate = {"state": "proposal-invalid", "reason": "proposal_id must be a stable prop- identifier"}
+        return learning_write_error_payload("learn decision record", repo, state, learning_paths, policy_status, gate)
+    proposal_path = Path(learning_paths["proposals"]) / f"{proposal_id}.json"
+    proposal = read_json(proposal_path)
+    proposal_errors = learning_proposal_validation_errors(proposal)
+    if proposal is None:
+        gate = {"state": "proposal-missing", "reason": "decision must reference an existing pending proposal"}
+        return learning_write_error_payload("learn decision record", repo, state, learning_paths, policy_status, gate)
+    if proposal_errors:
+        gate = {"state": "proposal-invalid", "reason": "referenced proposal failed local learning-proposal schema validation"}
+        return learning_write_error_payload("learn decision record", repo, state, learning_paths, policy_status, gate, errors=proposal_errors)
+    if proposal["status"] != "pending-review" or proposal["decision_id"] is not None:
+        gate = {"state": "proposal-not-pending", "reason": "decision must reference an existing pending-review proposal"}
+        return learning_write_error_payload("learn decision record", repo, state, learning_paths, policy_status, gate)
+    if not args.human_review_confirmed:
+        gate = {"state": "human-review-required", "reason": "pass --human-review-confirmed after explicit human review to record a decision"}
+        return learning_write_error_payload("learn decision record", repo, state, learning_paths, policy_status, gate)
+    decision = learning_decision_from_args(args, repo, proposal)
+    errors = learning_decision_validation_errors(decision)
+    if errors:
+        gate = {"state": "schema-invalid", "reason": "decision failed local learning-decision schema validation"}
+        return learning_write_error_payload("learn decision record", repo, state, learning_paths, policy_status, gate, errors=errors)
+    state, init_paths = ensure_sidecar(repo, "learn decision record")
+    learning_paths = learning_paths_for(repo, state)
+    decisions_dir = Path(learning_paths["decisions"])
+    decisions_dir.mkdir(parents=True, exist_ok=True)
+    decision_path = decisions_dir / f"{decision['decision_id']}.json"
+    proposal["status"] = decision["outcome"]
+    proposal["decision_id"] = decision["decision_id"]
+    write_json_file(decision_path, decision)
+    write_json_file(proposal_path, proposal)
+    paths = init_paths + [learning_paths["root"], learning_paths["decisions"], str(decision_path), str(proposal_path)]
+    return (
+        {
+            "schema_version": 1,
+            "command": "learn decision record",
+            "action": "record",
+            "repo": str(repo),
+            "policy_state": policy_status["state"],
+            "policy": policy_status,
+            "learning_paths": {"sidecar": learning_paths},
+            "gate": gate,
+            "decision": decision,
+            "decision_path": str(decision_path),
+            "proposal": proposal,
+            "proposal_path": str(proposal_path),
+            "non_execution_guarantee": learning_non_execution_guarantee(),
+            "task_packet_receipt_linkage": learning_task_packet_receipt_linkage(),
+            "target_repo_writes": target_repo_writes(False, reason="learning decisions and proposal state are stored only in the repository sidecar"),
+            "sidecar_writes": sidecar_writes(True, paths=paths, reason="explicit human-reviewed learning decision and linked proposal update"),
+            "global_writes": {"performed": False, "paths": [], "reason": "learning decision record does not write global state"},
+            "sidecar_state": state,
+            "exit_code": 0,
+        },
+        0,
+    )
+
+
+def learn_decision_list_payload(args: argparse.Namespace, repo: Path) -> tuple[dict[str, Any], int]:
+    state = sidecar_state(repo)
+    learning_paths = learning_paths_for(repo, state)
+    decisions_path = Path(learning_paths["decisions"])
+    decisions, warnings = read_learning_decisions(decisions_path, max(args.limit, 0))
+    return (
+        {
+            "schema_version": 1,
+            "command": "learn decision list",
+            "action": "list",
+            "repo": str(repo),
+            "decisions_path": str(decisions_path),
+            "decisions": decisions,
+            "count": len(decisions),
+            "warnings": warnings,
+            "non_execution_guarantee": learning_non_execution_guarantee(),
+            "task_packet_receipt_linkage": learning_task_packet_receipt_linkage(),
+            "target_repo_writes": target_repo_writes(False, reason="learn decision list is read-only"),
+            "sidecar_writes": sidecar_writes(False, reason="learn decision list is read-only"),
+            "global_writes": {"performed": False, "paths": [], "reason": "learn decision list does not write global state"},
+            "sidecar_state": state,
+            "exit_code": 0,
+        },
+        0,
+    )
 
 
 def learning_event_gate(repo: Path, args: argparse.Namespace) -> tuple[dict[str, Any], dict[str, Any], dict[str, Any]]:
@@ -11928,6 +12542,87 @@ def build_parser() -> argparse.ArgumentParser:
     add_common_repo_args(learn_event_list)
     learn_event_list.add_argument("--limit", type=int, default=50, help="Maximum events to list. Use 0 for all events.")
 
+    learn_proposal = learn_subparsers.add_parser(
+        "proposal",
+        help="Create reviewable local learning proposals from existing events or list them without writes.",
+    )
+    learn_proposal_subparsers = learn_proposal.add_subparsers(
+        dest="learn_proposal_command",
+        required=True,
+        parser_class=KitArgumentParser,
+    )
+    learn_proposal_create = learn_proposal_subparsers.add_parser(
+        "create",
+        help="Create a pending-review proposal from schema-valid local event IDs only.",
+    )
+    add_common_repo_args(learn_proposal_create)
+    learn_proposal_create.add_argument("--title", required=True, help="Explicit bounded proposal title.")
+    learn_proposal_create.add_argument(
+        "--classification",
+        required=True,
+        choices=LEARNING_PROPOSAL_CLASSIFICATIONS,
+        help="Explicit proposal classification.",
+    )
+    learn_proposal_create.add_argument(
+        "--scope",
+        action="append",
+        required=True,
+        help="Explicit affected path or bounded scope. Can be repeated up to ten times.",
+    )
+    learn_proposal_create.add_argument(
+        "--recommended-change",
+        required=True,
+        help="Explicit bounded recommendation; Kit never harvests interactions or feedback.",
+    )
+    learn_proposal_create.add_argument(
+        "--evidence-event",
+        action="append",
+        required=True,
+        help="Existing schema-valid local evt- identifier. Can be repeated up to ten times.",
+    )
+    learn_proposal_create.add_argument("--privacy-label", choices=LEARNING_PRIVACY_LABELS, help="Privacy label; defaults to the target policy label.")
+    learn_proposal_list = learn_proposal_subparsers.add_parser(
+        "list",
+        help="List local schema-valid learning proposals without creating sidecar state.",
+    )
+    add_common_repo_args(learn_proposal_list)
+    learn_proposal_list.add_argument("--limit", type=int, default=50, help="Maximum proposals to list. Use 0 for all proposals.")
+
+    learn_decision = learn_subparsers.add_parser(
+        "decision",
+        help="Record explicit human-reviewed proposal decisions or list local decisions without writes.",
+    )
+    learn_decision_subparsers = learn_decision.add_subparsers(
+        dest="learn_decision_command",
+        required=True,
+        parser_class=KitArgumentParser,
+    )
+    learn_decision_record = learn_decision_subparsers.add_parser(
+        "record",
+        help="Record an explicit human-reviewed decision for one pending local proposal.",
+    )
+    add_common_repo_args(learn_decision_record)
+    learn_decision_record.add_argument("--proposal-id", required=True, help="Existing pending-review prop- identifier.")
+    learn_decision_record.add_argument("--outcome", required=True, choices=LEARNING_DECISION_OUTCOMES, help="Explicit human decision outcome.")
+    learn_decision_record.add_argument("--decider", required=True, help="Named human decider.")
+    learn_decision_record.add_argument("--rationale", required=True, help="Explicit bounded decision rationale.")
+    learn_decision_record.add_argument(
+        "--human-review-confirmed",
+        action="store_true",
+        help="Confirm explicit human review of this exact pending proposal before recording the decision.",
+    )
+    learn_decision_record.add_argument(
+        "--follow-up",
+        action="append",
+        help="Explicit bounded follow-up note. Can be repeated up to ten times.",
+    )
+    learn_decision_list = learn_decision_subparsers.add_parser(
+        "list",
+        help="List local schema-valid learning decisions without creating sidecar state.",
+    )
+    add_common_repo_args(learn_decision_list)
+    learn_decision_list.add_argument("--limit", type=int, default=50, help="Maximum decisions to list. Use 0 for all decisions.")
+
     mode_check = subparsers.add_parser("mode-check", help="Select lite, standard, or release-gated harness mode without writes.")
     add_common_repo_args(mode_check)
     mode_check.add_argument("--mode", choices=HARNESS_MODE_CHOICES, default="auto", help="Requested harness mode. auto lets kit choose.")
@@ -12579,6 +13274,26 @@ def main(argv: list[str] | None = None) -> int:
         return exit_code
     if args.command == "learn" and args.learn_command == "event" and args.learn_event_command == "list":
         payload, exit_code = learn_event_list_payload(args, repo)
+        payload = apply_runtime_mode(payload, raw_argv, args)
+        render_json(payload) if args.json else render_json(payload)
+        return exit_code
+    if args.command == "learn" and args.learn_command == "proposal" and args.learn_proposal_command == "create":
+        payload, exit_code = learn_proposal_create_payload(args, repo)
+        payload = apply_runtime_mode(payload, raw_argv, args)
+        render_json(payload) if args.json else render_json(payload)
+        return exit_code
+    if args.command == "learn" and args.learn_command == "proposal" and args.learn_proposal_command == "list":
+        payload, exit_code = learn_proposal_list_payload(args, repo)
+        payload = apply_runtime_mode(payload, raw_argv, args)
+        render_json(payload) if args.json else render_json(payload)
+        return exit_code
+    if args.command == "learn" and args.learn_command == "decision" and args.learn_decision_command == "record":
+        payload, exit_code = learn_decision_record_payload(args, repo)
+        payload = apply_runtime_mode(payload, raw_argv, args)
+        render_json(payload) if args.json else render_json(payload)
+        return exit_code
+    if args.command == "learn" and args.learn_command == "decision" and args.learn_decision_command == "list":
+        payload, exit_code = learn_decision_list_payload(args, repo)
         payload = apply_runtime_mode(payload, raw_argv, args)
         render_json(payload) if args.json else render_json(payload)
         return exit_code

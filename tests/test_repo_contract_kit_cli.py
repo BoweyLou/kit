@@ -986,6 +986,239 @@ class RepoContractKitCliTests(unittest.TestCase):
             self.assertEqual(target_snapshot(), before_target)
             self.assertEqual(registry_path.read_bytes(), before_registry)
 
+    def test_learn_proposal_and_decision_cli_e2e_are_review_gated_and_sidecar_only(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            target = Path(tmp) / "target"
+            state_home = Path(tmp) / "xdg-state"
+            target.mkdir()
+            init_git_repo(target)
+            env = {**os.environ, "XDG_STATE_HOME": str(state_home)}
+
+            def run_learn_event(*args: str):
+                return subprocess.run(
+                    [sys.executable, str(CLI), "learn", "event", *args, "--repo", str(target), "--json"],
+                    cwd=ROOT,
+                    env=env,
+                    capture_output=True,
+                    text=True,
+                    check=False,
+                )
+
+            def run_learn_proposal(*args: str):
+                return subprocess.run(
+                    [sys.executable, str(CLI), "learn", "proposal", *args, "--repo", str(target), "--json"],
+                    cwd=ROOT,
+                    env=env,
+                    capture_output=True,
+                    text=True,
+                    check=False,
+                )
+
+            def run_learn_decision(*args: str):
+                return subprocess.run(
+                    [sys.executable, str(CLI), "learn", "decision", *args, "--repo", str(target), "--json"],
+                    cwd=ROOT,
+                    env=env,
+                    capture_output=True,
+                    text=True,
+                    check=False,
+                )
+
+            def target_snapshot() -> dict[str, bytes]:
+                return {
+                    path.relative_to(target).as_posix(): path.read_bytes()
+                    for path in target.rglob("*")
+                    if path.is_file() and ".git" not in path.parts
+                }
+
+            install = subprocess.run(
+                [sys.executable, str(CLI), "setup", "--repo", str(target), "--profile", "supervised-learning", "--json"],
+                cwd=ROOT,
+                env=env,
+                capture_output=True,
+                text=True,
+                check=False,
+            )
+            self.assertEqual(install.returncode, 0, install.stderr)
+            commit_all(target, "Install supervised-learning profile")
+            before_target = target_snapshot()
+            registry_path = state_home / "repo-contract-kit" / "enrolled-targets.json"
+            before_registry = registry_path.read_bytes()
+
+            invalid_field = run_learn_proposal(
+                "create",
+                "--title",
+                "x" * 161,
+                "--classification",
+                "workflow",
+                "--scope",
+                "docs/ops/supervised-learning.md",
+                "--recommended-change",
+                "Document the review gate.",
+                "--evidence-event",
+                "evt-00000000000000000000",
+            )
+            self.assertEqual(invalid_field.returncode, 2, invalid_field.stderr)
+            invalid_field_payload = json.loads(invalid_field.stdout)
+            self.assertEqual(invalid_field_payload["gate"]["state"], "schema-invalid")
+            self.assertFalse(invalid_field_payload["sidecar_writes"]["performed"])
+            self.assertFalse(Path(invalid_field_payload["learning_paths"]["sidecar"]["root"]).exists())
+            self.assertEqual(target_snapshot(), before_target)
+            self.assertEqual(registry_path.read_bytes(), before_registry)
+
+            invalid_evidence = run_learn_proposal(
+                "create",
+                "--title",
+                "Invalid evidence stays unwritten",
+                "--classification",
+                "workflow",
+                "--scope",
+                "docs/ops/supervised-learning.md",
+                "--recommended-change",
+                "Document the review gate.",
+                "--evidence-event",
+                "evt-00000000000000000000",
+            )
+            self.assertEqual(invalid_evidence.returncode, 2, invalid_evidence.stderr)
+            invalid_evidence_payload = json.loads(invalid_evidence.stdout)
+            self.assertEqual(invalid_evidence_payload["gate"]["state"], "invalid-evidence")
+            self.assertFalse(invalid_evidence_payload["sidecar_writes"]["performed"])
+            self.assertFalse(Path(invalid_evidence_payload["learning_paths"]["sidecar"]["root"]).exists())
+            self.assertEqual(target_snapshot(), before_target)
+            self.assertEqual(registry_path.read_bytes(), before_registry)
+
+            event_result = run_learn_event(
+                "record",
+                "--kind",
+                "validation",
+                "--summary",
+                "proposal evidence was reviewed locally",
+                "--outcome",
+                "confirmed",
+                "--source",
+                "human",
+                "--approved",
+            )
+            self.assertEqual(event_result.returncode, 0, event_result.stderr)
+            event_payload = json.loads(event_result.stdout)
+            event_id = event_payload["event"]["event_id"]
+            self.assertEqual(target_snapshot(), before_target)
+            self.assertEqual(registry_path.read_bytes(), before_registry)
+
+            proposal_result = run_learn_proposal(
+                "create",
+                "--title",
+                "Document supervised-learning reviews",
+                "--classification",
+                "documentation",
+                "--scope",
+                "docs/ops/supervised-learning.md",
+                "--recommended-change",
+                "Add the explicit proposal and decision review path to the local policy guide.",
+                "--evidence-event",
+                event_id,
+            )
+            self.assertEqual(proposal_result.returncode, 0, proposal_result.stderr)
+            proposal_payload = json.loads(proposal_result.stdout)
+            proposal = proposal_payload["proposal"]
+            proposal_id = proposal["proposal_id"]
+            proposal_path = Path(proposal_payload["proposal_path"])
+            self.assertRegex(proposal_id, r"^prop-[0-9a-f]{20}$")
+            self.assertEqual(proposal["status"], "pending-review")
+            self.assertEqual(proposal["lineage"]["evidence_event_ids"], [event_id])
+            self.assertEqual(proposal["privacy_label"], "private-local")
+            self.assertTrue(proposal_path.is_file())
+            self.assertTrue(proposal_payload["non_execution_guarantee"]["enforced"])
+            self.assertFalse(proposal_payload["target_repo_writes"]["performed"])
+            self.assertTrue(proposal_payload["sidecar_writes"]["performed"])
+            self.assertEqual(target_snapshot(), before_target)
+            self.assertEqual(registry_path.read_bytes(), before_registry)
+
+            proposal_before_decision = proposal_path.read_bytes()
+            no_human_review = run_learn_decision(
+                "record",
+                "--proposal-id",
+                proposal_id,
+                "--outcome",
+                "approved",
+                "--decider",
+                "Repository owner",
+                "--rationale",
+                "The evidence is sufficient for human review.",
+            )
+            self.assertEqual(no_human_review.returncode, 2, no_human_review.stderr)
+            no_human_review_payload = json.loads(no_human_review.stdout)
+            self.assertEqual(no_human_review_payload["gate"]["state"], "human-review-required")
+            self.assertFalse(no_human_review_payload["sidecar_writes"]["performed"])
+            self.assertEqual(proposal_path.read_bytes(), proposal_before_decision)
+            self.assertEqual(target_snapshot(), before_target)
+            self.assertEqual(registry_path.read_bytes(), before_registry)
+
+            missing_proposal = run_learn_decision(
+                "record",
+                "--proposal-id",
+                "prop-00000000000000000000",
+                "--outcome",
+                "approved",
+                "--decider",
+                "Repository owner",
+                "--rationale",
+                "A missing proposal cannot be approved.",
+                "--human-review-confirmed",
+            )
+            self.assertEqual(missing_proposal.returncode, 2, missing_proposal.stderr)
+            missing_proposal_payload = json.loads(missing_proposal.stdout)
+            self.assertEqual(missing_proposal_payload["gate"]["state"], "proposal-missing")
+            self.assertFalse(missing_proposal_payload["sidecar_writes"]["performed"])
+            self.assertEqual(proposal_path.read_bytes(), proposal_before_decision)
+            self.assertEqual(target_snapshot(), before_target)
+            self.assertEqual(registry_path.read_bytes(), before_registry)
+
+            decision_result = run_learn_decision(
+                "record",
+                "--proposal-id",
+                proposal_id,
+                "--outcome",
+                "approved",
+                "--decider",
+                "Repository owner",
+                "--rationale",
+                "The evidence is sufficient for a bounded documentation recommendation.",
+                "--human-review-confirmed",
+            )
+            self.assertEqual(decision_result.returncode, 0, decision_result.stderr)
+            decision_payload = json.loads(decision_result.stdout)
+            decision = decision_payload["decision"]
+            self.assertRegex(decision["decision_id"], r"^dec-[0-9a-f]{20}$")
+            self.assertEqual(decision["outcome"], "approved")
+            self.assertEqual(decision["human_review"]["confirmed"], True)
+            self.assertTrue(decision_payload["non_execution_guarantee"]["enforced"])
+            self.assertFalse(decision_payload["target_repo_writes"]["performed"])
+            self.assertTrue(decision_payload["sidecar_writes"]["performed"])
+            stored_proposal = read_json_file(proposal_path)
+            self.assertEqual(stored_proposal["status"], "approved")
+            self.assertEqual(stored_proposal["decision_id"], decision["decision_id"])
+            self.assertEqual(target_snapshot(), before_target)
+            self.assertEqual(registry_path.read_bytes(), before_registry)
+
+            proposal_before_list = proposal_path.read_bytes()
+            proposals = run_learn_proposal("list")
+            self.assertEqual(proposals.returncode, 0, proposals.stderr)
+            proposals_payload = json.loads(proposals.stdout)
+            self.assertEqual(proposals_payload["count"], 1)
+            self.assertEqual(proposals_payload["proposals"][0]["proposal_id"], proposal_id)
+            self.assertFalse(proposals_payload["sidecar_writes"]["performed"])
+
+            decisions = run_learn_decision("list")
+            self.assertEqual(decisions.returncode, 0, decisions.stderr)
+            decisions_payload = json.loads(decisions.stdout)
+            self.assertEqual(decisions_payload["count"], 1)
+            self.assertEqual(decisions_payload["decisions"][0]["decision_id"], decision["decision_id"])
+            self.assertFalse(decisions_payload["sidecar_writes"]["performed"])
+            self.assertEqual(proposal_path.read_bytes(), proposal_before_list)
+            self.assertEqual(target_snapshot(), before_target)
+            self.assertEqual(registry_path.read_bytes(), before_registry)
+
     def test_command_map_json_catalogs_commands_without_repo_writes(self):
         with tempfile.TemporaryDirectory() as tmp:
             result = subprocess.run(

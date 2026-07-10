@@ -4,7 +4,7 @@ Generated from `kit command-map --json`.
 Do not edit command sections by hand; run `kit cli-reference --write docs/cli-reference.md`.
 
 - Schema version: `1`
-- Command count: `73`
+- Command count: `79`
 
 ## Commands
 
@@ -923,6 +923,77 @@ Examples:
 
 - `kit learn status --repo /path/to/repo --json`
 
+### kit learn decision
+
+Record explicit human-reviewed proposal decisions or list local decisions without writes.
+
+- Audience: `human, agent`
+- Mutation: `namespace`
+- Target writes: `never`
+- Sidecar writes: `never`
+- JSON: `no`
+- Output schema: `subcommand_namespace`
+- Route role: `namespace`
+- Canonical command: `learn decision`
+- Docs: `docs/backlog.md, docs/sidecar-retention.md, docs/adr/0005-supervised-learning-ownership-boundaries.md`
+
+Examples:
+
+- `kit learn decision list --repo /path/to/repo --json`
+
+### kit learn decision list
+
+List local schema-valid learning decisions without creating sidecar state.
+
+- Audience: `human, agent`
+- Mutation: `read-only`
+- Target writes: `never`
+- Sidecar writes: `never`
+- JSON: `yes`
+- Output schema: `learn_decision_list_payload`
+- Route role: `canonical`
+- Canonical command: `learn decision list`
+- Docs: `docs/sidecar-retention.md, docs/adr/0005-supervised-learning-ownership-boundaries.md`
+
+Examples:
+
+- `kit learn decision list --repo /path/to/repo --json`
+
+Flags:
+
+- `--repo` - Target git repository. Defaults to the current directory.
+- `--json` - Emit machine-readable JSON.
+- `--limit` - Maximum decisions to list. Use 0 for all decisions.
+
+### kit learn decision record
+
+Record an explicit human-reviewed decision for one pending local proposal.
+
+- Audience: `human, agent`
+- Mutation: `writes-sidecar-on-explicit-human-review`
+- Target writes: `never`
+- Sidecar writes: `conditional`
+- JSON: `yes`
+- Output schema: `learn_decision_record_payload`
+- Route role: `canonical`
+- Canonical command: `learn decision record`
+- Docs: `docs/backlog.md, docs/harness-engineering.md, docs/sidecar-retention.md, docs/adr/0005-supervised-learning-ownership-boundaries.md`
+
+Examples:
+
+- `kit learn decision record --repo /path/to/repo --proposal-id prop-0123456789abcdef0123 --outcome approved --decider 'Repository owner' --rationale 'The local evidence supports this bounded recommendation.' --human-review-confirmed --json`
+
+Flags:
+
+- `--repo` - Target git repository. Defaults to the current directory.
+- `--json` - Emit machine-readable JSON.
+- `--proposal-id` - Existing pending-review prop- identifier.
+- `--outcome` - Explicit human decision outcome.
+- `--decider` - Named human decider.
+- `--rationale` - Explicit bounded decision rationale.
+- `--human-review-confirmed` - Confirm explicit human review of this exact pending proposal before recording the decision.
+- `--follow-up` - Explicit bounded follow-up note. Can be repeated up to ten times.
+
 ### kit learn event
 
 Record explicitly approved supervised-learning events or list stored local events.
@@ -995,6 +1066,77 @@ Flags:
 - `--privacy-label` - Privacy label; defaults to the target policy label.
 - `--approved` - Confirm explicit human approval for this exact event record.
 - `--approval-state` - Optional explicit approval state; only --approved with approved state can write a record.
+
+### kit learn proposal
+
+Create reviewable local learning proposals from existing events or list them without writes.
+
+- Audience: `human, agent`
+- Mutation: `namespace`
+- Target writes: `never`
+- Sidecar writes: `never`
+- JSON: `no`
+- Output schema: `subcommand_namespace`
+- Route role: `namespace`
+- Canonical command: `learn proposal`
+- Docs: `docs/backlog.md, docs/sidecar-retention.md, docs/adr/0005-supervised-learning-ownership-boundaries.md`
+
+Examples:
+
+- `kit learn proposal list --repo /path/to/repo --json`
+
+### kit learn proposal create
+
+Create a pending-review proposal from schema-valid local event IDs only.
+
+- Audience: `human, agent`
+- Mutation: `writes-sidecar-on-schema-valid-evidence`
+- Target writes: `never`
+- Sidecar writes: `conditional`
+- JSON: `yes`
+- Output schema: `learn_proposal_create_payload`
+- Route role: `canonical`
+- Canonical command: `learn proposal create`
+- Docs: `docs/backlog.md, docs/harness-engineering.md, docs/sidecar-retention.md, docs/adr/0005-supervised-learning-ownership-boundaries.md`
+
+Examples:
+
+- `kit learn proposal create --repo /path/to/repo --title 'Document local review path' --classification documentation --scope docs/ops/supervised-learning.md --recommended-change 'Document reviewable local proposals.' --evidence-event evt-0123456789abcdef0123 --json`
+
+Flags:
+
+- `--repo` - Target git repository. Defaults to the current directory.
+- `--json` - Emit machine-readable JSON.
+- `--title` - Explicit bounded proposal title.
+- `--classification` - Explicit proposal classification.
+- `--scope` - Explicit affected path or bounded scope. Can be repeated up to ten times.
+- `--recommended-change` - Explicit bounded recommendation; Kit never harvests interactions or feedback.
+- `--evidence-event` - Existing schema-valid local evt- identifier. Can be repeated up to ten times.
+- `--privacy-label` - Privacy label; defaults to the target policy label.
+
+### kit learn proposal list
+
+List local schema-valid learning proposals without creating sidecar state.
+
+- Audience: `human, agent`
+- Mutation: `read-only`
+- Target writes: `never`
+- Sidecar writes: `never`
+- JSON: `yes`
+- Output schema: `learn_proposal_list_payload`
+- Route role: `canonical`
+- Canonical command: `learn proposal list`
+- Docs: `docs/sidecar-retention.md, docs/adr/0005-supervised-learning-ownership-boundaries.md`
+
+Examples:
+
+- `kit learn proposal list --repo /path/to/repo --json`
+
+Flags:
+
+- `--repo` - Target git repository. Defaults to the current directory.
+- `--json` - Emit machine-readable JSON.
+- `--limit` - Maximum proposals to list. Use 0 for all proposals.
 
 ### kit learn status
 

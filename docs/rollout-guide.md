@@ -152,7 +152,36 @@ contract checked in.
    The record is stored only in this repository's local sidecar. Without the
    enabled target-owned policy and `--approved`, Kit writes neither sidecar nor
    target/global state. Event capture never imports feedback, conversations, or
-   thread history; proposals, decisions, and context remain deferred.
+   thread history.
+
+   To propose a bounded change from already-approved local evidence, use:
+
+   ```bash
+   kit learn proposal create --title "Document local review path" \
+     --classification documentation \
+     --scope docs/ops/supervised-learning.md \
+     --recommended-change "Document reviewable local proposals." \
+     --evidence-event evt-0123456789abcdef0123 --json
+   kit learn proposal list --json
+   ```
+
+   Each proposal begins `pending-review`. To record—not execute—an explicit
+   human decision for it, use a named decider, rationale, and confirmation:
+
+   ```bash
+   kit learn decision record --proposal-id prop-0123456789abcdef0123 \
+     --outcome approved --decider "Repository owner" \
+     --rationale "The evidence supports this bounded recommendation." \
+     --human-review-confirmed --json
+   kit learn decision list --json
+   ```
+
+   Approved/rejected/deferred decisions stay only in the repository sidecar.
+   An approved outcome does not authorize target, AGENTS.md, policy, or global
+   state writes; Kit does not execute recommendations, and task-packet/receipt
+   linkage remains deferred. Invalid evidence, missing/non-pending proposals,
+   missing human confirmation, disabled/uninstalled policy, and invalid input
+   write nothing.
 12. Add hooks if you want faster local feedback.
 13. Add CI adapters only if your host supports them. The core workflow must still run locally.
 14. Later, add generated docs and broader executable doc tests.

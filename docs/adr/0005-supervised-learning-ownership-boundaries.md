@@ -48,6 +48,23 @@ other implicit inputs. Phase 2 still provides no proposal, decision, or context
 write commands, and no learning command can modify the target repository or
 global tool checkout.
 
+Phase 3 adds `kit learn proposal create`/`list` and `kit learn decision
+record`/`list`. Proposal creation remains policy-gated and accepts only bounded
+explicit CLI fields plus existing schema-valid local event IDs. Proposal records
+have stable IDs, scope and classification, bounded recommendations, privacy,
+and event lineage; they start `pending-review`. Decision recording requires an
+existing pending proposal, `--human-review-confirmed`, a named decider, and a
+non-empty rationale. It records approved/rejected/deferred state in the
+sidecar and updates the linked proposal. List commands are read-only.
+
+Phase 3 approval is a review state, not execution authority. Neither an
+accepted proposal nor an approved decision may modify AGENTS.md, policy files,
+target files, or global Kit state, and Kit must not execute recommendations.
+Task-packet and receipt linkage remain deferred. Disabled/uninstalled policy,
+invalid or missing evidence, missing/non-pending proposals, missing human
+review confirmation, and invalid fields must fail before sidecar initialization
+and write nothing.
+
 ## Consequences
 
 Operators can inspect the foundation safely before opting in. Target-specific

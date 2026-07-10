@@ -691,6 +691,15 @@
         }
       }
     },
+    "learning_decision_lineage": {
+      "type": "array",
+      "uniqueItems": true,
+      "description": "Optional approved local learning decision IDs explicitly requested for sidecar task-packet lineage. These records are guidance only and do not authorize recommendation execution or alter receipt mechanics.",
+      "items": {
+        "type": "string",
+        "pattern": "^dec-[0-9a-f]{20}$"
+      }
+    },
     "coordination": {
       "type": "object",
       "additionalProperties": true,

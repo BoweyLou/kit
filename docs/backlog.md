@@ -40,13 +40,30 @@ write no state.
 
 An approved proposal or decision is never permission to modify AGENTS.md,
 policy files, target files, or global Kit state, and Kit does not execute a
-recommendation. Task-packet and receipt linkage remain deferred.
+recommendation. Receipt linkage remains deferred.
 
-## Phase 4 — Context and retention integration
+## Phase 4 — Context and retention integration (shipped)
 
-Add bounded context retrieval and retention controls for approved sidecar
-records. Privacy labels, redaction, and purge previews must remain local-first
-and preserve evidence needed for decisions.
+`kit learn context build --decision-id <dec-id>` is policy-gated and succeeds
+only for an existing local schema-valid `approved` decision whose linked local
+proposal remains valid and approved. It creates a sidecar-only `ctx-` record
+with only decision/proposal IDs, classification, scope, recommended change,
+privacy label, retention expiry, and the no-execution guarantee. It never
+copies raw event, evidence, feedback, or conversation content. Rejected,
+deferred, missing, invalid, stale, or mismatched lineage fails before any new
+sidecar state is created.
+
+`kit learn context list` is read-only and returns only contexts whose structure
+and current local decision/proposal lineage still prove an approved decision
+for the selected repository. `kit agent-context-bundle` exposes the same valid
+records under a low deterministic cap as sidecar-only guidance, not target
+instructions. It does not execute recommendations or alter agent instructions.
+
+`kit task-packet --learning-decision <dec-id>` may record explicitly requested
+approved local decision IDs as artifact lineage after validating every ID before
+its optional sidecar write. Receipt and target task mechanics remain unchanged.
+`kit retention --json` reports learning artifact counts and a context-expiry
+preview only; Phase 4 adds no deletion command.
 
 ## Phase 5 — Evaluation and governed rollout
 

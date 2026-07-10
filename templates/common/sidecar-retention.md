@@ -28,3 +28,21 @@ write no sidecar, target, or global state. `kit learn event list` and `kit
 calibration` are read-only; calibration reports an explicitly derived and
 caveated count. Do not copy or reinterpret the separate `kit feedback` ledger,
 conversations, or thread history as learning records.
+
+## Approved Learning Context
+
+`kit learn context build --decision-id <dec-id>` writes a context only after
+the enabled target-owned policy accepts an existing schema-valid local approved
+decision and its linked valid approved proposal. The sidecar context contains
+only stable decision/proposal IDs, proposal classification/scope/recommended
+change, privacy label, retention expiry, and the no-execution guarantee. It
+does not contain raw event/evidence, feedback, rationale, decider, follow-up,
+or conversation content.
+
+`kit learn context list` and `make agent-context-bundle` read only contexts
+whose decision/proposal lineage still validates for this repository. Bundle
+contexts are bounded sidecar-only guidance, not target instructions. `kit
+task-packet --learning-decision <dec-id>` may retain validated approved
+decision IDs as packet lineage without changing target task files or receipt
+mechanics. `kit retention --json` reports learning counts and context expiry
+preview only; Kit has no learning deletion command in this phase.

@@ -4,7 +4,7 @@ Generated from `kit command-map --json`.
 Do not edit command sections by hand; run `kit cli-reference --write docs/cli-reference.md`.
 
 - Schema version: `1`
-- Command count: `79`
+- Command count: `82`
 
 ## Commands
 
@@ -922,6 +922,72 @@ Inspect supervised-learning policy and ownership state.
 Examples:
 
 - `kit learn status --repo /path/to/repo --json`
+
+### kit learn context
+
+Build bounded approved-learning guidance or list valid local context records.
+
+- Audience: `human, agent`
+- Mutation: `namespace`
+- Target writes: `never`
+- Sidecar writes: `never`
+- JSON: `no`
+- Output schema: `subcommand_namespace`
+- Route role: `namespace`
+- Canonical command: `learn context`
+- Docs: `docs/backlog.md, docs/sidecar-retention.md, docs/adr/0005-supervised-learning-ownership-boundaries.md`
+
+Examples:
+
+- `kit learn context list --repo /path/to/repo --json`
+
+### kit learn context build
+
+Build sidecar-only bounded guidance from one approved local decision and linked proposal.
+
+- Audience: `human, agent`
+- Mutation: `writes-sidecar-on-approved-decision`
+- Target writes: `never`
+- Sidecar writes: `conditional`
+- JSON: `yes`
+- Output schema: `learn_context_build_payload`
+- Route role: `canonical`
+- Canonical command: `learn context build`
+- Docs: `docs/backlog.md, docs/harness-engineering.md, docs/sidecar-retention.md, docs/adr/0005-supervised-learning-ownership-boundaries.md`
+
+Examples:
+
+- `kit learn context build --repo /path/to/repo --decision-id dec-0123456789abcdef0123 --json`
+
+Flags:
+
+- `--repo` - Target git repository. Defaults to the current directory.
+- `--json` - Emit machine-readable JSON.
+- `--decision-id` - Existing schema-valid approved dec- identifier.
+
+### kit learn context list
+
+List local schema-valid approved-learning context records without creating state.
+
+- Audience: `human, agent`
+- Mutation: `read-only`
+- Target writes: `never`
+- Sidecar writes: `never`
+- JSON: `yes`
+- Output schema: `learn_context_list_payload`
+- Route role: `canonical`
+- Canonical command: `learn context list`
+- Docs: `docs/sidecar-retention.md, docs/adr/0005-supervised-learning-ownership-boundaries.md`
+
+Examples:
+
+- `kit learn context list --repo /path/to/repo --json`
+
+Flags:
+
+- `--repo` - Target git repository. Defaults to the current directory.
+- `--json` - Emit machine-readable JSON.
+- `--limit` - Maximum contexts to list. Use 0 for all contexts.
 
 ### kit learn decision
 
@@ -1927,6 +1993,7 @@ Flags:
 - `--owner`
 - `--dependency`
 - `--next-packet-hint`
+- `--learning-decision` - Existing schema-valid approved dec- identifier to retain as sidecar task-packet lineage. Can be repeated.
 - `--write-sidecar` - Write the task packet under the repo sidecar.
 
 ### kit update

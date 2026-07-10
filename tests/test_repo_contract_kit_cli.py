@@ -1219,6 +1219,252 @@ class RepoContractKitCliTests(unittest.TestCase):
             self.assertEqual(target_snapshot(), before_target)
             self.assertEqual(registry_path.read_bytes(), before_registry)
 
+    def test_learn_context_and_task_packet_lineage_cli_e2e_are_approved_bounded_and_sidecar_only(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            target = Path(tmp) / "target"
+            state_home = Path(tmp) / "xdg-state"
+            target.mkdir()
+            init_git_repo(target)
+            env = {**os.environ, "XDG_STATE_HOME": str(state_home)}
+
+            def run_learn(namespace: str, *args: str):
+                return subprocess.run(
+                    [sys.executable, str(CLI), "learn", namespace, *args, "--repo", str(target), "--json"],
+                    cwd=ROOT,
+                    env=env,
+                    capture_output=True,
+                    text=True,
+                    check=False,
+                )
+
+            def run_task_packet(*args: str):
+                return subprocess.run(
+                    [sys.executable, str(CLI), "task-packet", "--repo", str(target), *args, "--json"],
+                    cwd=ROOT,
+                    env=env,
+                    capture_output=True,
+                    text=True,
+                    check=False,
+                )
+
+            def target_snapshot() -> dict[str, bytes]:
+                return {
+                    path.relative_to(target).as_posix(): path.read_bytes()
+                    for path in target.rglob("*")
+                    if path.is_file() and ".git" not in path.parts
+                }
+
+            def task_packet_args(*decision_ids: str) -> list[str]:
+                args = [
+                    "--task-id",
+                    "LEARN-CTX-001",
+                    "--title",
+                    "Carry bounded approved learning guidance",
+                    "--problem",
+                    "A packet needs explicit approved learning lineage.",
+                    "--scope",
+                    "docs/ops/supervised-learning.md",
+                    "--write-sidecar",
+                ]
+                for decision_id in decision_ids:
+                    args.extend(["--learning-decision", decision_id])
+                return args
+
+            install = subprocess.run(
+                [sys.executable, str(CLI), "setup", "--repo", str(target), "--profile", "supervised-learning", "--json"],
+                cwd=ROOT,
+                env=env,
+                capture_output=True,
+                text=True,
+                check=False,
+            )
+            self.assertEqual(install.returncode, 0, install.stderr)
+            commit_all(target, "Install supervised-learning profile")
+            before_target = target_snapshot()
+            registry_path = state_home / "repo-contract-kit" / "enrolled-targets.json"
+            before_registry = registry_path.read_bytes()
+
+            event_result = run_learn(
+                "event",
+                "record",
+                "--kind",
+                "validation",
+                "--summary",
+                "raw event content must not enter approved context",
+                "--outcome",
+                "confirmed",
+                "--source",
+                "human",
+                "--approved",
+            )
+            self.assertEqual(event_result.returncode, 0, event_result.stderr)
+            event_id = json.loads(event_result.stdout)["event"]["event_id"]
+
+            def create_decision(outcome: str) -> tuple[dict, dict]:
+                proposal_result = run_learn(
+                    "proposal",
+                    "create",
+                    "--title",
+                    f"{outcome.title()} bounded context guidance",
+                    "--classification",
+                    "documentation",
+                    "--scope",
+                    "docs/ops/supervised-learning.md",
+                    "--recommended-change",
+                    f"Keep {outcome} learning guidance sidecar-only and bounded.",
+                    "--evidence-event",
+                    event_id,
+                )
+                self.assertEqual(proposal_result.returncode, 0, proposal_result.stderr)
+                proposal_payload = json.loads(proposal_result.stdout)
+                decision_result = run_learn(
+                    "decision",
+                    "record",
+                    "--proposal-id",
+                    proposal_payload["proposal"]["proposal_id"],
+                    "--outcome",
+                    outcome,
+                    "--decider",
+                    "Repository owner",
+                    "--rationale",
+                    f"A human explicitly selected the {outcome} outcome.",
+                    "--human-review-confirmed",
+                )
+                self.assertEqual(decision_result.returncode, 0, decision_result.stderr)
+                return proposal_payload, json.loads(decision_result.stdout)
+
+            rejected_proposal, rejected_decision_payload = create_decision("rejected")
+            deferred_proposal, deferred_decision_payload = create_decision("deferred")
+            sidecar_paths = rejected_decision_payload["sidecar_state"]["paths"]
+            context_dir = Path(rejected_decision_payload["learning_paths"]["sidecar"]["context"])
+            task_packets_dir = Path(sidecar_paths["task_packets_dir"])
+            before_task_packets = (
+                {path.name: path.read_bytes() for path in task_packets_dir.glob("*.json")}
+                if task_packets_dir.exists()
+                else {}
+            )
+
+            for decision_id, expected_gate in (
+                (rejected_decision_payload["decision"]["decision_id"], "decision-not-approved"),
+                (deferred_decision_payload["decision"]["decision_id"], "decision-not-approved"),
+                ("dec-00000000000000000000", "decision-missing"),
+                ("not-a-decision", "decision-invalid"),
+            ):
+                blocked_context = run_learn("context", "build", "--decision-id", decision_id)
+                self.assertEqual(blocked_context.returncode, 2, blocked_context.stderr)
+                blocked_context_payload = json.loads(blocked_context.stdout)
+                self.assertEqual(blocked_context_payload["gate"]["state"], expected_gate)
+                self.assertFalse(blocked_context_payload["sidecar_writes"]["performed"])
+                self.assertFalse(context_dir.exists())
+
+                blocked_packet = run_task_packet(*task_packet_args(decision_id))
+                self.assertEqual(blocked_packet.returncode, 2, blocked_packet.stderr)
+                blocked_packet_payload = json.loads(blocked_packet.stdout)
+                self.assertEqual(blocked_packet_payload["gate"]["state"], expected_gate)
+                self.assertFalse(blocked_packet_payload["sidecar_writes"]["performed"])
+                after_task_packets = (
+                    {path.name: path.read_bytes() for path in task_packets_dir.glob("*.json")}
+                    if task_packets_dir.exists()
+                    else {}
+                )
+                self.assertEqual(after_task_packets, before_task_packets)
+                self.assertEqual(target_snapshot(), before_target)
+                self.assertEqual(registry_path.read_bytes(), before_registry)
+
+            approved_proposal, approved_decision_payload = create_decision("approved")
+            approved_decision = approved_decision_payload["decision"]
+            context_result = run_learn("context", "build", "--decision-id", approved_decision["decision_id"])
+            self.assertEqual(context_result.returncode, 0, context_result.stderr)
+            context_payload = json.loads(context_result.stdout)
+            context = context_payload["context"]
+            self.assertRegex(context["context_id"], r"^ctx-[0-9a-f]{20}$")
+            self.assertEqual(context["lineage"], {"decision_id": approved_decision["decision_id"], "proposal_id": approved_proposal["proposal"]["proposal_id"]})
+            self.assertEqual(context["guidance"]["classification"], "documentation")
+            self.assertEqual(context["guidance"]["scope"], ["docs/ops/supervised-learning.md"])
+            self.assertEqual(context["guidance"]["recommended_change"], approved_proposal["proposal"]["recommended_change"])
+            self.assertEqual(context["privacy_label"], "private-local")
+            self.assertIn("expires_at", context["retention"])
+            self.assertTrue(context["sidecar_only_guidance"])
+            self.assertTrue(context["non_execution_guarantee"]["enforced"])
+            context_text = json.dumps(context, sort_keys=True)
+            self.assertNotIn(event_id, context_text)
+            self.assertNotIn("raw event content", context_text)
+            self.assertNotIn("evidence_event_ids", context_text)
+            context_path = Path(context_payload["context_path"])
+            self.assertTrue(context_path.is_file())
+            self.assertTrue(context_payload["sidecar_writes"]["performed"])
+            self.assertFalse(context_payload["target_repo_writes"]["performed"])
+            self.assertEqual(target_snapshot(), before_target)
+            self.assertEqual(registry_path.read_bytes(), before_registry)
+
+            before_context_list = context_path.read_bytes()
+            contexts_result = run_learn("context", "list")
+            self.assertEqual(contexts_result.returncode, 0, contexts_result.stderr)
+            contexts_payload = json.loads(contexts_result.stdout)
+            self.assertEqual(contexts_payload["count"], 1)
+            self.assertEqual(contexts_payload["contexts"][0]["context_id"], context["context_id"])
+            self.assertFalse(contexts_payload["sidecar_writes"]["performed"])
+            self.assertEqual(context_path.read_bytes(), before_context_list)
+
+            stale_context = json.loads(json.dumps(context))
+            stale_context["context_id"] = "ctx-ffffffffffffffffffff"
+            stale_context["lineage"] = {
+                "decision_id": rejected_decision_payload["decision"]["decision_id"],
+                "proposal_id": rejected_proposal["proposal"]["proposal_id"],
+            }
+            stale_context["guidance"] = {
+                "classification": rejected_proposal["proposal"]["classification"],
+                "scope": rejected_proposal["proposal"]["scope"],
+                "recommended_change": rejected_proposal["proposal"]["recommended_change"],
+            }
+            stale_context["privacy_label"] = rejected_proposal["proposal"]["privacy_label"]
+            (context_path.parent / f"{stale_context['context_id']}.json").write_text(
+                json.dumps(stale_context, sort_keys=True), encoding="utf-8"
+            )
+
+            bundle_result = subprocess.run(
+                [sys.executable, str(CLI), "agent-context-bundle", "--repo", str(target), "--json"],
+                cwd=ROOT,
+                env=env,
+                capture_output=True,
+                text=True,
+                check=False,
+            )
+            self.assertEqual(bundle_result.returncode, 0, bundle_result.stderr)
+            bundle_payload = json.loads(bundle_result.stdout)
+            approved_learning = bundle_payload["sections"]["approved_learning"]
+            self.assertEqual(approved_learning["data"]["count"], 1)
+            self.assertEqual(approved_learning["data"]["contexts"][0]["context_id"], context["context_id"])
+            self.assertTrue(approved_learning["data"]["sidecar_only_guidance"])
+            self.assertIn("not target instructions", approved_learning["data"]["note"])
+            self.assertLessEqual(approved_learning["data"]["count"], bundle_payload["limits"]["approved_learning_contexts"])
+            self.assertTrue(approved_learning["warnings"])
+            self.assertFalse(bundle_payload["sidecar_writes"]["performed"])
+
+            retention_result = subprocess.run(
+                [sys.executable, str(CLI), "retention", "--repo", str(target), "--json"],
+                cwd=ROOT,
+                env=env,
+                capture_output=True,
+                text=True,
+                check=False,
+            )
+            self.assertEqual(retention_result.returncode, 0, retention_result.stderr)
+            retention_payload = json.loads(retention_result.stdout)
+            self.assertEqual(retention_payload["learning_artifacts"]["counts"]["contexts"], 1)
+            self.assertFalse(retention_payload["learning_artifacts"]["expiry_preview"]["deletes_by_default"])
+            self.assertIn("no learning deletion command", retention_payload["learning_artifacts"]["note"])
+            self.assertFalse(retention_payload["sidecar_writes"]["performed"])
+
+            packet_result = run_task_packet(*task_packet_args(approved_decision["decision_id"]))
+            self.assertEqual(packet_result.returncode, 0, packet_result.stderr)
+            packet_payload = json.loads(packet_result.stdout)
+            self.assertEqual(packet_payload["learning_decision_lineage"], [approved_decision["decision_id"]])
+            self.assertTrue(packet_payload["sidecar_writes"]["performed"])
+            self.assertFalse(packet_payload["target_repo_writes"]["performed"])
+            self.assertEqual(target_snapshot(), before_target)
+            self.assertEqual(registry_path.read_bytes(), before_registry)
+
     def test_command_map_json_catalogs_commands_without_repo_writes(self):
         with tempfile.TemporaryDirectory() as tmp:
             result = subprocess.run(

@@ -362,7 +362,12 @@ Use `make agent-context-bundle` when an agent or automation needs a compact
 startup or handoff view without rereading every source document. The report
 summarizes dirty state, backlog/next work, task status, docs impact, goal
 check, token-budget totals, sidecar paths, and readiness hints, and records
-explicit omissions when bounded sections are truncated.
+explicit omissions when bounded sections are truncated. On an opted-in
+`supervised-learning` target, its approved-learning section contains only a
+small deterministic set of context records whose current local approved
+decision/proposal lineage still validates. Treat that section as sidecar-only
+guidance, not target instructions; it does not authorize changing instructions
+or executing a recommendation.
 
 Before using browser research, hosted CI adapters, external models, or
 write-capable workers, read `docs/ops/agent-tool-network-allowlist.md` and the

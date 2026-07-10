@@ -16,14 +16,14 @@ the split remains.
 | Component | Installed path or command | What it shapes | Evidence or gate |
 | --- | --- | --- | --- |
 | Startup packet | `make agent-start` | initial repo context, changed files, ADRs, docs impact, kit/version state, task-start freshness, receipt template | `.agent-workflows/runs/<id>/session-start.json` with `task_start_freshness` |
-| Context bundle | `make agent-context-bundle` | compact startup or handoff context across dirty state, backlog, task status, docs impact, goal check, token budget, sidecar paths, and readiness hints | bounded JSON/text report with explicit omissions |
+| Context bundle | `make agent-context-bundle` | compact startup or handoff context across dirty state, backlog, task status, docs impact, goal check, token budget, revalidated approved-learning guidance, sidecar paths, and readiness hints | bounded JSON/text report with explicit omissions; learning guidance is sidecar-only, not target instructions |
 | Goal/area contract | `make goal-check`, `.agent-workflows/area-contracts.json` | changed-file alignment with declared repo goal and local path contracts | JSON/text report with `aligned`, `extends`, `conflict`, and `unknown` states |
 | Backlog source contract | `make backlog-status`, `make backlog-check`, `make agent-next` | selected backlog source, mirrors, open counts, next item, dirty state, active task state | JSON/text status and strict backlog check |
 | Planning adapter examples | `docs/planning-adapters.md` | Keryx, Obsidian, issues, spreadsheets, and repo backlog mirrors stay external priority sources that hand off one selected item | docs-only examples with no external writes or credentials |
 | Working rhythm | `docs/working-rhythm.md`, `make workflow-help` | orient, review, scope, execute flow | target repo operator can find the next command |
 | Permission policy | `.agent-workflows/agent-permission-policy.json` | read-only review, untrusted PR, browser research, and write-worker boundaries | receipt trust-profile fields and review-run validation |
 | Research runner | `make agent-research-*` | bounded source-specific research before backlog, ADR, design, or task-packet proposals | research brief, source report templates, synthesis artifacts |
-| Task packet | `make agent-task-packet`, `schemas/task-packet.schema.json` | story context, non-goals, allowed files, protected files, goal alignment, test strategy, validation, exact docs and release metadata surfaces, docs impact, risk, approval state | task packet JSON or Markdown handoff |
+| Task packet | `make agent-task-packet`, `schemas/task-packet.schema.json` | story context, non-goals, allowed files, protected files, goal alignment, test strategy, validation, exact docs and release metadata surfaces, docs impact, risk, approval state, and optional approved learning-decision lineage | task packet JSON or Markdown handoff; lineage never changes target task files or receipt mechanics |
 | Agent preflight | `make agent-preflight`, `make agent-doctor` | dirty-state startup blockers, task/worktree state, sidecar availability, local attribution, and safe recovery commands | text/JSON report, strict failure, optional sidecar receipt |
 | Agent state ledger | `make agent-state-ledger` | read-only index of checkout dirt, task metadata/worktrees, leases, active overlaps, local attribution, sidecar receipt categories, finalizer/readiness/final receipt evidence, automation handoff/baseline receipts, self-heal receipts, closeout state, unresolved blockers, and parallel write-task context | JSON/text report with `target_repo_writes=false`, `sidecar_writes=false`, latest receipt provenance, `parallel_context`, and deterministic next safe commands |
 | Branch/PR readiness | `make agent-branch-readiness` | whole-branch or PR evidence before PR update, merge queue, auto-merge, or branch-protection governance | JSON/text report with local git, docs-impact and waiver state, changelog/version, optional CI/check input, receipt/review disposition, task readiness references, `target_repo_writes=false`, `sidecar_writes=false`, and `network_calls=false` |
@@ -39,7 +39,7 @@ the split remains.
 | Docs contract | `make docs-check`, `scripts/check_doc_impact.py` | documentation impact for source, workflow, config, API, and operations changes | pass/fail docs-impact output |
 | Docs explainer | `make agent-docs-explain`, `scripts/docs_explain.py` | local README/docs/policy files before waiver or docs-patch decisions | cited JSON/text snippets and a ready local prompt, with no target, sidecar, model, or network writes/calls |
 | Docs-as-tests profile | `make docs-as-tests`, `.agent-workflows/docs-as-tests.json` | explicit high-confidence local OpenAPI and JSON config/reference assertions | JSON/text report with claim ids, source docs, evidence paths, passed/failed/skipped/unsupported/refused results, `target_repo_writes=false`, and `network_used=false` |
-| Supervised learning records | `kit learn status`, `kit learn event record/list`, `kit learn proposal create/list`, `kit learn decision record/list`, `.agent-workflows/learning-policy.json`, `schemas/learning-*.schema.json` | target-owned supervised policy gates bounded event capture, traceable pending-review proposals, and explicit human decisions in the repository sidecar | approved events are the only proposal evidence; proposals begin `pending-review`; decisions require named decider, rationale, and `--human-review-confirmed`; lists are read-only; approved outcomes never execute recommendations or write target/global state |
+| Supervised learning records | `kit learn status`, `kit learn event record/list`, `kit learn proposal create/list`, `kit learn decision record/list`, `kit learn context build/list`, `.agent-workflows/learning-policy.json`, `schemas/learning-*.schema.json` | target-owned supervised policy gates bounded event capture, traceable pending-review proposals, explicit human decisions, and redacted approved-learning guidance in the repository sidecar | context build needs a valid approved decision plus linked approved proposal; list/bundle revalidate lineage and cap results; no raw event/evidence/feedback/conversation content, target/global write, instruction change, or recommendation execution |
 | Instruction hygiene | `make agent-docs-lint` | concise, safe, non-stale agent-facing instructions | instruction lint warnings or failures |
 | Instruction diet | `make agent-instruction-diet` | no-write proposals for moving bulky or duplicated agent-facing detail into scoped owner surfaces | JSON/text audit with recommendation categories and offload targets |
 | Token budget | `make agent-token-budget` | estimated context footprint for agent-facing files | JSON/text report and optional strict budget failure |
@@ -83,10 +83,19 @@ Start in the target repo when changing:
   window for that repository
 
 Supervised-learning records are not target source files or global kit state.
-Phase 3 writes only bounded explicit proposals and human-review-confirmed
-decisions to the repository-specific sidecar. An approved outcome is
+Phase 4 permits `kit learn context build` only after the target-owned policy
+accepts a schema-valid local approved decision and its linked approved proposal.
+The stored context is explicitly constructed and redacted: stable decision and
+proposal IDs, classification, scope, recommended change, privacy label,
+retention expiry, and no-execution guarantee only. Raw event/evidence,
+feedback, rationale, decider, follow-up, and conversation content are excluded.
+`kit learn context list` and `make agent-context-bundle` read only contexts
+whose current sidecar decision/proposal lineage still proves that approval;
+bundle guidance is capped and is never a target instruction. A task packet may
+carry explicitly requested approved decision IDs as sidecar lineage, but target
+task files and receipt mechanics remain unchanged. An approved outcome is
 recommendation-only: it cannot write AGENTS.md, policy, target, or global
-state, execute a recommendation, or create task-packet/receipt linkage.
+state, or execute a recommendation.
 
 ## Next Safe Improvements
 

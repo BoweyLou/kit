@@ -24,10 +24,10 @@
       "learn proposal create",
       "learn proposal list",
       "learn decision record",
-      "learn decision list"
+      "learn decision list",
+      "learn context build",
+      "learn context list"
     ],
-    "deferred_commands": [
-      "learn context"
-    ]
+    "deferred_commands": []
   }
 }

@@ -55,6 +55,8 @@ LEARNING_DECISION_MAX_DECIDER_LENGTH = 120
 LEARNING_DECISION_MAX_RATIONALE_LENGTH = 500
 LEARNING_DECISION_MAX_FOLLOW_UP_ITEMS = 10
 LEARNING_DECISION_MAX_FOLLOW_UP_LENGTH = 500
+LEARNING_CONTEXT_MAX_LIST = 50
+LEARNING_CONTEXT_BUNDLE_MAX_CONTEXTS = 3
 LEARNING_NON_EXECUTION_NOTE = (
     "An approved proposal or decision records a review outcome only. It is not permission to write AGENTS.md, "
     "policy files, target files, or global tool state, and Kit will not execute the recommendation."
@@ -2327,6 +2329,51 @@ def command_map_annotations() -> dict[tuple[str, ...], dict[str, Any]]:
             "output_schema": "learn_decision_list_payload",
             "docs": ["docs/sidecar-retention.md", "docs/adr/0005-supervised-learning-ownership-boundaries.md"],
         },
+        ("learn", "context"): {
+            "audience": ["human", "agent"],
+            "mutation": "namespace",
+            "json_supported": False,
+            "route_role": "namespace",
+            "canonical_command": "learn context",
+            "examples": [public_command("learn", "context", "list", "--repo", "/path/to/repo", "--json")],
+            "output_schema": "subcommand_namespace",
+            "docs": ["docs/backlog.md", "docs/sidecar-retention.md", "docs/adr/0005-supervised-learning-ownership-boundaries.md"],
+        },
+        ("learn", "context", "build"): {
+            "audience": ["human", "agent"],
+            "mutation": "writes-sidecar-on-approved-decision",
+            "target_repo_write": "never",
+            "sidecar_write": "conditional",
+            "route_role": "canonical",
+            "canonical_command": "learn context build",
+            "route_note": "Builds bounded sidecar-only guidance only from an existing schema-valid approved decision and its linked valid proposal; event, evidence, feedback, and conversation content are excluded and no recommendation is executed.",
+            "examples": [
+                public_command(
+                    "learn",
+                    "context",
+                    "build",
+                    "--repo",
+                    "/path/to/repo",
+                    "--decision-id",
+                    "dec-0123456789abcdef0123",
+                    "--json",
+                )
+            ],
+            "output_schema": "learn_context_build_payload",
+            "docs": ["docs/backlog.md", "docs/harness-engineering.md", "docs/sidecar-retention.md", "docs/adr/0005-supervised-learning-ownership-boundaries.md"],
+        },
+        ("learn", "context", "list"): {
+            "audience": ["human", "agent"],
+            "mutation": "read-only",
+            "target_repo_write": "never",
+            "sidecar_write": "never",
+            "route_role": "canonical",
+            "canonical_command": "learn context list",
+            "route_note": "Lists only schema-valid bounded approved-learning context records without creating sidecar state, treating them as sidecar-only guidance rather than target instructions.",
+            "examples": [public_command("learn", "context", "list", "--repo", "/path/to/repo", "--json")],
+            "output_schema": "learn_context_list_payload",
+            "docs": ["docs/sidecar-retention.md", "docs/adr/0005-supervised-learning-ownership-boundaries.md"],
+        },
         ("backlog-status",): {
             "audience": ["human", "agent"],
             "mutation": "read-only",
@@ -4597,9 +4644,16 @@ def learning_non_execution_guarantee() -> dict[str, Any]:
 
 def learning_task_packet_receipt_linkage() -> dict[str, Any]:
     return {
-        "supported": False,
-        "state": "deferred",
-        "note": "Task-packet and receipt linkage are deferred to a later supervised-learning phase.",
+        "task_packet": {
+            "supported": True,
+            "state": "approved-decision-lineage-only",
+            "note": "Task packets may carry only explicitly requested schema-valid approved decision IDs; this is sidecar lineage, not permission to execute a recommendation.",
+        },
+        "receipt": {
+            "supported": False,
+            "state": "deferred",
+            "note": "Receipt mechanics remain unchanged in this phase.",
+        },
     }
 
 
@@ -4684,7 +4738,13 @@ def learning_write_error_payload(
 
 
 def learning_is_timestamp(value: Any) -> bool:
-    return isinstance(value, str) and bool(re.fullmatch(r"[^\\s]+T[^\\s]+Z", value))
+    if not isinstance(value, str) or not re.fullmatch(r"[^\s]+T[^\s]+Z", value):
+        return False
+    try:
+        parsed = datetime.fromisoformat(value.replace("Z", "+00:00"))
+    except ValueError:
+        return False
+    return parsed.tzinfo is not None and parsed.utcoffset() == timedelta(0)
 
 
 def learning_proposal_from_args(args: argparse.Namespace, repo: Path, policy: dict[str, Any]) -> dict[str, Any]:
@@ -5071,6 +5131,273 @@ def learn_decision_list_payload(args: argparse.Namespace, repo: Path) -> tuple[d
             "target_repo_writes": target_repo_writes(False, reason="learn decision list is read-only"),
             "sidecar_writes": sidecar_writes(False, reason="learn decision list is read-only"),
             "global_writes": {"performed": False, "paths": [], "reason": "learn decision list does not write global state"},
+            "sidecar_state": state,
+            "exit_code": 0,
+        },
+        0,
+    )
+
+
+def learning_retention_days(policy: dict[str, Any]) -> int:
+    value = (policy.get("retention") or {}).get("default_days")
+    return value if isinstance(value, int) and value >= 1 else 90
+
+
+def learning_context_from_decision(decision: dict[str, Any], proposal: dict[str, Any], repo: Path, policy: dict[str, Any]) -> dict[str, Any]:
+    captured_at = datetime.now(timezone.utc).replace(microsecond=0)
+    retention_days = learning_retention_days(policy)
+    return {
+        "schema_version": 1,
+        "context_id": "ctx-" + uuid.uuid4().hex[:20],
+        "captured_at": captured_at.isoformat().replace("+00:00", "Z"),
+        "policy_id": "supervised-learning",
+        "repo": str(repo),
+        "lineage": {
+            "decision_id": decision["decision_id"],
+            "proposal_id": proposal["proposal_id"],
+        },
+        "guidance": {
+            "classification": proposal["classification"],
+            "scope": proposal["scope"],
+            "recommended_change": proposal["recommended_change"],
+        },
+        "privacy_label": proposal["privacy_label"],
+        "retention": {
+            "days": retention_days,
+            "expires_at": (captured_at + timedelta(days=retention_days)).isoformat().replace("+00:00", "Z"),
+        },
+        "sidecar_only_guidance": True,
+        "non_execution_guarantee": learning_non_execution_guarantee(),
+    }
+
+
+def learning_context_validation_errors(context: Any) -> list[str]:
+    if not isinstance(context, dict):
+        return ["context must be an object"]
+    required = {
+        "schema_version",
+        "context_id",
+        "captured_at",
+        "policy_id",
+        "repo",
+        "lineage",
+        "guidance",
+        "privacy_label",
+        "retention",
+        "sidecar_only_guidance",
+        "non_execution_guarantee",
+    }
+    errors: list[str] = []
+    if set(context) != required:
+        errors.append("context fields do not match learning-context schema")
+    if context.get("schema_version") != 1:
+        errors.append("schema_version must be 1")
+    if not isinstance(context.get("context_id"), str) or not re.fullmatch(r"ctx-[0-9a-f]{20}", context["context_id"]):
+        errors.append("context_id must be a stable ctx- identifier")
+    if not learning_is_timestamp(context.get("captured_at")):
+        errors.append("captured_at must be an RFC3339 UTC timestamp")
+    if context.get("policy_id") != "supervised-learning" or not isinstance(context.get("repo"), str) or not context["repo"]:
+        errors.append("policy_id and repo must identify the supervised-learning target")
+    lineage = context.get("lineage")
+    if (
+        not isinstance(lineage, dict)
+        or set(lineage) != {"decision_id", "proposal_id"}
+        or not isinstance(lineage.get("decision_id"), str)
+        or not re.fullmatch(r"dec-[0-9a-f]{20}", lineage["decision_id"])
+        or not isinstance(lineage.get("proposal_id"), str)
+        or not re.fullmatch(r"prop-[0-9a-f]{20}", lineage["proposal_id"])
+    ):
+        errors.append("lineage must contain only stable decision and proposal IDs")
+    guidance = context.get("guidance")
+    scope = guidance.get("scope") if isinstance(guidance, dict) else None
+    recommended_change = guidance.get("recommended_change") if isinstance(guidance, dict) else None
+    if (
+        not isinstance(guidance, dict)
+        or set(guidance) != {"classification", "scope", "recommended_change"}
+        or guidance.get("classification") not in LEARNING_PROPOSAL_CLASSIFICATIONS
+        or not isinstance(scope, list)
+        or not scope
+        or len(scope) > LEARNING_PROPOSAL_MAX_SCOPE_ITEMS
+        or any(not isinstance(item, str) or not item.strip() or len(item) > LEARNING_PROPOSAL_MAX_SCOPE_LENGTH for item in scope)
+        or not isinstance(recommended_change, str)
+        or not recommended_change.strip()
+        or len(recommended_change) > LEARNING_PROPOSAL_MAX_CHANGE_LENGTH
+    ):
+        errors.append("guidance must contain only bounded classification, scope, and recommended change fields")
+    if context.get("privacy_label") not in LEARNING_PRIVACY_LABELS:
+        errors.append("privacy_label is not allowed by learning-context schema")
+    retention = context.get("retention")
+    if (
+        not isinstance(retention, dict)
+        or set(retention) != {"days", "expires_at"}
+        or not isinstance(retention.get("days"), int)
+        or retention["days"] < 1
+        or not learning_is_timestamp(retention.get("expires_at"))
+    ):
+        errors.append("retention must contain positive days and an RFC3339 expiry timestamp")
+    if context.get("sidecar_only_guidance") is not True:
+        errors.append("sidecar_only_guidance must be true")
+    if context.get("non_execution_guarantee") != learning_non_execution_guarantee():
+        errors.append("non_execution_guarantee must preserve the no-execution boundary")
+    return errors
+
+
+def learning_context_lineage_validation_errors(
+    learning_context: dict[str, Any],
+    repo: Path,
+    decisions_by_id: dict[str, dict[str, Any]],
+    proposals_by_id: dict[str, dict[str, Any]],
+) -> list[str]:
+    errors: list[str] = []
+    if learning_context["repo"] != str(repo):
+        return ["context repo does not match the requested repository"]
+    lineage = learning_context["lineage"]
+    decision = decisions_by_id.get(lineage["decision_id"])
+    if decision is None:
+        return ["context decision is missing or schema-invalid in the local sidecar"]
+    if decision["repo"] != str(repo) or decision["outcome"] != "approved":
+        return ["context decision is not an approved decision for the requested repository"]
+    proposal = proposals_by_id.get(lineage["proposal_id"])
+    if proposal is None:
+        return ["context proposal is missing or schema-invalid in the local sidecar"]
+    if (
+        decision["proposal_id"] != proposal["proposal_id"]
+        or proposal["repo"] != str(repo)
+        or proposal["status"] != "approved"
+        or proposal["decision_id"] != decision["decision_id"]
+    ):
+        errors.append("context decision and proposal lineage is no longer an approved local link")
+    if learning_context["privacy_label"] != proposal["privacy_label"]:
+        errors.append("context privacy label no longer matches its approved proposal")
+    if learning_context["guidance"] != {
+        "classification": proposal["classification"],
+        "scope": proposal["scope"],
+        "recommended_change": proposal["recommended_change"],
+    }:
+        errors.append("context guidance no longer matches the bounded approved proposal fields")
+    return errors
+
+
+def read_learning_contexts(repo: Path, contexts_dir: Path | None = None, limit: int = 0) -> tuple[list[dict[str, Any]], list[str]]:
+    learning_paths = learning_paths_for(repo)
+    resolved_contexts_dir = contexts_dir or Path(learning_paths["context"])
+    decisions, decision_warnings = read_learning_decisions(Path(learning_paths["decisions"]))
+    proposals, proposal_warnings = read_learning_proposals(Path(learning_paths["proposals"]))
+    decisions_by_id = {decision["decision_id"]: decision for decision in decisions}
+    proposals_by_id = {proposal["proposal_id"]: proposal for proposal in proposals}
+    if not resolved_contexts_dir.exists():
+        return [], decision_warnings + proposal_warnings
+    contexts: list[dict[str, Any]] = []
+    warnings: list[str] = decision_warnings + proposal_warnings
+    for path in sorted(resolved_contexts_dir.glob("*.json")):
+        payload = read_json(path)
+        errors = learning_context_validation_errors(payload)
+        if not errors:
+            errors = learning_context_lineage_validation_errors(payload, repo, decisions_by_id, proposals_by_id)
+        if errors:
+            warnings.append(f"Skipped invalid learning context {path.name}: {'; '.join(errors)}")
+            continue
+        contexts.append(payload)
+    contexts.sort(key=lambda context: (context["captured_at"], context["context_id"]))
+    if limit > 0:
+        contexts = contexts[-limit:]
+    return contexts, warnings
+
+
+def learning_context_gate(repo: Path, decision_id: str) -> tuple[dict[str, Any], dict[str, Any], dict[str, Any], dict[str, Any] | None, dict[str, Any] | None]:
+    gate, policy_status, context = learning_sidecar_write_gate(repo, "learning-context.schema.json")
+    state = context["state"]
+    learning_paths = context["paths"]
+    policy = context["policy"]
+    if gate["state"] != "approved":
+        return gate, policy_status, context, None, None
+    if not re.fullmatch(r"dec-[0-9a-f]{20}", decision_id):
+        return {"state": "decision-invalid", "reason": "decision_id must be a stable dec- identifier"}, policy_status, context, None, None
+    decisions, _warnings = read_learning_decisions(Path(learning_paths["decisions"]))
+    decision = next((item for item in decisions if item["decision_id"] == decision_id), None)
+    if decision is None:
+        return {"state": "decision-missing", "reason": "context build requires an existing schema-valid local decision"}, policy_status, context, None, None
+    if decision["repo"] != str(repo) or decision["outcome"] != "approved":
+        return {"state": "decision-not-approved", "reason": "context build requires an approved local decision for this repository"}, policy_status, context, None, None
+    proposals, _warnings = read_learning_proposals(Path(learning_paths["proposals"]))
+    proposal = next((item for item in proposals if item["proposal_id"] == decision["proposal_id"]), None)
+    if proposal is None:
+        return {"state": "proposal-missing", "reason": "context build requires the decision's linked schema-valid local proposal"}, policy_status, context, None, None
+    if (
+        proposal["repo"] != str(repo)
+        or proposal["status"] != "approved"
+        or proposal["decision_id"] != decision["decision_id"]
+        or proposal["privacy_label"] != decision["privacy_label"]
+    ):
+        return {"state": "proposal-linkage-invalid", "reason": "the approved decision must match its approved linked local proposal"}, policy_status, context, None, None
+    return gate, policy_status, context, decision, proposal
+
+
+def learn_context_build_payload(args: argparse.Namespace, repo: Path) -> tuple[dict[str, Any], int]:
+    decision_id = args.decision_id.strip()
+    gate, policy_status, context_state, decision, proposal = learning_context_gate(repo, decision_id)
+    state = context_state["state"]
+    learning_paths = context_state["paths"]
+    policy = context_state["policy"]
+    if gate["state"] != "approved" or decision is None or proposal is None:
+        return learning_write_error_payload("learn context build", repo, state, learning_paths, policy_status, gate)
+    learning_context = learning_context_from_decision(decision, proposal, repo, policy)
+    errors = learning_context_validation_errors(learning_context)
+    if errors:
+        invalid_gate = {"state": "schema-invalid", "reason": "context failed local learning-context schema validation"}
+        return learning_write_error_payload("learn context build", repo, state, learning_paths, policy_status, invalid_gate, errors=errors)
+    state, init_paths = ensure_sidecar(repo, "learn context build")
+    learning_paths = learning_paths_for(repo, state)
+    contexts_dir = Path(learning_paths["context"])
+    contexts_dir.mkdir(parents=True, exist_ok=True)
+    context_path = contexts_dir / f"{learning_context['context_id']}.json"
+    write_json_file(context_path, learning_context)
+    paths = init_paths + [learning_paths["root"], learning_paths["context"], str(context_path)]
+    return (
+        {
+            "schema_version": 1,
+            "command": "learn context build",
+            "action": "build",
+            "repo": str(repo),
+            "policy_state": policy_status["state"],
+            "policy": policy_status,
+            "learning_paths": {"sidecar": learning_paths},
+            "gate": gate,
+            "context": learning_context,
+            "context_path": str(context_path),
+            "non_execution_guarantee": learning_non_execution_guarantee(),
+            "task_packet_receipt_linkage": learning_task_packet_receipt_linkage(),
+            "target_repo_writes": target_repo_writes(False, reason="learning context is stored only in the repository sidecar"),
+            "sidecar_writes": sidecar_writes(True, paths=paths, reason="bounded context constructed from an approved decision and linked proposal"),
+            "global_writes": {"performed": False, "paths": [], "reason": "learn context build does not write global state"},
+            "sidecar_state": state,
+            "exit_code": 0,
+        },
+        0,
+    )
+
+
+def learn_context_list_payload(args: argparse.Namespace, repo: Path) -> tuple[dict[str, Any], int]:
+    state = sidecar_state(repo)
+    learning_paths = learning_paths_for(repo, state)
+    contexts_path = Path(learning_paths["context"])
+    contexts, warnings = read_learning_contexts(repo, contexts_path, max(args.limit, 0))
+    return (
+        {
+            "schema_version": 1,
+            "command": "learn context list",
+            "action": "list",
+            "repo": str(repo),
+            "contexts_path": str(contexts_path),
+            "contexts": contexts,
+            "count": len(contexts),
+            "warnings": warnings,
+            "sidecar_only_guidance": True,
+            "non_execution_guarantee": learning_non_execution_guarantee(),
+            "task_packet_receipt_linkage": learning_task_packet_receipt_linkage(),
+            "target_repo_writes": target_repo_writes(False, reason="learn context list is read-only"),
+            "sidecar_writes": sidecar_writes(False, reason="learn context list is read-only"),
+            "global_writes": {"performed": False, "paths": [], "reason": "learn context list does not write global state"},
             "sidecar_state": state,
             "exit_code": 0,
         },
@@ -6573,6 +6900,7 @@ def agent_context_bundle_payload(args: argparse.Namespace, repo: Path) -> dict[s
         "token_files": args.max_token_files,
         "warnings": args.max_warnings,
         "commands": args.max_commands,
+        "approved_learning_contexts": LEARNING_CONTEXT_BUNDLE_MAX_CONTEXTS,
     }
     omissions: list[dict[str, Any]] = []
     files = changed_files(repo, args.mode)
@@ -6609,6 +6937,15 @@ def agent_context_bundle_payload(args: argparse.Namespace, repo: Path) -> dict[s
 
     token_section = compact_token_budget(repo, limits, omissions)
     task_section = compact_task_status(repo, limits, omissions)
+    learning_contexts, learning_context_warnings = read_learning_contexts(repo)
+    bounded_learning_contexts = bounded_list(
+        learning_contexts,
+        limits["approved_learning_contexts"],
+        omissions,
+        "approved_learning",
+        "contexts",
+        "approved-learning contexts were truncated",
+    )
 
     changed_entries = [
         {"path": path, "doc_impact": None, "goal_state": None}
@@ -6745,6 +7082,17 @@ def agent_context_bundle_payload(args: argparse.Namespace, repo: Path) -> dict[s
             goal_exit_code,
         ),
         "token_budget": token_section,
+        "approved_learning": bundle_section(
+            "ok",
+            "kit learn context list --json",
+            {
+                "count": len(bounded_learning_contexts),
+                "contexts": bounded_learning_contexts,
+                "sidecar_only_guidance": True,
+                "note": "Approved-learning contexts are sidecar-only guidance, not target instructions, and do not authorize recommendation execution.",
+            },
+            learning_context_warnings,
+        ),
         "sidecar": bundle_section(
             "ok" if sidecar_state(repo).get("available") else "warning",
             "repo_contract_kit.py status --json",
@@ -7829,6 +8177,45 @@ def retention_policy_payload() -> dict[str, Any]:
     }
 
 
+def learning_retention_preview(repo: Path) -> dict[str, Any]:
+    paths = learning_paths_for(repo)
+    events, event_warnings = read_learning_events(Path(paths["events"]))
+    proposals, proposal_warnings = read_learning_proposals(Path(paths["proposals"]))
+    decisions, decision_warnings = read_learning_decisions(Path(paths["decisions"]))
+    contexts, context_warnings = read_learning_contexts(repo, Path(paths["context"]))
+    current = datetime.now(timezone.utc)
+    expired: list[dict[str, str]] = []
+    expiring: list[dict[str, str]] = []
+    for context in contexts:
+        expires_at = datetime.fromisoformat(context["retention"]["expires_at"].replace("Z", "+00:00"))
+        entry = {
+            "context_id": context["context_id"],
+            "expires_at": context["retention"]["expires_at"],
+            "privacy_label": context["privacy_label"],
+        }
+        if expires_at <= current:
+            expired.append(entry)
+        elif expires_at <= current + timedelta(days=30):
+            expiring.append(entry)
+    return {
+        "counts": {
+            "events": len(events),
+            "proposals": len(proposals),
+            "decisions": len(decisions),
+            "contexts": len(contexts),
+        },
+        "expiry_preview": {
+            "deletes_by_default": False,
+            "expired_context_count": len(expired),
+            "expiring_within_30_days_count": len(expiring),
+            "expired_contexts": expired[:LEARNING_CONTEXT_MAX_LIST],
+            "expiring_contexts": expiring[:LEARNING_CONTEXT_MAX_LIST],
+        },
+        "warnings": event_warnings + proposal_warnings + decision_warnings + context_warnings,
+        "note": "Learning retention is preview-only in this phase; Kit provides no learning deletion command.",
+    }
+
+
 def retention_payload(args: argparse.Namespace, repo: Path) -> dict[str, Any]:
     state = sidecar_state(repo)
     paths = state.get("paths", {})
@@ -7865,6 +8252,7 @@ def retention_payload(args: argparse.Namespace, repo: Path) -> dict[str, Any]:
         "sidecar_writes": sidecar_writes(False, reason="retention is preview-only"),
         "sidecar_state": state,
         "retention_policy": retention_policy_payload(),
+        "learning_artifacts": learning_retention_preview(repo),
         "purge_preview": {
             "deletes_by_default": False,
             "retention_days": default_days,
@@ -8106,9 +8494,47 @@ def task_packet_test_strategy_payload(args: argparse.Namespace, validation_comma
     }
 
 
+def learning_task_packet_lineage(repo: Path, requested_ids: list[str]) -> tuple[list[str], dict[str, Any] | None]:
+    if any(not isinstance(item, str) or not item.strip() for item in requested_ids):
+        return [], {"state": "decision-invalid", "reason": "learning decision IDs must be non-empty stable dec- identifiers"}
+    decision_ids = [item.strip() for item in requested_ids]
+    if len(set(decision_ids)) != len(decision_ids):
+        return [], {"state": "decision-duplicate", "reason": "learning decision IDs must be unique"}
+    for decision_id in decision_ids:
+        if not re.fullmatch(r"dec-[0-9a-f]{20}", decision_id):
+            return [], {"state": "decision-invalid", "reason": "learning decision IDs must be stable dec- identifiers"}
+    decisions, _warnings = read_learning_decisions(Path(learning_paths_for(repo)["decisions"]))
+    decisions_by_id = {decision["decision_id"]: decision for decision in decisions}
+    for decision_id in decision_ids:
+        decision = decisions_by_id.get(decision_id)
+        if decision is None:
+            return [], {"state": "decision-missing", "reason": "each requested learning decision must exist as a schema-valid local record"}
+        if decision["repo"] != str(repo) or decision["outcome"] != "approved":
+            return [], {"state": "decision-not-approved", "reason": "each requested learning decision must be approved for this repository"}
+    return decision_ids, None
+
+
+def task_packet_learning_error_payload(repo: Path, gate: dict[str, Any]) -> dict[str, Any]:
+    return {
+        "schema_version": 1,
+        "command": "task-packet",
+        "repo": str(repo),
+        "gate": gate,
+        "learning_decision_lineage": [],
+        "target_repo_writes": target_repo_writes(False, reason="task packet rejected invalid learning decision lineage before target writes"),
+        "sidecar_writes": sidecar_writes(False, reason="task packet rejected invalid learning decision lineage before sidecar writes"),
+        "sidecar_state": sidecar_state(repo),
+        "non_execution_guarantee": learning_non_execution_guarantee(),
+        "exit_code": 2,
+    }
+
+
 def task_packet_payload(args: argparse.Namespace, repo: Path) -> dict[str, Any]:
     requested_harness_mode = getattr(args, "harness_mode", "standard")
     mode_selection = harness_mode_selection(repo, requested_harness_mode)
+    learning_decision_lineage, lineage_gate = learning_task_packet_lineage(repo, getattr(args, "learning_decision", None) or [])
+    if lineage_gate is not None:
+        return task_packet_learning_error_payload(repo, lineage_gate)
     if mode_selection["selected_mode"] == "lite" and requested_harness_mode in {"auto", "lite"}:
         return lite_task_note_payload(args, repo, mode_selection)
 
@@ -8214,6 +8640,7 @@ def task_packet_payload(args: argparse.Namespace, repo: Path) -> dict[str, Any]:
             "approver": args.approver,
             "notes": args.approval_note or "",
         },
+        "learning_decision_lineage": learning_decision_lineage,
         "handoff": {
             "recommended_prompt": "workflows/prompts/task-packet.md",
             "owner": args.owner,
@@ -12623,6 +13050,28 @@ def build_parser() -> argparse.ArgumentParser:
     add_common_repo_args(learn_decision_list)
     learn_decision_list.add_argument("--limit", type=int, default=50, help="Maximum decisions to list. Use 0 for all decisions.")
 
+    learn_context = learn_subparsers.add_parser(
+        "context",
+        help="Build bounded approved-learning guidance or list valid local context records.",
+    )
+    learn_context_subparsers = learn_context.add_subparsers(
+        dest="learn_context_command",
+        required=True,
+        parser_class=KitArgumentParser,
+    )
+    learn_context_build = learn_context_subparsers.add_parser(
+        "build",
+        help="Build sidecar-only bounded guidance from one approved local decision and linked proposal.",
+    )
+    add_common_repo_args(learn_context_build)
+    learn_context_build.add_argument("--decision-id", required=True, help="Existing schema-valid approved dec- identifier.")
+    learn_context_list = learn_context_subparsers.add_parser(
+        "list",
+        help="List local schema-valid approved-learning context records without creating state.",
+    )
+    add_common_repo_args(learn_context_list)
+    learn_context_list.add_argument("--limit", type=int, default=LEARNING_CONTEXT_MAX_LIST, help="Maximum contexts to list. Use 0 for all contexts.")
+
     mode_check = subparsers.add_parser("mode-check", help="Select lite, standard, or release-gated harness mode without writes.")
     add_common_repo_args(mode_check)
     mode_check.add_argument("--mode", choices=HARNESS_MODE_CHOICES, default="auto", help="Requested harness mode. auto lets kit choose.")
@@ -12896,6 +13345,11 @@ def build_parser() -> argparse.ArgumentParser:
     task_packet.add_argument("--owner")
     task_packet.add_argument("--dependency", action="append")
     task_packet.add_argument("--next-packet-hint")
+    task_packet.add_argument(
+        "--learning-decision",
+        action="append",
+        help="Existing schema-valid approved dec- identifier to retain as sidecar task-packet lineage. Can be repeated.",
+    )
     task_packet.add_argument("--write-sidecar", action="store_true", help="Write the task packet under the repo sidecar.")
 
     from_backlog = subparsers.add_parser("agent-task-packet-from-backlog", help="Emit a task packet scaffold for a selected backlog item.")
@@ -13297,6 +13751,16 @@ def main(argv: list[str] | None = None) -> int:
         payload = apply_runtime_mode(payload, raw_argv, args)
         render_json(payload) if args.json else render_json(payload)
         return exit_code
+    if args.command == "learn" and args.learn_command == "context" and args.learn_context_command == "build":
+        payload, exit_code = learn_context_build_payload(args, repo)
+        payload = apply_runtime_mode(payload, raw_argv, args)
+        render_json(payload) if args.json else render_json(payload)
+        return exit_code
+    if args.command == "learn" and args.learn_command == "context" and args.learn_context_command == "list":
+        payload, exit_code = learn_context_list_payload(args, repo)
+        payload = apply_runtime_mode(payload, raw_argv, args)
+        render_json(payload) if args.json else render_json(payload)
+        return exit_code
     if args.command == "mode-check":
         payload = apply_runtime_mode(mode_check_payload(args, repo), raw_argv, args)
         render_json(payload) if args.json else render_json(payload)
@@ -13506,7 +13970,7 @@ def main(argv: list[str] | None = None) -> int:
     if args.command == "task-packet":
         payload = task_packet_payload(args, repo)
         render_json(payload)
-        return 0
+        return int(payload.get("exit_code") or 0)
     if args.command == "agent-task-packet-from-backlog":
         try:
             payload = backlog_task_packet_payload(args, repo)

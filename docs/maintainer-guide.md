@@ -63,13 +63,32 @@ Proposal and decision schemas must retain stable IDs, lineage, privacy,
 bounded explicit CLI fields, and the no-execution guarantee. Do not add
 task-packet or receipt linkage in this phase.
 
+Phase 4 requires an isolated-XDG committed-target CLI e2e after the Phase 3
+flow. It must prove that `kit learn context build` accepts only an existing
+schema-valid approved decision with a currently valid approved linked proposal,
+and writes only explicitly constructed/redacted guidance to the sidecar. The
+context must carry stable context ID, decision/proposal lineage, classification,
+scope, recommended change, privacy label, retention expiry, and the
+no-execution guarantee; it must exclude raw event/evidence/feedback/conversation
+content. Assert `kit learn context list` is read-only, the bundle includes only
+a low deterministic cap of valid approved-learning context marked as
+sidecar-only guidance rather than target instructions, and stale/hand-crafted
+lineage is skipped with a warning. Extend the same e2e through
+`kit task-packet --learning-decision <dec-id> --write-sidecar`, including
+rejected/deferred/missing/invalid decision negatives that fail before packet
+sidecar creation. Preserve target and enrolled-target registry bytes; do not
+alter receipt mechanics or target task files. Run `kit retention --json` to
+cover learning counts and expiry preview only—there is no deletion command.
+
 Do not add `supervised-learning` to a default or named preset without an
 explicit approved rollout decision. Event records are bounded, explicit CLI
 input only: do not repurpose `kit feedback`, mine threads, harvest
 conversations, inject context, add network calls, or add global writes.
-Proposal and decision commands remain recommendation-only sidecar records;
-context writes remain deferred. An approved decision must not be treated as
-permission to modify AGENTS.md, policy files, target files, or global state.
+Proposal and decision commands remain recommendation-only sidecar records.
+Approved-learning context remains bounded sidecar-only guidance, not target
+instructions. An approved decision must not be treated as permission to modify
+AGENTS.md, policy files, target files, or global state, and Kit must never
+execute its recommendation.
 
 ## CLI Or Installer Changes
 

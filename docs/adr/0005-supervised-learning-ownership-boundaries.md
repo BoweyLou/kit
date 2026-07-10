@@ -60,10 +60,29 @@ sidecar and updates the linked proposal. List commands are read-only.
 Phase 3 approval is a review state, not execution authority. Neither an
 accepted proposal nor an approved decision may modify AGENTS.md, policy files,
 target files, or global Kit state, and Kit must not execute recommendations.
-Task-packet and receipt linkage remain deferred. Disabled/uninstalled policy,
-invalid or missing evidence, missing/non-pending proposals, missing human
-review confirmation, and invalid fields must fail before sidecar initialization
-and write nothing.
+Receipt linkage remains deferred. Disabled/uninstalled policy, invalid or
+missing evidence, missing/non-pending proposals, missing human review
+confirmation, and invalid fields must fail before sidecar initialization and
+write nothing.
+
+Phase 4 adds `kit learn context build`/`list`. Building context remains
+policy-gated and requires an existing schema-valid local `approved` decision
+and the decision's schema-valid linked proposal in approved state. The builder
+constructs a stable-ID sidecar record from an explicit allowlist only:
+decision/proposal IDs, classification, scope, recommended change, privacy
+label, retention expiry, and the existing no-execution guarantee. It excludes
+event IDs, raw event/evidence, feedback, rationale, decider, follow-up, and
+conversation content. `list` and `kit agent-context-bundle` revalidate the
+stored decision/proposal link for the selected repo and skip stale or
+hand-crafted contexts with a warning. The bundle holds a low deterministic cap
+and labels the result sidecar-only guidance, not target instructions.
+
+Phase 4 also allows `kit task-packet --learning-decision <dec-id>` to retain
+only explicitly requested schema-valid approved decision IDs in the packet
+artifact. Every requested ID is validated before the existing optional packet
+sidecar write. This is lineage only: it changes neither target task files nor
+receipt mechanics, and it does not authorize execution. `kit retention --json`
+reports learning counts and a context expiry preview without deleting anything.
 
 ## Consequences
 
@@ -73,6 +92,7 @@ potentially sensitive artifacts remain local to the target's sidecar and are
 recorded only through explicit approved input.
 
 Future phases must add a new ADR or amend this one before broadening writes,
-changing ownership, adding a default preset, adding proposal/decision/context
-actions, allowing automatic capture or context injection, or allowing a
-learning record to trigger a target/global action.
+changing ownership, adding a default preset, allowing automatic capture or
+context injection beyond the bounded sidecar-only bundle section, changing
+receipt mechanics, adding deletion, or allowing a learning record to trigger a
+target/global action.

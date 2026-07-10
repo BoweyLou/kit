@@ -25,7 +25,7 @@
       "required": ["source", "capture"],
       "properties": {
         "source": {"type": "string", "enum": ["human", "agent", "automation"]},
-        "capture": {"type": "string", "const": "explicit-cli-input"}
+        "capture": {"type": "string", "enum": ["explicit-cli-input", "thread-summary-import"]}
       }
     },
     "privacy_label": {"type": "string", "enum": ["public-ok", "internal", "private-local", "sensitive-local"]},

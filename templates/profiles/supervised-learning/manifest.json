@@ -9,6 +9,14 @@
     {
       "source": "files/docs/ops/supervised-learning.md",
       "target": "docs/ops/supervised-learning.md"
+    },
+    {
+      "source": "../../common/learning-thread-summary.schema.json",
+      "target": "schemas/learning-thread-summary.schema.json"
+    },
+    {
+      "source": "../../common/learning-upstream-candidate.schema.json",
+      "target": "schemas/learning-upstream-candidate.schema.json"
     }
   ]
 }

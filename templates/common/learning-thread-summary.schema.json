@@ -1,0 +1,76 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://example.local/repo-contract-kit/learning-thread-summary.schema.json",
+  "title": "Redacted Aggregate Thread Summary",
+  "description": "Strict human-redacted aggregate input for one explicitly approved supervised-learning import. Raw transcripts, feedback, events, private content, and additional fields are forbidden.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "summary_id",
+    "reported_at",
+    "redaction",
+    "aggregate"
+  ],
+  "properties": {
+    "schema_version": {"type": "integer", "const": 1},
+    "summary_id": {"type": "string", "pattern": "^tsum-[0-9a-f]{20}$"},
+    "reported_at": {"type": "string", "format": "date-time"},
+    "redaction": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "human_confirmed",
+        "raw_transcript_excluded",
+        "raw_feedback_excluded",
+        "raw_event_content_excluded",
+        "private_content_excluded"
+      ],
+      "properties": {
+        "human_confirmed": {"type": "boolean", "const": true},
+        "raw_transcript_excluded": {"type": "boolean", "const": true},
+        "raw_feedback_excluded": {"type": "boolean", "const": true},
+        "raw_event_content_excluded": {"type": "boolean", "const": true},
+        "private_content_excluded": {"type": "boolean", "const": true}
+      }
+    },
+    "aggregate": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "interaction_count",
+        "outcome_counts",
+        "classification_counts",
+        "redacted_summary"
+      ],
+      "properties": {
+        "interaction_count": {"type": "integer", "minimum": 1, "maximum": 10000},
+        "outcome_counts": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["confirmed", "inconclusive", "regressed"],
+          "properties": {
+            "confirmed": {"type": "integer", "minimum": 0, "maximum": 10000},
+            "inconclusive": {"type": "integer", "minimum": 0, "maximum": 10000},
+            "regressed": {"type": "integer", "minimum": 0, "maximum": 10000}
+          }
+        },
+        "classification_counts": {
+          "type": "object",
+          "minProperties": 1,
+          "maxProperties": 6,
+          "additionalProperties": false,
+          "properties": {
+            "documentation": {"type": "integer", "minimum": 0, "maximum": 10000},
+            "workflow": {"type": "integer", "minimum": 0, "maximum": 10000},
+            "policy": {"type": "integer", "minimum": 0, "maximum": 10000},
+            "harness": {"type": "integer", "minimum": 0, "maximum": 10000},
+            "process": {"type": "integer", "minimum": 0, "maximum": 10000},
+            "other": {"type": "integer", "minimum": 0, "maximum": 10000}
+          }
+        },
+        "redacted_summary": {"type": "string", "minLength": 1, "maxLength": 300}
+      }
+    }
+  }
+}

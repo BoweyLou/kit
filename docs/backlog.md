@@ -67,6 +67,26 @@ preview only; Phase 4 adds no deletion command.
 
 ## Phase 5 — Evaluation and governed rollout
 
-Evaluate the workflow across opted-in repositories, document safety and utility
-evidence, and define a governed rollout path. Broader enablement remains a
-human decision; it must not be added to default presets implicitly.
+`kit learn thread-summary import --input <file> --approved` accepts only one
+strict bounded, explicitly redacted aggregate summary file under an active
+supervised target policy. It does not scan runtime state, mine Codex history,
+read transcripts or feedback/event content, or call a network. A valid import
+writes exactly one derived sidecar event with `thread-summary-import`
+provenance; rejected, unapproved, unredacted, oversized, private, or unsupported
+input writes nothing.
+
+`kit learn upstream export` creates one portable local sidecar candidate only
+from a currently schema-valid approved decision and its matching approved
+proposal. It requires `--redaction-confirmed` and `public-ok` or `internal`
+privacy. Candidates contain only bounded recommendation/classification/scope,
+decision/proposal IDs, a sanitized origin, and source-ref/version baseline;
+they exclude event IDs, raw summaries, evidence, feedback, context, and raw
+repository paths. List, reconcile, and evaluate routes are read-only; they
+revalidate candidate lineage and mark revalidation when the current local tool
+source has advanced.
+
+An upstream candidate is a source-review input, not a propagation mechanism.
+Review it through a normal source task, commit, test, and release. Only after
+that release may a human run `kit self update`, followed by a guarded target
+update or reconcile. Broader enablement remains a human decision and must not
+be added to default presets implicitly.

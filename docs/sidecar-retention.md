@@ -62,9 +62,27 @@ explicitly requested approved decision IDs in its packet artifact after it
 validates all IDs before an optional packet sidecar write. This does not modify
 target task files, receipts, instructions, or recommendations.
 
-`kit retention --json` includes learning event/proposal/decision/context counts
+`kit retention --json` includes learning event/proposal/decision/context/
+upstream-candidate counts
 and a context expiry preview. It remains preview-only: this phase adds no Kit
 deletion command.
+
+`kit learn thread-summary import --input <file> --approved` may write one
+derived event under `<sidecar>/learning/events/` only from a strict bounded,
+explicitly redacted aggregate file while the target policy is active and
+supervised. It does not read runtime history, transcripts, feedback, or raw
+events, and it never contacts a network. Invalid, unapproved, unredacted,
+oversized, private, or unsupported files write nothing.
+
+`kit learn upstream export` writes a portable candidate under
+`<sidecar>/learning/upstream-candidates/` only after a human confirms redaction
+and selects `public-ok` or `internal` for a currently approved decision and
+linked proposal. Candidate records contain no raw summary/event/evidence/
+feedback/context content or target path. `kit learn upstream list`, `kit learn
+upstream reconcile`, and `kit learn evaluate` are read-only and skip stale or
+tampered candidates whose current decision/proposal lineage no longer proves
+approval. Reconcile never performs `kit self update`, source update, target
+update, or deletion.
 
 Do not move learning records into global kit state, source code, Git history,
 or a hosted model by default. Do not reinterpret, migrate, or implicitly copy

@@ -182,6 +182,32 @@ contract checked in.
    linkage remains deferred. Invalid evidence, missing/non-pending proposals,
    missing human confirmation, disabled/uninstalled policy, and invalid input
    write nothing.
+
+   Phase 5 adds one explicit offline import and one governed source-review
+   handoff. The importer accepts only a bounded human-redacted aggregate file;
+   it never mines thread history, scans runtime state, reads transcripts,
+   feedback, or events, or calls a network:
+
+   ```bash
+   kit learn thread-summary import --input redacted-summary.json --approved --json
+   kit learn thread-summary list --json
+   ```
+
+   After an approved proposal and decision whose privacy label is `internal` or
+   `public-ok`, export a redaction-confirmed candidate:
+
+   ```bash
+   kit learn upstream export --decision-id dec-0123456789abcdef0123 \
+     --privacy-label internal --redaction-confirmed --json
+   kit learn upstream list --json
+   kit learn upstream reconcile --json
+   kit learn evaluate --json
+   ```
+
+   Candidates are local sidecar review inputs, not updates. Review them through
+   a normal source task, commit, test, and release. Only then may a human run
+   `kit self update`, followed by a guarded target update or reconcile. No
+   candidate command performs that propagation automatically.
 12. Add hooks if you want faster local feedback.
 13. Add CI adapters only if your host supports them. The core workflow must still run locally.
 14. Later, add generated docs and broader executable doc tests.

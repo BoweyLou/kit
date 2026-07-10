@@ -4,7 +4,7 @@ Generated from `kit command-map --json`.
 Do not edit command sections by hand; run `kit cli-reference --write docs/cli-reference.md`.
 
 - Schema version: `1`
-- Command count: `82`
+- Command count: `90`
 
 ## Commands
 
@@ -1060,6 +1060,29 @@ Flags:
 - `--human-review-confirmed` - Confirm explicit human review of this exact pending proposal before recording the decision.
 - `--follow-up` - Explicit bounded follow-up note. Can be repeated up to ten times.
 
+### kit learn evaluate
+
+Read-only local learning artifact facts with no claim of effectiveness.
+
+- Audience: `human, agent`
+- Mutation: `read-only`
+- Target writes: `never`
+- Sidecar writes: `never`
+- JSON: `yes`
+- Output schema: `learn_evaluate_payload`
+- Route role: `canonical`
+- Canonical command: `learn evaluate`
+- Docs: `docs/backlog.md, docs/harness-engineering.md, docs/rollout-guide.md, docs/sidecar-retention.md, docs/adr/0005-supervised-learning-ownership-boundaries.md`
+
+Examples:
+
+- `kit learn evaluate --repo /path/to/repo --json`
+
+Flags:
+
+- `--repo` - Target git repository. Defaults to the current directory.
+- `--json` - Emit machine-readable JSON.
+
 ### kit learn event
 
 Record explicitly approved supervised-learning events or list stored local events.
@@ -1226,6 +1249,165 @@ Flags:
 
 - `--repo` - Target git repository. Defaults to the current directory.
 - `--json` - Emit machine-readable JSON.
+
+### kit learn thread-summary
+
+Import one explicitly redacted aggregate thread summary or list imported event summaries.
+
+- Audience: `human, agent`
+- Mutation: `namespace`
+- Target writes: `never`
+- Sidecar writes: `never`
+- JSON: `no`
+- Output schema: `subcommand_namespace`
+- Route role: `namespace`
+- Canonical command: `learn thread-summary`
+- Docs: `docs/backlog.md, docs/sidecar-retention.md, docs/adr/0005-supervised-learning-ownership-boundaries.md`
+
+Examples:
+
+- `kit learn thread-summary list --repo /path/to/repo --json`
+
+### kit learn thread-summary import
+
+Import one strict redacted aggregate summary as a supervised sidecar event; no history scanning or network calls occur.
+
+- Audience: `human, agent`
+- Mutation: `writes-one-sidecar-event-on-explicit-approved-redacted-input`
+- Target writes: `never`
+- Sidecar writes: `conditional`
+- JSON: `yes`
+- Output schema: `learn_thread_summary_import_payload`
+- Route role: `canonical`
+- Canonical command: `learn thread-summary import`
+- Docs: `docs/backlog.md, docs/harness-engineering.md, docs/sidecar-retention.md, docs/adr/0005-supervised-learning-ownership-boundaries.md`
+
+Examples:
+
+- `kit learn thread-summary import --repo /path/to/repo --input redacted-summary.json --approved --json`
+
+Flags:
+
+- `--repo` - Target git repository. Defaults to the current directory.
+- `--json` - Emit machine-readable JSON.
+- `--input` - Strict redacted aggregate learning-thread-summary JSON file.
+- `--approved` - Confirm explicit human approval for this exact thread-summary import.
+
+### kit learn thread-summary list
+
+List schema-valid imported thread-summary events without creating state.
+
+- Audience: `human, agent`
+- Mutation: `read-only`
+- Target writes: `never`
+- Sidecar writes: `never`
+- JSON: `yes`
+- Output schema: `learn_thread_summary_list_payload`
+- Route role: `canonical`
+- Canonical command: `learn thread-summary list`
+- Docs: `docs/sidecar-retention.md, docs/adr/0005-supervised-learning-ownership-boundaries.md`
+
+Examples:
+
+- `kit learn thread-summary list --repo /path/to/repo --json`
+
+Flags:
+
+- `--repo` - Target git repository. Defaults to the current directory.
+- `--json` - Emit machine-readable JSON.
+- `--limit` - Maximum imported summaries to list. Use 0 for all events.
+
+### kit learn upstream
+
+Export approved redacted source-review candidates or inspect local candidate baselines.
+
+- Audience: `human, agent`
+- Mutation: `namespace`
+- Target writes: `never`
+- Sidecar writes: `never`
+- JSON: `no`
+- Output schema: `subcommand_namespace`
+- Route role: `namespace`
+- Canonical command: `learn upstream`
+- Docs: `docs/backlog.md, docs/rollout-guide.md, docs/sidecar-retention.md, docs/adr/0005-supervised-learning-ownership-boundaries.md`
+
+Examples:
+
+- `kit learn upstream list --repo /path/to/repo --json`
+
+### kit learn upstream export
+
+Write one portable local candidate from an approved decision and linked proposal; no propagation occurs.
+
+- Audience: `human, agent`
+- Mutation: `writes-portable-sidecar-candidate-on-approved-decision`
+- Target writes: `never`
+- Sidecar writes: `conditional`
+- JSON: `yes`
+- Output schema: `learn_upstream_export_payload`
+- Route role: `canonical`
+- Canonical command: `learn upstream export`
+- Docs: `docs/backlog.md, docs/harness-engineering.md, docs/rollout-guide.md, docs/sidecar-retention.md, docs/adr/0005-supervised-learning-ownership-boundaries.md`
+
+Examples:
+
+- `kit learn upstream export --repo /path/to/repo --decision-id dec-0123456789abcdef0123 --privacy-label internal --redaction-confirmed --json`
+
+Flags:
+
+- `--repo` - Target git repository. Defaults to the current directory.
+- `--json` - Emit machine-readable JSON.
+- `--decision-id` - Existing schema-valid approved dec- identifier.
+- `--privacy-label` - Export privacy label; only public-ok or internal is accepted.
+- `--redaction-confirmed` - Confirm that this exact portable candidate is redacted for source review.
+
+### kit learn upstream list
+
+List schema-valid local upstream candidates without creating state.
+
+- Audience: `human, agent`
+- Mutation: `read-only`
+- Target writes: `never`
+- Sidecar writes: `never`
+- JSON: `yes`
+- Output schema: `learn_upstream_list_payload`
+- Route role: `canonical`
+- Canonical command: `learn upstream list`
+- Docs: `docs/rollout-guide.md, docs/sidecar-retention.md, docs/adr/0005-supervised-learning-ownership-boundaries.md`
+
+Examples:
+
+- `kit learn upstream list --repo /path/to/repo --json`
+
+Flags:
+
+- `--repo` - Target git repository. Defaults to the current directory.
+- `--json` - Emit machine-readable JSON.
+- `--limit` - Maximum candidates to list. Use 0 for all candidates.
+
+### kit learn upstream reconcile
+
+Read-only compare candidate baselines with the current local tool source ref; never update anything.
+
+- Audience: `human, agent`
+- Mutation: `read-only`
+- Target writes: `never`
+- Sidecar writes: `never`
+- JSON: `yes`
+- Output schema: `learn_upstream_reconcile_payload`
+- Route role: `canonical`
+- Canonical command: `learn upstream reconcile`
+- Docs: `docs/rollout-guide.md, docs/sidecar-retention.md, docs/adr/0005-supervised-learning-ownership-boundaries.md`
+
+Examples:
+
+- `kit learn upstream reconcile --repo /path/to/repo --json`
+
+Flags:
+
+- `--repo` - Target git repository. Defaults to the current directory.
+- `--json` - Emit machine-readable JSON.
+- `--limit` - Maximum candidates to reconcile. Use 0 for all candidates.
 
 ### kit migrate-config
 

@@ -783,6 +783,8 @@ class RepoContractKitCliTests(unittest.TestCase):
                 "learning-proposal.schema.json",
                 "learning-decision.schema.json",
                 "learning-context.schema.json",
+                "learning-thread-summary.schema.json",
+                "learning-upstream-candidate.schema.json",
             ):
                 self.assertTrue((target / "schemas" / name).exists(), name)
             policy = json.loads(policy_path.read_text(encoding="utf-8"))
@@ -1465,6 +1467,337 @@ class RepoContractKitCliTests(unittest.TestCase):
             self.assertEqual(target_snapshot(), before_target)
             self.assertEqual(registry_path.read_bytes(), before_registry)
 
+    def test_learn_thread_summary_and_upstream_candidate_cli_e2e_are_redacted_review_gated_and_sidecar_only(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            target = Path(tmp) / "target"
+            state_home = Path(tmp) / "xdg-state"
+            target.mkdir()
+            init_git_repo(target)
+            env = {**os.environ, "XDG_STATE_HOME": str(state_home)}
+
+            def run_learn(*args: str):
+                return subprocess.run(
+                    [sys.executable, str(CLI), "learn", *args, "--repo", str(target), "--json"],
+                    cwd=ROOT,
+                    env=env,
+                    capture_output=True,
+                    text=True,
+                    check=False,
+                )
+
+            def target_snapshot() -> dict[str, bytes]:
+                return {
+                    path.relative_to(target).as_posix(): path.read_bytes()
+                    for path in target.rglob("*")
+                    if path.is_file() and ".git" not in path.parts
+                }
+
+            def learning_snapshot(root: Path) -> dict[str, bytes]:
+                if not root.exists():
+                    return {}
+                return {
+                    path.relative_to(root).as_posix(): path.read_bytes()
+                    for path in root.rglob("*")
+                    if path.is_file()
+                }
+
+            raw_input_marker = "redacted-summary-marker-must-not-reach-upstream"
+            summary = {
+                "schema_version": 1,
+                "summary_id": "tsum-0123456789abcdef0123",
+                "reported_at": "2026-07-10T00:00:00Z",
+                "redaction": {
+                    "human_confirmed": True,
+                    "raw_transcript_excluded": True,
+                    "raw_feedback_excluded": True,
+                    "raw_event_content_excluded": True,
+                    "private_content_excluded": True,
+                },
+                "aggregate": {
+                    "interaction_count": 3,
+                    "outcome_counts": {"confirmed": 2, "inconclusive": 1, "regressed": 0},
+                    "classification_counts": {"documentation": 2, "workflow": 1},
+                    "redacted_summary": raw_input_marker,
+                },
+            }
+            summary_path = Path(tmp) / "redacted-summary.json"
+            write_json_file(summary_path, summary)
+
+            redaction_false = json.loads(json.dumps(summary))
+            redaction_false["redaction"]["human_confirmed"] = False
+            redaction_false_path = Path(tmp) / "redaction-false.json"
+            write_json_file(redaction_false_path, redaction_false)
+
+            private_input = json.loads(json.dumps(summary))
+            private_input["redaction"]["private_content_excluded"] = False
+            private_input_path = Path(tmp) / "private-summary.json"
+            write_json_file(private_input_path, private_input)
+
+            unsupported = json.loads(json.dumps(summary))
+            unsupported["raw_transcript"] = "this field is forbidden"
+            unsupported_path = Path(tmp) / "unsupported-summary.json"
+            write_json_file(unsupported_path, unsupported)
+
+            oversized = json.loads(json.dumps(summary))
+            oversized["aggregate"]["redacted_summary"] = "x" * 301
+            oversized_path = Path(tmp) / "oversized-summary.json"
+            write_json_file(oversized_path, oversized)
+
+            install = subprocess.run(
+                [sys.executable, str(CLI), "setup", "--repo", str(target), "--profile", "supervised-learning", "--json"],
+                cwd=ROOT,
+                env=env,
+                capture_output=True,
+                text=True,
+                check=False,
+            )
+            self.assertEqual(install.returncode, 0, install.stderr)
+            commit_all(target, "Install supervised-learning profile")
+            before_target = target_snapshot()
+            registry_path = state_home / "repo-contract-kit" / "enrolled-targets.json"
+            before_registry = registry_path.read_bytes()
+            learning_root = state_home / "repo-contract-kit"
+            before_learning = learning_snapshot(learning_root)
+
+            for summary_input, expected_gate in (
+                (summary_path, "human-approval-required"),
+                (redaction_false_path, "schema-invalid"),
+                (private_input_path, "schema-invalid"),
+                (unsupported_path, "schema-invalid"),
+                (oversized_path, "schema-invalid"),
+            ):
+                args = ("thread-summary", "import", "--input", str(summary_input))
+                if summary_input != summary_path:
+                    args += ("--approved",)
+                rejected = run_learn(*args)
+                self.assertEqual(rejected.returncode, 2, rejected.stderr)
+                rejected_payload = json.loads(rejected.stdout)
+                self.assertEqual(rejected_payload["gate"]["state"], expected_gate)
+                self.assertFalse(rejected_payload["sidecar_writes"]["performed"])
+                self.assertEqual(learning_snapshot(learning_root), before_learning)
+                self.assertEqual(target_snapshot(), before_target)
+                self.assertEqual(registry_path.read_bytes(), before_registry)
+
+            imported = run_learn("thread-summary", "import", "--input", str(summary_path), "--approved")
+            self.assertEqual(imported.returncode, 0, imported.stderr)
+            imported_payload = json.loads(imported.stdout)
+            event = imported_payload["event"]
+            event_id = event["event_id"]
+            self.assertRegex(event_id, r"^evt-[0-9a-f]{20}$")
+            self.assertEqual(event["provenance"]["capture"], "thread-summary-import")
+            self.assertTrue(imported_payload["sidecar_writes"]["performed"])
+            self.assertFalse(imported_payload["target_repo_writes"]["performed"])
+            self.assertFalse(imported_payload["global_writes"]["performed"])
+            self.assertEqual(target_snapshot(), before_target)
+            self.assertEqual(registry_path.read_bytes(), before_registry)
+
+            summaries = run_learn("thread-summary", "list")
+            self.assertEqual(summaries.returncode, 0, summaries.stderr)
+            summaries_payload = json.loads(summaries.stdout)
+            self.assertEqual(summaries_payload["count"], 1)
+            self.assertEqual(summaries_payload["events"][0]["event_id"], event_id)
+            self.assertFalse(summaries_payload["sidecar_writes"]["performed"])
+
+            proposal_result = run_learn(
+                "proposal",
+                "create",
+                "--title",
+                "Document bounded upstream review",
+                "--classification",
+                "documentation",
+                "--scope",
+                "docs/rollout-guide.md",
+                "--recommended-change",
+                "Document the normal source review and release path for approved candidates.",
+                "--evidence-event",
+                event_id,
+                "--privacy-label",
+                "internal",
+            )
+            self.assertEqual(proposal_result.returncode, 0, proposal_result.stderr)
+            proposal = json.loads(proposal_result.stdout)["proposal"]
+
+            decision_result = run_learn(
+                "decision",
+                "record",
+                "--proposal-id",
+                proposal["proposal_id"],
+                "--outcome",
+                "approved",
+                "--decider",
+                "Repository owner",
+                "--rationale",
+                "The bounded recommendation is ready for source review.",
+                "--human-review-confirmed",
+            )
+            self.assertEqual(decision_result.returncode, 0, decision_result.stderr)
+            decision = json.loads(decision_result.stdout)["decision"]
+
+            candidates_dir = Path(json.loads(decision_result.stdout)["learning_paths"]["sidecar"]["upstream_candidates"])
+            before_candidates = learning_snapshot(candidates_dir)
+            for export_args, expected_gate in (
+                (("--decision-id", decision["decision_id"], "--privacy-label", "private-local", "--redaction-confirmed"), "privacy-not-exportable"),
+                (("--decision-id", decision["decision_id"], "--privacy-label", "internal"), "redaction-confirmation-required"),
+            ):
+                rejected = run_learn("upstream", "export", *export_args)
+                self.assertEqual(rejected.returncode, 2, rejected.stderr)
+                rejected_payload = json.loads(rejected.stdout)
+                self.assertEqual(rejected_payload["gate"]["state"], expected_gate)
+                self.assertFalse(rejected_payload["sidecar_writes"]["performed"])
+                self.assertEqual(learning_snapshot(candidates_dir), before_candidates)
+                self.assertEqual(target_snapshot(), before_target)
+                self.assertEqual(registry_path.read_bytes(), before_registry)
+
+            candidate_result = run_learn(
+                "upstream",
+                "export",
+                "--decision-id",
+                decision["decision_id"],
+                "--privacy-label",
+                "internal",
+                "--redaction-confirmed",
+            )
+            self.assertEqual(candidate_result.returncode, 0, candidate_result.stderr)
+            candidate_payload = json.loads(candidate_result.stdout)
+            candidate = candidate_payload["candidate"]
+            candidate_path = Path(candidate_payload["candidate_path"])
+            self.assertEqual(
+                set(candidate),
+                {
+                    "schema_version",
+                    "candidate_id",
+                    "created_at",
+                    "policy_id",
+                    "lineage",
+                    "recommendation",
+                    "origin",
+                    "source_baseline",
+                    "privacy_label",
+                    "redaction_confirmed",
+                },
+            )
+            self.assertEqual(candidate["lineage"], {"decision_id": decision["decision_id"], "proposal_id": proposal["proposal_id"]})
+            self.assertEqual(candidate["privacy_label"], "internal")
+            self.assertTrue(candidate["redaction_confirmed"])
+            self.assertNotIn(str(target), json.dumps(candidate, sort_keys=True))
+            self.assertNotIn(raw_input_marker, json.dumps(candidate, sort_keys=True))
+            self.assertNotIn(event_id, json.dumps(candidate, sort_keys=True))
+            self.assertTrue(candidate_path.is_file())
+            self.assertTrue(candidate_payload["rollout_guidance"]["source_review_required"])
+            self.assertFalse(candidate_payload["rollout_guidance"]["automatic_propagation"])
+            self.assertEqual(target_snapshot(), before_target)
+            self.assertEqual(registry_path.read_bytes(), before_registry)
+
+            candidate_before_reads = candidate_path.read_bytes()
+            listed = run_learn("upstream", "list")
+            self.assertEqual(listed.returncode, 0, listed.stderr)
+            listed_payload = json.loads(listed.stdout)
+            self.assertEqual(listed_payload["count"], 1)
+            self.assertEqual(listed_payload["candidates"][0]["candidate_id"], candidate["candidate_id"])
+            self.assertFalse(listed_payload["sidecar_writes"]["performed"])
+            self.assertEqual(candidate_path.read_bytes(), candidate_before_reads)
+
+            tampered_candidate = read_json_file(candidate_path)
+            tampered_candidate["recommendation"]["recommended_change"] = "Tampered candidate content."
+            write_json_file(candidate_path, tampered_candidate)
+            tampered_list = run_learn("upstream", "list")
+            self.assertEqual(tampered_list.returncode, 0, tampered_list.stderr)
+            tampered_payload = json.loads(tampered_list.stdout)
+            self.assertEqual(tampered_payload["count"], 0)
+            self.assertTrue(any("recommendation no longer matches" in warning for warning in tampered_payload["warnings"]))
+            self.assertFalse(tampered_payload["sidecar_writes"]["performed"])
+            self.assertEqual(target_snapshot(), before_target)
+            self.assertEqual(registry_path.read_bytes(), before_registry)
+            write_json_file(candidate_path, candidate)
+
+            candidate_for_reconcile = read_json_file(candidate_path)
+            candidate_for_reconcile["source_baseline"]["source_ref"] = subprocess.check_output(
+                ["git", "rev-parse", "HEAD~"], cwd=ROOT, text=True
+            ).strip()
+            write_json_file(candidate_path, candidate_for_reconcile)
+            reconciled = run_learn("upstream", "reconcile")
+            self.assertEqual(reconciled.returncode, 0, reconciled.stderr)
+            reconciled_payload = json.loads(reconciled.stdout)
+            self.assertTrue(reconciled_payload["candidates"][0]["revalidation_required"])
+            self.assertFalse(reconciled_payload["sidecar_writes"]["performed"])
+            self.assertFalse(reconciled_payload["target_repo_writes"]["performed"])
+            self.assertFalse(reconciled_payload["global_writes"]["performed"])
+
+            evaluated = run_learn("evaluate")
+            self.assertEqual(evaluated.returncode, 0, evaluated.stderr)
+            evaluated_payload = json.loads(evaluated.stdout)
+            self.assertEqual(evaluated_payload["command"], "learn evaluate")
+            self.assertEqual(evaluated_payload["facts"]["thread_summary_events"], 1)
+            self.assertEqual(evaluated_payload["facts"]["upstream_candidates"], 1)
+            self.assertTrue(evaluated_payload["caveat"]["not_effectiveness_claim"])
+            self.assertFalse(evaluated_payload["sidecar_writes"]["performed"])
+            self.assertEqual(target_snapshot(), before_target)
+            self.assertEqual(registry_path.read_bytes(), before_registry)
+
+            retention = subprocess.run(
+                [sys.executable, str(CLI), "retention", "--repo", str(target), "--json"],
+                cwd=ROOT,
+                env=env,
+                capture_output=True,
+                text=True,
+                check=False,
+            )
+            self.assertEqual(retention.returncode, 0, retention.stderr)
+            retention_payload = json.loads(retention.stdout)
+            self.assertEqual(retention_payload["learning_artifacts"]["counts"]["upstream_candidates"], 1)
+            self.assertFalse(retention_payload["sidecar_writes"]["performed"])
+
+            rejected_proposal = run_learn(
+                "proposal",
+                "create",
+                "--title",
+                "Rejected upstream candidate",
+                "--classification",
+                "documentation",
+                "--scope",
+                "docs/rollout-guide.md",
+                "--recommended-change",
+                "This rejected recommendation must never export.",
+                "--evidence-event",
+                event_id,
+                "--privacy-label",
+                "internal",
+            )
+            self.assertEqual(rejected_proposal.returncode, 0, rejected_proposal.stderr)
+            rejected_proposal_id = json.loads(rejected_proposal.stdout)["proposal"]["proposal_id"]
+            rejected_decision = run_learn(
+                "decision",
+                "record",
+                "--proposal-id",
+                rejected_proposal_id,
+                "--outcome",
+                "rejected",
+                "--decider",
+                "Repository owner",
+                "--rationale",
+                "The recommendation is not approved for source review.",
+                "--human-review-confirmed",
+            )
+            self.assertEqual(rejected_decision.returncode, 0, rejected_decision.stderr)
+            rejected_decision_id = json.loads(rejected_decision.stdout)["decision"]["decision_id"]
+            before_unapproved_export = learning_snapshot(candidates_dir)
+            unapproved_export = run_learn(
+                "upstream",
+                "export",
+                "--decision-id",
+                rejected_decision_id,
+                "--privacy-label",
+                "internal",
+                "--redaction-confirmed",
+            )
+            self.assertEqual(unapproved_export.returncode, 2, unapproved_export.stderr)
+            unapproved_payload = json.loads(unapproved_export.stdout)
+            self.assertEqual(unapproved_payload["gate"]["state"], "decision-not-approved")
+            self.assertFalse(unapproved_payload["sidecar_writes"]["performed"])
+            self.assertEqual(learning_snapshot(candidates_dir), before_unapproved_export)
+            self.assertEqual(target_snapshot(), before_target)
+            self.assertEqual(registry_path.read_bytes(), before_registry)
+
     def test_command_map_json_catalogs_commands_without_repo_writes(self):
         with tempfile.TemporaryDirectory() as tmp:
             result = subprocess.run(
@@ -1499,6 +1832,10 @@ class RepoContractKitCliTests(unittest.TestCase):
             "mode-check",
             "calibration",
             "retention",
+            "learn thread-summary import",
+            "learn upstream export",
+            "learn upstream reconcile",
+            "learn evaluate",
             "agent-context-bundle",
             "command-map",
             "start",
@@ -1521,6 +1858,15 @@ class RepoContractKitCliTests(unittest.TestCase):
         self.assertIn("local-safe", start["target_repo_write"])
         self.assertIn("local_update", start["json_contract"]["stable_payload_fields"])
         self.assertIn("kit start --no-update", start["examples"])
+
+        upstream_export = commands["learn upstream export"]
+        self.assertEqual(upstream_export["target_repo_write"], "never")
+        self.assertEqual(upstream_export["sidecar_write"], "conditional")
+        self.assertIn("No propagation is automatic", upstream_export["route_note"])
+
+        upstream_reconcile = commands["learn upstream reconcile"]
+        self.assertEqual(upstream_reconcile["mutation"], "read-only")
+        self.assertIn("never runs kit self update", upstream_reconcile["route_note"])
 
         update = commands["update"]
         self.assertEqual(update["mutation"], "writes-target-by-default")
@@ -1573,6 +1919,24 @@ class RepoContractKitCliTests(unittest.TestCase):
         self.assertEqual(mode_check["sidecar_write"], "never")
         self.assertEqual(mode_check["output_schema"], "harness_mode_selection_payload")
         self.assertIn("kit mode-check --repo /path/to/repo --json", mode_check["examples"])
+
+    def test_codex_thread_miner_remains_source_only_and_outside_installed_cli_surface(self):
+        install_spec = importlib.util.spec_from_file_location("repo_contract_kit_install_under_test", INSTALL)
+        install_module = importlib.util.module_from_spec(install_spec)
+        assert install_spec and install_spec.loader
+        install_spec.loader.exec_module(install_module)
+        self.assertNotIn("mine_codex_threads.py", install_module.CORE_SCRIPTS)
+
+        result = subprocess.run(
+            [sys.executable, str(CLI), "command-map", "--json"],
+            cwd=ROOT,
+            capture_output=True,
+            text=True,
+            check=False,
+        )
+        self.assertEqual(result.returncode, 0, result.stderr)
+        commands = {" ".join(item["path"]) for item in json.loads(result.stdout)["commands"]}
+        self.assertFalse(any("mine" in command or "thread" in command and "summary" not in command for command in commands))
 
     def test_command_map_catalogs_palette_as_tty_only_human_route(self):
         result = subprocess.run(

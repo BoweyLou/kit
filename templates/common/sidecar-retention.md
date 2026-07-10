@@ -44,5 +44,22 @@ whose decision/proposal lineage still validates for this repository. Bundle
 contexts are bounded sidecar-only guidance, not target instructions. `kit
 task-packet --learning-decision <dec-id>` may retain validated approved
 decision IDs as packet lineage without changing target task files or receipt
-mechanics. `kit retention --json` reports learning counts and context expiry
+mechanics. `kit retention --json` reports learning and upstream-candidate counts and context expiry
 preview only; Kit has no learning deletion command in this phase.
+
+`kit learn thread-summary import --input <file> --approved` may write one
+derived event under `<sidecar>/learning/events/` only from a strict bounded,
+explicitly redacted aggregate file while the target policy is active and
+supervised. It does not read runtime history, transcripts, feedback, or raw
+events, and it never contacts a network. Invalid, unapproved, unredacted,
+oversized, private, or unsupported files write nothing.
+
+`kit learn upstream export` writes a portable candidate under
+`<sidecar>/learning/upstream-candidates/` only after a human confirms redaction
+and selects `public-ok` or `internal` for a currently approved decision and
+linked proposal. Candidate records contain no raw summary/event/evidence/
+feedback/context content or target path. `kit learn upstream list`, `kit learn
+upstream reconcile`, and `kit learn evaluate` are read-only and skip stale or
+tampered candidates whose current decision/proposal lineage no longer proves
+approval. Reconcile never performs `kit self update`, source update, target
+update, or deletion.

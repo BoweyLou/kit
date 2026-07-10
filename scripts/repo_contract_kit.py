@@ -36,6 +36,8 @@ LEARNING_SCHEMA_FILENAMES = (
     "learning-proposal.schema.json",
     "learning-decision.schema.json",
     "learning-context.schema.json",
+    "learning-thread-summary.schema.json",
+    "learning-upstream-candidate.schema.json",
 )
 LEARNING_EVENT_KINDS = ("observation", "validation", "feedback", "incident")
 LEARNING_EVENT_OUTCOMES = ("confirmed", "inconclusive", "regressed", "unknown")
@@ -57,6 +59,11 @@ LEARNING_DECISION_MAX_FOLLOW_UP_ITEMS = 10
 LEARNING_DECISION_MAX_FOLLOW_UP_LENGTH = 500
 LEARNING_CONTEXT_MAX_LIST = 50
 LEARNING_CONTEXT_BUNDLE_MAX_CONTEXTS = 3
+LEARNING_THREAD_SUMMARY_MAX_FILE_BYTES = 4096
+LEARNING_THREAD_SUMMARY_MAX_INTERACTIONS = 10000
+LEARNING_THREAD_SUMMARY_MAX_REDACTED_SUMMARY_LENGTH = 300
+LEARNING_UPSTREAM_CANDIDATE_MAX_LIST = 50
+LEARNING_UPSTREAM_EXPORT_PRIVACY_LABELS = ("public-ok", "internal")
 LEARNING_NON_EXECUTION_NOTE = (
     "An approved proposal or decision records a review outcome only. It is not permission to write AGENTS.md, "
     "policy files, target files, or global tool state, and Kit will not execute the recommendation."
@@ -1381,8 +1388,10 @@ def cli_metadata() -> dict[str, Any]:
             "agent-doctor --write-sidecar",
             "feedback",
             "learn event record --approved",
+            "learn thread-summary import --approved",
             "learn proposal create",
             "learn decision record --human-review-confirmed",
+            "learn upstream export --redaction-confirmed",
             "orient --write-sidecar",
             "review-plan --write-sidecar",
             "docs-propose --write-sidecar",
@@ -2373,6 +2382,100 @@ def command_map_annotations() -> dict[tuple[str, ...], dict[str, Any]]:
             "examples": [public_command("learn", "context", "list", "--repo", "/path/to/repo", "--json")],
             "output_schema": "learn_context_list_payload",
             "docs": ["docs/sidecar-retention.md", "docs/adr/0005-supervised-learning-ownership-boundaries.md"],
+        },
+        ("learn", "thread-summary"): {
+            "audience": ["human", "agent"],
+            "mutation": "namespace",
+            "json_supported": False,
+            "route_role": "namespace",
+            "canonical_command": "learn thread-summary",
+            "examples": [public_command("learn", "thread-summary", "list", "--repo", "/path/to/repo", "--json")],
+            "output_schema": "subcommand_namespace",
+            "docs": ["docs/backlog.md", "docs/sidecar-retention.md", "docs/adr/0005-supervised-learning-ownership-boundaries.md"],
+        },
+        ("learn", "thread-summary", "import"): {
+            "audience": ["human", "agent"],
+            "mutation": "writes-one-sidecar-event-on-explicit-approved-redacted-input",
+            "target_repo_write": "never",
+            "sidecar_write": "conditional",
+            "route_role": "canonical",
+            "canonical_command": "learn thread-summary import",
+            "route_note": "Accepts only one strict bounded explicitly redacted aggregate file after --approved and an active supervised policy. It does not scan runtime state, mine Codex history, call a network, or write target/global state.",
+            "examples": [public_command("learn", "thread-summary", "import", "--repo", "/path/to/repo", "--input", "redacted-summary.json", "--approved", "--json")],
+            "output_schema": "learn_thread_summary_import_payload",
+            "docs": ["docs/backlog.md", "docs/harness-engineering.md", "docs/sidecar-retention.md", "docs/adr/0005-supervised-learning-ownership-boundaries.md"],
+            "stable_payload_fields": ["schema_version", "command", "event", "input_contract", "target_repo_writes", "sidecar_writes", "global_writes", "exit_code"],
+        },
+        ("learn", "thread-summary", "list"): {
+            "audience": ["human", "agent"],
+            "mutation": "read-only",
+            "target_repo_write": "never",
+            "sidecar_write": "never",
+            "route_role": "canonical",
+            "canonical_command": "learn thread-summary list",
+            "route_note": "Lists only schema-valid imported summary events without creating state.",
+            "examples": [public_command("learn", "thread-summary", "list", "--repo", "/path/to/repo", "--json")],
+            "output_schema": "learn_thread_summary_list_payload",
+            "docs": ["docs/sidecar-retention.md", "docs/adr/0005-supervised-learning-ownership-boundaries.md"],
+        },
+        ("learn", "upstream"): {
+            "audience": ["human", "agent"],
+            "mutation": "namespace",
+            "json_supported": False,
+            "route_role": "namespace",
+            "canonical_command": "learn upstream",
+            "examples": [public_command("learn", "upstream", "list", "--repo", "/path/to/repo", "--json")],
+            "output_schema": "subcommand_namespace",
+            "docs": ["docs/backlog.md", "docs/rollout-guide.md", "docs/sidecar-retention.md", "docs/adr/0005-supervised-learning-ownership-boundaries.md"],
+        },
+        ("learn", "upstream", "export"): {
+            "audience": ["human", "agent"],
+            "mutation": "writes-portable-sidecar-candidate-on-approved-decision",
+            "target_repo_write": "never",
+            "sidecar_write": "conditional",
+            "route_role": "canonical",
+            "canonical_command": "learn upstream export",
+            "route_note": "Exports only a redaction-confirmed public-ok/internal portable candidate from a currently approved decision and matching proposal. Source review remains a normal source task, commit, test, and release; only then may a human run kit self update and a guarded target update or reconcile. No propagation is automatic.",
+            "examples": [public_command("learn", "upstream", "export", "--repo", "/path/to/repo", "--decision-id", "dec-0123456789abcdef0123", "--privacy-label", "internal", "--redaction-confirmed", "--json")],
+            "output_schema": "learn_upstream_export_payload",
+            "docs": ["docs/backlog.md", "docs/harness-engineering.md", "docs/rollout-guide.md", "docs/sidecar-retention.md", "docs/adr/0005-supervised-learning-ownership-boundaries.md"],
+            "stable_payload_fields": ["schema_version", "command", "candidate", "rollout_guidance", "target_repo_writes", "sidecar_writes", "global_writes", "exit_code"],
+        },
+        ("learn", "upstream", "list"): {
+            "audience": ["human", "agent"],
+            "mutation": "read-only",
+            "target_repo_write": "never",
+            "sidecar_write": "never",
+            "route_role": "canonical",
+            "canonical_command": "learn upstream list",
+            "route_note": "Lists only schema-valid candidates whose decision/proposal lineage remains currently approved and unchanged; it never creates state or propagates changes.",
+            "examples": [public_command("learn", "upstream", "list", "--repo", "/path/to/repo", "--json")],
+            "output_schema": "learn_upstream_list_payload",
+            "docs": ["docs/rollout-guide.md", "docs/sidecar-retention.md", "docs/adr/0005-supervised-learning-ownership-boundaries.md"],
+        },
+        ("learn", "upstream", "reconcile"): {
+            "audience": ["human", "agent"],
+            "mutation": "read-only",
+            "target_repo_write": "never",
+            "sidecar_write": "never",
+            "route_role": "canonical",
+            "canonical_command": "learn upstream reconcile",
+            "route_note": "Compares valid candidate source baselines with the local current global-tool source ref, marking revalidation when the source advanced. It never runs kit self update, target update, or any propagation.",
+            "examples": [public_command("learn", "upstream", "reconcile", "--repo", "/path/to/repo", "--json")],
+            "output_schema": "learn_upstream_reconcile_payload",
+            "docs": ["docs/rollout-guide.md", "docs/sidecar-retention.md", "docs/adr/0005-supervised-learning-ownership-boundaries.md"],
+        },
+        ("learn", "evaluate"): {
+            "audience": ["human", "agent"],
+            "mutation": "read-only",
+            "target_repo_write": "never",
+            "sidecar_write": "never",
+            "route_role": "canonical",
+            "canonical_command": "learn evaluate",
+            "route_note": "Reports local schema-valid artifact and policy-gate facts only. It explicitly makes no effectiveness claim and never writes or propagates changes.",
+            "examples": [public_command("learn", "evaluate", "--repo", "/path/to/repo", "--json")],
+            "output_schema": "learn_evaluate_payload",
+            "docs": ["docs/backlog.md", "docs/harness-engineering.md", "docs/rollout-guide.md", "docs/sidecar-retention.md", "docs/adr/0005-supervised-learning-ownership-boundaries.md"],
         },
         ("backlog-status",): {
             "audience": ["human", "agent"],
@@ -4630,6 +4733,7 @@ def learning_paths_for(repo: Path, state: dict[str, Any] | None = None) -> dict[
         "proposals": str(root / "proposals"),
         "decisions": str(root / "decisions"),
         "context": str(root / "context"),
+        "upstream_candidates": str(root / "upstream-candidates"),
     }
 
 
@@ -4686,6 +4790,7 @@ def learning_sidecar_write_gate(repo: Path, schema_filename: str) -> tuple[dict[
             "proposals": "sidecar",
             "decisions": "sidecar",
             "context": "sidecar",
+            "upstream_candidates": "sidecar",
         }
         if (
             policy.get("schema_version") != 1
@@ -5304,8 +5409,10 @@ def read_learning_contexts(repo: Path, contexts_dir: Path | None = None, limit: 
     return contexts, warnings
 
 
-def learning_context_gate(repo: Path, decision_id: str) -> tuple[dict[str, Any], dict[str, Any], dict[str, Any], dict[str, Any] | None, dict[str, Any] | None]:
-    gate, policy_status, context = learning_sidecar_write_gate(repo, "learning-context.schema.json")
+def learning_approved_decision_gate(
+    repo: Path, decision_id: str, schema_filename: str, purpose: str
+) -> tuple[dict[str, Any], dict[str, Any], dict[str, Any], dict[str, Any] | None, dict[str, Any] | None]:
+    gate, policy_status, context = learning_sidecar_write_gate(repo, schema_filename)
     state = context["state"]
     learning_paths = context["paths"]
     policy = context["policy"]
@@ -5316,13 +5423,13 @@ def learning_context_gate(repo: Path, decision_id: str) -> tuple[dict[str, Any],
     decisions, _warnings = read_learning_decisions(Path(learning_paths["decisions"]))
     decision = next((item for item in decisions if item["decision_id"] == decision_id), None)
     if decision is None:
-        return {"state": "decision-missing", "reason": "context build requires an existing schema-valid local decision"}, policy_status, context, None, None
+        return {"state": "decision-missing", "reason": f"{purpose} requires an existing schema-valid local decision"}, policy_status, context, None, None
     if decision["repo"] != str(repo) or decision["outcome"] != "approved":
-        return {"state": "decision-not-approved", "reason": "context build requires an approved local decision for this repository"}, policy_status, context, None, None
+        return {"state": "decision-not-approved", "reason": f"{purpose} requires an approved local decision for this repository"}, policy_status, context, None, None
     proposals, _warnings = read_learning_proposals(Path(learning_paths["proposals"]))
     proposal = next((item for item in proposals if item["proposal_id"] == decision["proposal_id"]), None)
     if proposal is None:
-        return {"state": "proposal-missing", "reason": "context build requires the decision's linked schema-valid local proposal"}, policy_status, context, None, None
+        return {"state": "proposal-missing", "reason": f"{purpose} requires the decision's linked schema-valid local proposal"}, policy_status, context, None, None
     if (
         proposal["repo"] != str(repo)
         or proposal["status"] != "approved"
@@ -5331,6 +5438,10 @@ def learning_context_gate(repo: Path, decision_id: str) -> tuple[dict[str, Any],
     ):
         return {"state": "proposal-linkage-invalid", "reason": "the approved decision must match its approved linked local proposal"}, policy_status, context, None, None
     return gate, policy_status, context, decision, proposal
+
+
+def learning_context_gate(repo: Path, decision_id: str) -> tuple[dict[str, Any], dict[str, Any], dict[str, Any], dict[str, Any] | None, dict[str, Any] | None]:
+    return learning_approved_decision_gate(repo, decision_id, "learning-context.schema.json", "context build")
 
 
 def learn_context_build_payload(args: argparse.Namespace, repo: Path) -> tuple[dict[str, Any], int]:
@@ -5398,6 +5509,350 @@ def learn_context_list_payload(args: argparse.Namespace, repo: Path) -> tuple[di
             "target_repo_writes": target_repo_writes(False, reason="learn context list is read-only"),
             "sidecar_writes": sidecar_writes(False, reason="learn context list is read-only"),
             "global_writes": {"performed": False, "paths": [], "reason": "learn context list does not write global state"},
+            "sidecar_state": state,
+            "exit_code": 0,
+        },
+        0,
+    )
+
+
+def learning_upstream_candidate_validation_errors(candidate: Any) -> list[str]:
+    if not isinstance(candidate, dict):
+        return ["upstream candidate must be an object"]
+    required = {
+        "schema_version",
+        "candidate_id",
+        "created_at",
+        "policy_id",
+        "lineage",
+        "recommendation",
+        "origin",
+        "source_baseline",
+        "privacy_label",
+        "redaction_confirmed",
+    }
+    errors: list[str] = []
+    if set(candidate) != required:
+        errors.append("candidate fields do not match learning-upstream-candidate schema")
+    if candidate.get("schema_version") != 1:
+        errors.append("schema_version must be 1")
+    if not isinstance(candidate.get("candidate_id"), str) or not re.fullmatch(r"upc-[0-9a-f]{20}", candidate["candidate_id"]):
+        errors.append("candidate_id must be a stable upc- identifier")
+    if not learning_is_timestamp(candidate.get("created_at")):
+        errors.append("created_at must be an RFC3339 UTC timestamp")
+    if candidate.get("policy_id") != "supervised-learning":
+        errors.append("policy_id must be supervised-learning")
+    lineage = candidate.get("lineage")
+    if (
+        not isinstance(lineage, dict)
+        or set(lineage) != {"decision_id", "proposal_id"}
+        or not isinstance(lineage.get("decision_id"), str)
+        or not re.fullmatch(r"dec-[0-9a-f]{20}", lineage["decision_id"])
+        or not isinstance(lineage.get("proposal_id"), str)
+        or not re.fullmatch(r"prop-[0-9a-f]{20}", lineage["proposal_id"])
+    ):
+        errors.append("lineage must contain only stable approved decision and proposal IDs")
+    recommendation = candidate.get("recommendation")
+    if (
+        not isinstance(recommendation, dict)
+        or set(recommendation) != {"classification", "scope", "recommended_change"}
+        or recommendation.get("classification") not in LEARNING_PROPOSAL_CLASSIFICATIONS
+        or not isinstance(recommendation.get("scope"), list)
+        or not recommendation["scope"]
+        or len(recommendation["scope"]) > LEARNING_PROPOSAL_MAX_SCOPE_ITEMS
+        or any(not isinstance(item, str) or not item.strip() or len(item) > LEARNING_PROPOSAL_MAX_SCOPE_LENGTH for item in recommendation["scope"])
+        or not isinstance(recommendation.get("recommended_change"), str)
+        or not recommendation["recommended_change"].strip()
+        or len(recommendation["recommended_change"]) > LEARNING_PROPOSAL_MAX_CHANGE_LENGTH
+    ):
+        errors.append("recommendation must contain only bounded classification, scope, and recommended change")
+    origin = candidate.get("origin")
+    if (
+        not isinstance(origin, dict)
+        or set(origin) != {"kind", "repository_id"}
+        or origin.get("kind") != "sanitized-target"
+        or not isinstance(origin.get("repository_id"), str)
+        or not re.fullmatch(r"repo-[0-9a-f]{20}", origin["repository_id"])
+    ):
+        errors.append("origin must contain only a sanitized target identifier")
+    source_baseline = candidate.get("source_baseline")
+    if (
+        not isinstance(source_baseline, dict)
+        or set(source_baseline) != {"source_ref", "version"}
+        or not isinstance(source_baseline.get("source_ref"), str)
+        or not re.fullmatch(r"[0-9a-f]{40,64}", source_baseline["source_ref"])
+        or not isinstance(source_baseline.get("version"), str)
+        or not source_baseline["version"].strip()
+        or len(source_baseline["version"]) > 120
+    ):
+        errors.append("source_baseline must contain a local source ref and bounded version")
+    if candidate.get("privacy_label") not in LEARNING_UPSTREAM_EXPORT_PRIVACY_LABELS:
+        errors.append("privacy_label must be public-ok or internal for an upstream candidate")
+    if candidate.get("redaction_confirmed") is not True:
+        errors.append("redaction_confirmed must be true")
+    return errors
+
+
+def learning_upstream_candidate_lineage_validation_errors(
+    candidate: dict[str, Any], repo: Path, decisions_by_id: dict[str, dict[str, Any]], proposals_by_id: dict[str, dict[str, Any]]
+) -> list[str]:
+    errors: list[str] = []
+    lineage = candidate["lineage"]
+    decision = decisions_by_id.get(lineage["decision_id"])
+    if decision is None:
+        return ["candidate decision is missing or schema-invalid in the local sidecar"]
+    if decision["repo"] != str(repo) or decision["outcome"] != "approved":
+        return ["candidate decision is not currently approved for the requested repository"]
+    proposal = proposals_by_id.get(lineage["proposal_id"])
+    if proposal is None:
+        return ["candidate proposal is missing or schema-invalid in the local sidecar"]
+    if (
+        decision["proposal_id"] != proposal["proposal_id"]
+        or proposal["repo"] != str(repo)
+        or proposal["status"] != "approved"
+        or proposal["decision_id"] != decision["decision_id"]
+    ):
+        errors.append("candidate decision and proposal are no longer a current approved local link")
+    if candidate["recommendation"] != {
+        "classification": proposal["classification"],
+        "scope": proposal["scope"],
+        "recommended_change": proposal["recommended_change"],
+    }:
+        errors.append("candidate recommendation no longer matches its approved local proposal")
+    if candidate["privacy_label"] != proposal["privacy_label"] or candidate["privacy_label"] != decision["privacy_label"]:
+        errors.append("candidate privacy label no longer matches its approved local lineage")
+    expected_origin = "repo-" + hashlib.sha256(str(repo).encode("utf-8")).hexdigest()[:20]
+    if candidate["origin"].get("repository_id") != expected_origin:
+        errors.append("candidate sanitized origin does not match the requested repository")
+    return errors
+
+
+def read_learning_upstream_candidates(repo: Path, candidates_dir: Path, limit: int = 0) -> tuple[list[dict[str, Any]], list[str]]:
+    if not candidates_dir.exists():
+        return [], []
+    decisions, decision_warnings = read_learning_decisions(Path(learning_paths_for(repo)["decisions"]))
+    proposals, proposal_warnings = read_learning_proposals(Path(learning_paths_for(repo)["proposals"]))
+    decisions_by_id = {decision["decision_id"]: decision for decision in decisions}
+    proposals_by_id = {proposal["proposal_id"]: proposal for proposal in proposals}
+    candidates: list[dict[str, Any]] = []
+    warnings: list[str] = decision_warnings + proposal_warnings
+    for path in sorted(candidates_dir.glob("*.json")):
+        candidate = read_json(path)
+        errors = learning_upstream_candidate_validation_errors(candidate)
+        if not errors:
+            errors = learning_upstream_candidate_lineage_validation_errors(candidate, repo, decisions_by_id, proposals_by_id)
+        if errors:
+            warnings.append(f"Skipped invalid upstream candidate {path.name}: {'; '.join(errors)}")
+            continue
+        candidates.append(candidate)
+    candidates.sort(key=lambda item: (item["created_at"], item["candidate_id"]))
+    if limit > 0:
+        candidates = candidates[-limit:]
+    return candidates, warnings
+
+
+def current_global_source_baseline() -> dict[str, str] | None:
+    source_ref = git_text(ROOT, ["rev-parse", "HEAD"])
+    if not re.fullmatch(r"[0-9a-f]{40,64}", source_ref):
+        return None
+    return {"source_ref": source_ref, "version": kit_version()}
+
+
+def learning_upstream_candidate_from_decision(
+    decision: dict[str, Any], proposal: dict[str, Any], repo: Path, privacy_label: str, source_baseline: dict[str, str]
+) -> dict[str, Any]:
+    return {
+        "schema_version": 1,
+        "candidate_id": "upc-" + uuid.uuid4().hex[:20],
+        "created_at": now(),
+        "policy_id": "supervised-learning",
+        "lineage": {"decision_id": decision["decision_id"], "proposal_id": proposal["proposal_id"]},
+        "recommendation": {
+            "classification": proposal["classification"],
+            "scope": proposal["scope"],
+            "recommended_change": proposal["recommended_change"],
+        },
+        "origin": {
+            "kind": "sanitized-target",
+            "repository_id": "repo-" + hashlib.sha256(str(repo).encode("utf-8")).hexdigest()[:20],
+        },
+        "source_baseline": source_baseline,
+        "privacy_label": privacy_label,
+        "redaction_confirmed": True,
+    }
+
+
+def learning_upstream_rollout_guidance() -> dict[str, Any]:
+    return {
+        "source_review_required": True,
+        "automatic_propagation": False,
+        "normal_source_workflow": [
+            "Open a normal source task for the candidate.",
+            "Review, implement, commit, test, and release the source change through normal maintainer controls.",
+            "Only after that source release, a human may run kit self update and then a guarded target update or reconcile.",
+        ],
+        "note": "Export records a portable review candidate only. It never updates source, the global tool, or a target repository.",
+    }
+
+
+def learn_upstream_export_payload(args: argparse.Namespace, repo: Path) -> tuple[dict[str, Any], int]:
+    decision_id = args.decision_id.strip()
+    gate, policy_status, context, decision, proposal = learning_approved_decision_gate(
+        repo, decision_id, "learning-upstream-candidate.schema.json", "upstream export"
+    )
+    state = context["state"]
+    learning_paths = context["paths"]
+    policy = context["policy"]
+    if gate["state"] != "approved" or decision is None or proposal is None:
+        return learning_write_error_payload("learn upstream export", repo, state, learning_paths, policy_status, gate)
+    if args.privacy_label not in LEARNING_UPSTREAM_EXPORT_PRIVACY_LABELS:
+        privacy_gate = {"state": "privacy-not-exportable", "reason": "upstream export permits only public-ok or internal privacy labels"}
+        return learning_write_error_payload("learn upstream export", repo, state, learning_paths, policy_status, privacy_gate)
+    if not args.redaction_confirmed:
+        redaction_gate = {"state": "redaction-confirmation-required", "reason": "pass --redaction-confirmed after verifying the portable candidate is redacted"}
+        return learning_write_error_payload("learn upstream export", repo, state, learning_paths, policy_status, redaction_gate)
+    if proposal["privacy_label"] != args.privacy_label or decision["privacy_label"] != args.privacy_label:
+        privacy_gate = {"state": "privacy-label-mismatch", "reason": "export privacy must match the approved decision and linked proposal"}
+        return learning_write_error_payload("learn upstream export", repo, state, learning_paths, policy_status, privacy_gate)
+    source_baseline = current_global_source_baseline()
+    if source_baseline is None:
+        baseline_gate = {"state": "source-baseline-unavailable", "reason": "a local current source ref is required before exporting an upstream candidate"}
+        return learning_write_error_payload("learn upstream export", repo, state, learning_paths, policy_status, baseline_gate)
+    candidate = learning_upstream_candidate_from_decision(decision, proposal, repo, args.privacy_label, source_baseline)
+    errors = learning_upstream_candidate_validation_errors(candidate)
+    if errors:
+        invalid_gate = {"state": "schema-invalid", "reason": "candidate failed local learning-upstream-candidate schema validation"}
+        return learning_write_error_payload("learn upstream export", repo, state, learning_paths, policy_status, invalid_gate, errors=errors)
+    state, init_paths = ensure_sidecar(repo, "learn upstream export")
+    learning_paths = learning_paths_for(repo, state)
+    candidates_dir = Path(learning_paths["upstream_candidates"])
+    candidates_dir.mkdir(parents=True, exist_ok=True)
+    candidate_path = candidates_dir / f"{candidate['candidate_id']}.json"
+    write_json_file(candidate_path, candidate)
+    paths = init_paths + [learning_paths["root"], learning_paths["upstream_candidates"], str(candidate_path)]
+    return (
+        {
+            "schema_version": 1,
+            "command": "learn upstream export",
+            "action": "export",
+            "repo": str(repo),
+            "policy_state": policy_status["state"],
+            "policy": policy_status,
+            "learning_paths": {"sidecar": learning_paths},
+            "gate": gate,
+            "candidate": candidate,
+            "candidate_path": str(candidate_path),
+            "rollout_guidance": learning_upstream_rollout_guidance(),
+            "target_repo_writes": target_repo_writes(False, reason="upstream candidates are stored only in the repository sidecar"),
+            "sidecar_writes": sidecar_writes(True, paths=paths, reason="explicit redacted upstream candidate export"),
+            "global_writes": {"performed": False, "paths": [], "reason": "upstream export does not write source or global tool state"},
+            "sidecar_state": state,
+            "exit_code": 0,
+        },
+        0,
+    )
+
+
+def learn_upstream_list_payload(args: argparse.Namespace, repo: Path) -> tuple[dict[str, Any], int]:
+    state = sidecar_state(repo)
+    learning_paths = learning_paths_for(repo, state)
+    candidates, warnings = read_learning_upstream_candidates(repo, Path(learning_paths["upstream_candidates"]), max(args.limit, 0))
+    return (
+        {
+            "schema_version": 1,
+            "command": "learn upstream list",
+            "action": "list",
+            "repo": str(repo),
+            "candidates_path": learning_paths["upstream_candidates"],
+            "candidates": candidates,
+            "count": len(candidates),
+            "warnings": warnings,
+            "rollout_guidance": learning_upstream_rollout_guidance(),
+            "target_repo_writes": target_repo_writes(False, reason="learn upstream list is read-only"),
+            "sidecar_writes": sidecar_writes(False, reason="learn upstream list is read-only"),
+            "global_writes": {"performed": False, "paths": [], "reason": "learn upstream list does not write source or global tool state"},
+            "sidecar_state": state,
+            "exit_code": 0,
+        },
+        0,
+    )
+
+
+def learn_upstream_reconcile_payload(args: argparse.Namespace, repo: Path) -> tuple[dict[str, Any], int]:
+    state = sidecar_state(repo)
+    learning_paths = learning_paths_for(repo, state)
+    candidates, warnings = read_learning_upstream_candidates(repo, Path(learning_paths["upstream_candidates"]), max(args.limit, 0))
+    current = current_global_source_baseline()
+    reconciled: list[dict[str, Any]] = []
+    for candidate in candidates:
+        baseline_ref = candidate["source_baseline"]["source_ref"]
+        if current is None:
+            status = "current-source-unavailable"
+            revalidation_required = True
+        elif baseline_ref == current["source_ref"]:
+            status = "current"
+            revalidation_required = False
+        elif run_git(ROOT, ["merge-base", "--is-ancestor", baseline_ref, current["source_ref"]]).returncode == 0:
+            status = "source-advanced"
+            revalidation_required = True
+        else:
+            status = "source-ref-mismatch"
+            revalidation_required = True
+        reconciled.append(
+            {
+                "candidate_id": candidate["candidate_id"],
+                "baseline": candidate["source_baseline"],
+                "current_source": current,
+                "status": status,
+                "revalidation_required": revalidation_required,
+            }
+        )
+    return (
+        {
+            "schema_version": 1,
+            "command": "learn upstream reconcile",
+            "action": "reconcile",
+            "repo": str(repo),
+            "candidates": reconciled,
+            "count": len(reconciled),
+            "warnings": warnings,
+            "rollout_guidance": learning_upstream_rollout_guidance(),
+            "target_repo_writes": target_repo_writes(False, reason="upstream reconcile only compares local candidate baselines"),
+            "sidecar_writes": sidecar_writes(False, reason="upstream reconcile is read-only"),
+            "global_writes": {"performed": False, "paths": [], "reason": "upstream reconcile never updates source or global tool state"},
+            "sidecar_state": state,
+            "exit_code": 0,
+        },
+        0,
+    )
+
+
+def learn_evaluate_payload(args: argparse.Namespace, repo: Path) -> tuple[dict[str, Any], int]:
+    state = sidecar_state(repo)
+    learning_paths = learning_paths_for(repo, state)
+    events, event_warnings = read_learning_events(Path(learning_paths["events"]))
+    candidates, candidate_warnings = read_learning_upstream_candidates(repo, Path(learning_paths["upstream_candidates"]))
+    imported_event_count = sum(1 for event in events if event["provenance"].get("capture") == "thread-summary-import")
+    return (
+        {
+            "schema_version": 1,
+            "command": "learn evaluate",
+            "action": "evaluate",
+            "repo": str(repo),
+            "facts": {
+                "thread_summary_events": imported_event_count,
+                "schema_valid_events": len(events),
+                "upstream_candidates": len(candidates),
+            },
+            "caveat": {
+                "not_effectiveness_claim": True,
+                "note": "This is a local artifact and policy-gate summary, not a claim that supervised learning or any recommendation is effective.",
+            },
+            "warnings": event_warnings + candidate_warnings,
+            "rollout_guidance": learning_upstream_rollout_guidance(),
+            "target_repo_writes": target_repo_writes(False, reason="learn evaluate is read-only"),
+            "sidecar_writes": sidecar_writes(False, reason="learn evaluate is read-only"),
+            "global_writes": {"performed": False, "paths": [], "reason": "learn evaluate does not write source or global tool state"},
             "sidecar_state": state,
             "exit_code": 0,
         },
@@ -5512,8 +5967,13 @@ def learning_event_validation_errors(event: Any) -> list[str]:
     if event.get("outcome") not in LEARNING_EVENT_OUTCOMES:
         errors.append("outcome is not allowed by learning-event schema")
     provenance = event.get("provenance")
-    if not isinstance(provenance, dict) or provenance != {"source": provenance.get("source"), "capture": "explicit-cli-input"} or provenance.get("source") not in LEARNING_EVENT_SOURCES:
-        errors.append("provenance must contain an explicit allowed source and explicit-cli-input capture")
+    if (
+        not isinstance(provenance, dict)
+        or set(provenance) != {"source", "capture"}
+        or provenance.get("source") not in LEARNING_EVENT_SOURCES
+        or provenance.get("capture") not in {"explicit-cli-input", "thread-summary-import"}
+    ):
+        errors.append("provenance must contain an explicit allowed source and an allowed explicit capture method")
     if event.get("privacy_label") not in LEARNING_PRIVACY_LABELS:
         errors.append("privacy_label is not allowed by learning-event schema")
     supervision = event.get("supervision")
@@ -5629,6 +6089,198 @@ def learn_event_list_payload(args: argparse.Namespace, repo: Path) -> tuple[dict
             "target_repo_writes": target_repo_writes(False, reason="learn event list is read-only"),
             "sidecar_writes": sidecar_writes(False, reason="learn event list is read-only"),
             "global_writes": {"performed": False, "paths": [], "reason": "learn event list is read-only"},
+            "sidecar_state": state,
+            "exit_code": 0,
+        },
+        0,
+    )
+
+
+def learning_thread_summary_validation_errors(summary: Any) -> list[str]:
+    if not isinstance(summary, dict):
+        return ["thread summary must be a JSON object"]
+    required = {"schema_version", "summary_id", "reported_at", "redaction", "aggregate"}
+    errors: list[str] = []
+    if set(summary) != required:
+        errors.append("thread summary fields do not match learning-thread-summary schema")
+    if summary.get("schema_version") != 1:
+        errors.append("schema_version must be 1")
+    if not isinstance(summary.get("summary_id"), str) or not re.fullmatch(r"tsum-[0-9a-f]{20}", summary["summary_id"]):
+        errors.append("summary_id must be a stable tsum- identifier")
+    if not learning_is_timestamp(summary.get("reported_at")):
+        errors.append("reported_at must be an RFC3339 UTC timestamp")
+    redaction = summary.get("redaction")
+    required_redaction = {
+        "human_confirmed": True,
+        "raw_transcript_excluded": True,
+        "raw_feedback_excluded": True,
+        "raw_event_content_excluded": True,
+        "private_content_excluded": True,
+    }
+    if redaction != required_redaction:
+        errors.append("redaction must explicitly confirm that raw and private content is excluded")
+    aggregate = summary.get("aggregate")
+    required_aggregate = {"interaction_count", "outcome_counts", "classification_counts", "redacted_summary"}
+    if not isinstance(aggregate, dict) or set(aggregate) != required_aggregate:
+        errors.append("aggregate fields do not match learning-thread-summary schema")
+        return errors
+    interaction_count = aggregate.get("interaction_count")
+    if not isinstance(interaction_count, int) or isinstance(interaction_count, bool) or not 1 <= interaction_count <= LEARNING_THREAD_SUMMARY_MAX_INTERACTIONS:
+        errors.append(f"interaction_count must be an integer from 1 to {LEARNING_THREAD_SUMMARY_MAX_INTERACTIONS}")
+    outcome_counts = aggregate.get("outcome_counts")
+    expected_outcomes = {"confirmed", "inconclusive", "regressed"}
+    if (
+        not isinstance(outcome_counts, dict)
+        or set(outcome_counts) != expected_outcomes
+        or any(not isinstance(value, int) or isinstance(value, bool) or not 0 <= value <= LEARNING_THREAD_SUMMARY_MAX_INTERACTIONS for value in outcome_counts.values())
+        or (isinstance(interaction_count, int) and sum(outcome_counts.values()) != interaction_count)
+    ):
+        errors.append("outcome_counts must be bounded confirmed, inconclusive, and regressed totals that equal interaction_count")
+    classification_counts = aggregate.get("classification_counts")
+    if (
+        not isinstance(classification_counts, dict)
+        or not classification_counts
+        or len(classification_counts) > len(LEARNING_PROPOSAL_CLASSIFICATIONS)
+        or any(key not in LEARNING_PROPOSAL_CLASSIFICATIONS for key in classification_counts)
+        or any(not isinstance(value, int) or isinstance(value, bool) or not 0 <= value <= LEARNING_THREAD_SUMMARY_MAX_INTERACTIONS for value in classification_counts.values())
+        or (isinstance(interaction_count, int) and sum(classification_counts.values()) != interaction_count)
+    ):
+        errors.append("classification_counts must contain bounded allowed classification totals that equal interaction_count")
+    redacted_summary = aggregate.get("redacted_summary")
+    if (
+        not isinstance(redacted_summary, str)
+        or not redacted_summary.strip()
+        or len(redacted_summary) > LEARNING_THREAD_SUMMARY_MAX_REDACTED_SUMMARY_LENGTH
+    ):
+        errors.append(f"redacted_summary must be non-empty and at most {LEARNING_THREAD_SUMMARY_MAX_REDACTED_SUMMARY_LENGTH} characters")
+    return errors
+
+
+def read_learning_thread_summary_input(input_path: str) -> tuple[dict[str, Any] | None, list[str]]:
+    path = Path(input_path).expanduser()
+    try:
+        if not path.is_file():
+            return None, ["input must name a readable regular JSON file"]
+        if path.stat().st_size > LEARNING_THREAD_SUMMARY_MAX_FILE_BYTES:
+            return None, [f"input exceeds the {LEARNING_THREAD_SUMMARY_MAX_FILE_BYTES}-byte thread-summary limit"]
+        raw = path.read_bytes()
+    except OSError as exc:
+        return None, [f"input could not be read: {exc}"]
+    try:
+        payload = json.loads(raw.decode("utf-8"))
+    except (UnicodeDecodeError, json.JSONDecodeError) as exc:
+        return None, [f"input must be valid UTF-8 JSON: {exc}"]
+    errors = learning_thread_summary_validation_errors(payload)
+    return payload if not errors else None, errors
+
+
+def learning_event_from_thread_summary(summary: dict[str, Any], repo: Path, policy: dict[str, Any]) -> dict[str, Any]:
+    aggregate = summary["aggregate"]
+    outcomes = aggregate["outcome_counts"]
+    classifications = aggregate["classification_counts"]
+    outcome = "confirmed" if outcomes["confirmed"] else "regressed" if outcomes["regressed"] else "inconclusive" if outcomes["inconclusive"] else "unknown"
+    classification_summary = ", ".join(f"{name}:{classifications[name]}" for name in sorted(classifications))
+    event = {
+        "schema_version": 1,
+        "event_id": "evt-" + uuid.uuid4().hex[:20],
+        "occurred_at": now(),
+        "policy_id": "supervised-learning",
+        "repo": str(repo),
+        "kind": "observation",
+        "summary": (
+            f"Redacted aggregate thread summary: {aggregate['interaction_count']} interactions; "
+            f"confirmed={outcomes['confirmed']}, inconclusive={outcomes['inconclusive']}, regressed={outcomes['regressed']}; "
+            f"classifications={classification_summary}."
+        ),
+        "evidence": [],
+        "outcome": outcome,
+        "provenance": {"source": "human", "capture": "thread-summary-import"},
+        "privacy_label": (policy.get("retention") or {}).get("privacy_label"),
+        "supervision": {
+            "human_approval_required": True,
+            "approval_state": "approved",
+            "approval_flag": True,
+        },
+    }
+    return event
+
+
+def learn_thread_summary_import_payload(args: argparse.Namespace, repo: Path) -> tuple[dict[str, Any], int]:
+    gate, policy_status, context = learning_event_gate(repo, args)
+    state = context["state"]
+    learning_paths = context["paths"]
+    policy = context["policy"]
+    if gate["state"] == "approval-required":
+        gate = {"state": "human-approval-required", "reason": "pass --approved after explicit human approval to import a thread summary"}
+    if gate["state"] != "approved":
+        return learning_write_error_payload("learn thread-summary import", repo, state, learning_paths, policy_status, gate)
+    schema_path = repo / "schemas" / "learning-thread-summary.schema.json"
+    if not schema_path.is_file():
+        missing_gate = {"state": "schema-missing", "reason": "installed learning-thread-summary schema is missing"}
+        return learning_write_error_payload("learn thread-summary import", repo, state, learning_paths, policy_status, missing_gate)
+    summary, errors = read_learning_thread_summary_input(args.input)
+    if errors or summary is None:
+        invalid_gate = {"state": "schema-invalid", "reason": "input must be a strict explicitly redacted aggregate thread summary"}
+        return learning_write_error_payload("learn thread-summary import", repo, state, learning_paths, policy_status, invalid_gate, errors=errors)
+    event = learning_event_from_thread_summary(summary, repo, policy)
+    event_errors = learning_event_validation_errors(event)
+    if event_errors:
+        invalid_gate = {"state": "schema-invalid", "reason": "imported event failed local learning-event schema validation"}
+        return learning_write_error_payload("learn thread-summary import", repo, state, learning_paths, policy_status, invalid_gate, errors=event_errors)
+    state, init_paths = ensure_sidecar(repo, "learn thread-summary import")
+    learning_paths = learning_paths_for(repo, state)
+    events_dir = Path(learning_paths["events"])
+    events_dir.mkdir(parents=True, exist_ok=True)
+    event_path = events_dir / f"{event['event_id']}.json"
+    write_json_file(event_path, event)
+    paths = init_paths + [learning_paths["root"], learning_paths["events"], str(event_path)]
+    return (
+        {
+            "schema_version": 1,
+            "command": "learn thread-summary import",
+            "action": "import",
+            "repo": str(repo),
+            "policy_state": policy_status["state"],
+            "policy": policy_status,
+            "learning_paths": {"sidecar": learning_paths},
+            "gate": gate,
+            "event": event,
+            "event_path": str(event_path),
+            "input_contract": {
+                "schema": "learning-thread-summary.schema.json",
+                "raw_transcript_scan": False,
+                "history_mining": False,
+                "network_calls": False,
+                "note": "The import accepts only one bounded, explicitly redacted aggregate file and stores only its derived event summary.",
+            },
+            "target_repo_writes": target_repo_writes(False, reason="thread-summary import stores one derived event only in the repository sidecar"),
+            "sidecar_writes": sidecar_writes(True, paths=paths, reason="explicit approved thread-summary import"),
+            "global_writes": {"performed": False, "paths": [], "reason": "thread-summary import does not write global state"},
+            "sidecar_state": state,
+            "exit_code": 0,
+        },
+        0,
+    )
+
+
+def learn_thread_summary_list_payload(args: argparse.Namespace, repo: Path) -> tuple[dict[str, Any], int]:
+    state = sidecar_state(repo)
+    learning_paths = learning_paths_for(repo, state)
+    events, warnings = read_learning_events(Path(learning_paths["events"]), max(args.limit, 0))
+    imported_events = [event for event in events if event["provenance"].get("capture") == "thread-summary-import"]
+    return (
+        {
+            "schema_version": 1,
+            "command": "learn thread-summary list",
+            "action": "list",
+            "repo": str(repo),
+            "events_path": learning_paths["events"],
+            "events": imported_events,
+            "count": len(imported_events),
+            "warnings": warnings,
+            "target_repo_writes": target_repo_writes(False, reason="learn thread-summary list is read-only"),
+            "sidecar_writes": sidecar_writes(False, reason="learn thread-summary list is read-only"),
+            "global_writes": {"performed": False, "paths": [], "reason": "learn thread-summary list does not write global state"},
             "sidecar_state": state,
             "exit_code": 0,
         },
@@ -8183,6 +8835,7 @@ def learning_retention_preview(repo: Path) -> dict[str, Any]:
     proposals, proposal_warnings = read_learning_proposals(Path(paths["proposals"]))
     decisions, decision_warnings = read_learning_decisions(Path(paths["decisions"]))
     contexts, context_warnings = read_learning_contexts(repo, Path(paths["context"]))
+    candidates, candidate_warnings = read_learning_upstream_candidates(repo, Path(paths["upstream_candidates"]))
     current = datetime.now(timezone.utc)
     expired: list[dict[str, str]] = []
     expiring: list[dict[str, str]] = []
@@ -8203,6 +8856,7 @@ def learning_retention_preview(repo: Path) -> dict[str, Any]:
             "proposals": len(proposals),
             "decisions": len(decisions),
             "contexts": len(contexts),
+            "upstream_candidates": len(candidates),
         },
         "expiry_preview": {
             "deletes_by_default": False,
@@ -8211,7 +8865,7 @@ def learning_retention_preview(repo: Path) -> dict[str, Any]:
             "expired_contexts": expired[:LEARNING_CONTEXT_MAX_LIST],
             "expiring_contexts": expiring[:LEARNING_CONTEXT_MAX_LIST],
         },
-        "warnings": event_warnings + proposal_warnings + decision_warnings + context_warnings,
+        "warnings": event_warnings + proposal_warnings + decision_warnings + context_warnings + candidate_warnings,
         "note": "Learning retention is preview-only in this phase; Kit provides no learning deletion command.",
     }
 
@@ -13072,6 +13726,65 @@ def build_parser() -> argparse.ArgumentParser:
     add_common_repo_args(learn_context_list)
     learn_context_list.add_argument("--limit", type=int, default=LEARNING_CONTEXT_MAX_LIST, help="Maximum contexts to list. Use 0 for all contexts.")
 
+    learn_thread_summary = learn_subparsers.add_parser(
+        "thread-summary",
+        help="Import one explicitly redacted aggregate thread summary or list imported event summaries.",
+    )
+    learn_thread_summary_subparsers = learn_thread_summary.add_subparsers(
+        dest="learn_thread_summary_command",
+        required=True,
+        parser_class=KitArgumentParser,
+    )
+    learn_thread_summary_import = learn_thread_summary_subparsers.add_parser(
+        "import",
+        help="Import one strict redacted aggregate summary as a supervised sidecar event; no history scanning or network calls occur.",
+    )
+    add_common_repo_args(learn_thread_summary_import)
+    learn_thread_summary_import.add_argument("--input", required=True, help="Strict redacted aggregate learning-thread-summary JSON file.")
+    learn_thread_summary_import.add_argument("--approved", action="store_true", help="Confirm explicit human approval for this exact thread-summary import.")
+    learn_thread_summary_list = learn_thread_summary_subparsers.add_parser(
+        "list",
+        help="List schema-valid imported thread-summary events without creating state.",
+    )
+    add_common_repo_args(learn_thread_summary_list)
+    learn_thread_summary_list.add_argument("--limit", type=int, default=50, help="Maximum imported summaries to list. Use 0 for all events.")
+
+    learn_upstream = learn_subparsers.add_parser(
+        "upstream",
+        help="Export approved redacted source-review candidates or inspect local candidate baselines.",
+    )
+    learn_upstream_subparsers = learn_upstream.add_subparsers(
+        dest="learn_upstream_command",
+        required=True,
+        parser_class=KitArgumentParser,
+    )
+    learn_upstream_export = learn_upstream_subparsers.add_parser(
+        "export",
+        help="Write one portable local candidate from an approved decision and linked proposal; no propagation occurs.",
+    )
+    add_common_repo_args(learn_upstream_export)
+    learn_upstream_export.add_argument("--decision-id", required=True, help="Existing schema-valid approved dec- identifier.")
+    learn_upstream_export.add_argument("--privacy-label", required=True, choices=LEARNING_PRIVACY_LABELS, help="Export privacy label; only public-ok or internal is accepted.")
+    learn_upstream_export.add_argument("--redaction-confirmed", action="store_true", help="Confirm that this exact portable candidate is redacted for source review.")
+    learn_upstream_list = learn_upstream_subparsers.add_parser(
+        "list",
+        help="List schema-valid local upstream candidates without creating state.",
+    )
+    add_common_repo_args(learn_upstream_list)
+    learn_upstream_list.add_argument("--limit", type=int, default=LEARNING_UPSTREAM_CANDIDATE_MAX_LIST, help="Maximum candidates to list. Use 0 for all candidates.")
+    learn_upstream_reconcile = learn_upstream_subparsers.add_parser(
+        "reconcile",
+        help="Read-only compare candidate baselines with the current local tool source ref; never update anything.",
+    )
+    add_common_repo_args(learn_upstream_reconcile)
+    learn_upstream_reconcile.add_argument("--limit", type=int, default=LEARNING_UPSTREAM_CANDIDATE_MAX_LIST, help="Maximum candidates to reconcile. Use 0 for all candidates.")
+
+    learn_evaluate = learn_subparsers.add_parser(
+        "evaluate",
+        help="Read-only local learning artifact facts with no claim of effectiveness.",
+    )
+    add_common_repo_args(learn_evaluate)
+
     mode_check = subparsers.add_parser("mode-check", help="Select lite, standard, or release-gated harness mode without writes.")
     add_common_repo_args(mode_check)
     mode_check.add_argument("--mode", choices=HARNESS_MODE_CHOICES, default="auto", help="Requested harness mode. auto lets kit choose.")
@@ -13758,6 +14471,36 @@ def main(argv: list[str] | None = None) -> int:
         return exit_code
     if args.command == "learn" and args.learn_command == "context" and args.learn_context_command == "list":
         payload, exit_code = learn_context_list_payload(args, repo)
+        payload = apply_runtime_mode(payload, raw_argv, args)
+        render_json(payload) if args.json else render_json(payload)
+        return exit_code
+    if args.command == "learn" and args.learn_command == "thread-summary" and args.learn_thread_summary_command == "import":
+        payload, exit_code = learn_thread_summary_import_payload(args, repo)
+        payload = apply_runtime_mode(payload, raw_argv, args)
+        render_json(payload) if args.json else render_json(payload)
+        return exit_code
+    if args.command == "learn" and args.learn_command == "thread-summary" and args.learn_thread_summary_command == "list":
+        payload, exit_code = learn_thread_summary_list_payload(args, repo)
+        payload = apply_runtime_mode(payload, raw_argv, args)
+        render_json(payload) if args.json else render_json(payload)
+        return exit_code
+    if args.command == "learn" and args.learn_command == "upstream" and args.learn_upstream_command == "export":
+        payload, exit_code = learn_upstream_export_payload(args, repo)
+        payload = apply_runtime_mode(payload, raw_argv, args)
+        render_json(payload) if args.json else render_json(payload)
+        return exit_code
+    if args.command == "learn" and args.learn_command == "upstream" and args.learn_upstream_command == "list":
+        payload, exit_code = learn_upstream_list_payload(args, repo)
+        payload = apply_runtime_mode(payload, raw_argv, args)
+        render_json(payload) if args.json else render_json(payload)
+        return exit_code
+    if args.command == "learn" and args.learn_command == "upstream" and args.learn_upstream_command == "reconcile":
+        payload, exit_code = learn_upstream_reconcile_payload(args, repo)
+        payload = apply_runtime_mode(payload, raw_argv, args)
+        render_json(payload) if args.json else render_json(payload)
+        return exit_code
+    if args.command == "learn" and args.learn_command == "evaluate":
+        payload, exit_code = learn_evaluate_payload(args, repo)
         payload = apply_runtime_mode(payload, raw_argv, args)
         render_json(payload) if args.json else render_json(payload)
         return exit_code

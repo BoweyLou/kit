@@ -50,6 +50,30 @@ decision IDs as sidecar packet lineage, without changing target task files or
 receipt mechanics. `kit retention --json` previews learning counts and context
 expiry only; it does not delete learning artifacts.
 
+Phase 5 adds an explicit offline aggregate import. `kit learn thread-summary
+import --input redacted-summary.json --approved --json` accepts only a strict
+bounded file that confirms transcript, feedback, event, and private content
+were excluded. It never scans local thread history or runtime state, and it
+never calls a network. Under this active supervised policy it writes one
+derived sidecar event with `thread-summary-import` provenance; invalid,
+unapproved, unredacted, oversized, private, or unsupported input writes
+nothing. `kit learn thread-summary list --json` is read-only.
+
+`kit learn upstream export` is a separate, redaction-confirmed local handoff
+for a currently schema-valid approved decision and linked approved proposal.
+It accepts only `public-ok` or `internal` privacy and writes a portable sidecar
+candidate containing bounded recommendation/classification/scope, decision and
+proposal IDs, sanitized origin, and source baseline. It excludes event IDs,
+raw summaries, evidence, feedback, context, and target paths. `kit learn
+upstream list`, `kit learn upstream reconcile`, and `kit learn evaluate` are
+read-only and skip stale/tampered candidate lineage. Reconcile never updates
+source, global tooling, or a target.
+
+Candidates are source-review inputs only. Handle them through a normal source
+task, commit, test, and release. Only after that release may a human choose
+`kit self update` and then a guarded target update or reconcile; Kit never
+propagates a candidate automatically.
+
 Rejected, unapproved, invalid, disabled, or unenrolled attempts create no
 sidecar, target, or global state. Kit never harvests conversations or feedback
 text, and it does not reinterpret the separate `kit feedback` ledger.

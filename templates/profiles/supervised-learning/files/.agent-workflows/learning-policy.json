@@ -10,7 +10,8 @@
     "events": "sidecar",
     "proposals": "sidecar",
     "decisions": "sidecar",
-    "context": "sidecar"
+    "context": "sidecar",
+    "upstream_candidates": "sidecar"
   },
   "retention": {
     "privacy_label": "private-local",
@@ -26,7 +27,13 @@
       "learn decision record",
       "learn decision list",
       "learn context build",
-      "learn context list"
+      "learn context list",
+      "learn thread-summary import",
+      "learn thread-summary list",
+      "learn upstream export",
+      "learn upstream list",
+      "learn upstream reconcile",
+      "learn evaluate"
     ],
     "deferred_commands": []
   }

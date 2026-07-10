@@ -44,7 +44,7 @@ covered.
 ### Supervised learning records
 
 The `supervised-learning` profile is opt-in. Keep its initial target policy at
-`.agent-workflows/learning-policy.json` target-owned, while the five learning
+`.agent-workflows/learning-policy.json` target-owned, while the seven learning
 schemas remain canonical under `workflows/schemas/` and mirrored into
 `templates/common/` for installation. After changing a learning schema, run
 `make workflow-source-export`, then verify the profile installer and
@@ -79,6 +79,25 @@ rejected/deferred/missing/invalid decision negatives that fail before packet
 sidecar creation. Preserve target and enrolled-target registry bytes; do not
 alter receipt mechanics or target task files. Run `kit retention --json` to
 cover learning counts and expiry preview only—there is no deletion command.
+
+Phase 5 requires an isolated-XDG temporary committed-target CLI e2e after the
+Phase 4 flow. It must prove strict redacted summary input, active policy plus
+`--approved`, one imported `thread-summary-import` event, and no-write
+negatives for absent approval, redaction false, unsupported/raw fields, and
+oversized input. Continue through an approved proposal/decision and a
+redaction-confirmed `public-ok` or `internal` upstream export. Assert the
+candidate excludes raw summary text, event IDs, evidence/context, and target
+paths; preserve target and registry bytes. List, reconcile, and evaluate are
+read-only. Reconcile must mark revalidation when the source baseline is
+advanced, while a stale or tampered candidate is skipped after revalidating
+current decision/proposal lineage. `scripts/mine_codex_threads.py` is local
+source research only: do not add it to installer `CORE_SCRIPTS`, the CLI, or a
+runtime dependency.
+
+Exported candidates are review inputs only. Document and preserve the normal
+source task, commit, test, and release path; only then may a human run `kit
+self update` and a guarded target update or reconcile. Never automate that
+propagation.
 
 Do not add `supervised-learning` to a default or named preset without an
 explicit approved rollout decision. Event records are bounded, explicit CLI

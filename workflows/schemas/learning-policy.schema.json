@@ -23,14 +23,15 @@
     "ownership": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["policy", "schemas", "events", "proposals", "decisions", "context"],
+      "required": ["policy", "schemas", "events", "proposals", "decisions", "context", "upstream_candidates"],
       "properties": {
         "policy": {"type": "string", "const": "target"},
         "schemas": {"type": "string", "const": "kit-managed"},
         "events": {"type": "string", "const": "sidecar"},
         "proposals": {"type": "string", "const": "sidecar"},
         "decisions": {"type": "string", "const": "sidecar"},
-        "context": {"type": "string", "const": "sidecar"}
+        "context": {"type": "string", "const": "sidecar"},
+        "upstream_candidates": {"type": "string", "const": "sidecar"}
       }
     },
     "retention": {

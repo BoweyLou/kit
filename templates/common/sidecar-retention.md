@@ -17,3 +17,14 @@ Archive receipts that support release decisions, migration proof, rollback decis
 ## Purge Preview
 
 Use `kit retention --json` to list sidecar directories, privacy labels, retention windows, and candidate counts. Review the preview manually before deleting anything with external tools.
+
+## Supervised Learning Events
+
+When an installed enabled target-owned supervised-learning policy is present,
+`kit learn event record` writes a schema-valid approved event only to
+`<sidecar>/learning/events/`. It requires explicit bounded CLI input and
+`--approved`; rejected, unapproved, invalid, disabled, and unenrolled attempts
+write no sidecar, target, or global state. `kit learn event list` and `kit
+calibration` are read-only; calibration reports an explicitly derived and
+caveated count. Do not copy or reinterpret the separate `kit feedback` ledger,
+conversations, or thread history as learning records.

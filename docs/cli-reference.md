@@ -4,7 +4,7 @@ Generated from `kit command-map --json`.
 Do not edit command sections by hand; run `kit cli-reference --write docs/cli-reference.md`.
 
 - Schema version: `1`
-- Command count: `70`
+- Command count: `73`
 
 ## Commands
 
@@ -922,6 +922,79 @@ Inspect supervised-learning policy and ownership state.
 Examples:
 
 - `kit learn status --repo /path/to/repo --json`
+
+### kit learn event
+
+Record explicitly approved supervised-learning events or list stored local events.
+
+- Audience: `human, agent`
+- Mutation: `namespace`
+- Target writes: `never`
+- Sidecar writes: `never`
+- JSON: `no`
+- Output schema: `subcommand_namespace`
+- Route role: `namespace`
+- Canonical command: `learn event`
+- Docs: `docs/backlog.md, docs/sidecar-retention.md, docs/adr/0005-supervised-learning-ownership-boundaries.md`
+
+Examples:
+
+- `kit learn event list --repo /path/to/repo --json`
+
+### kit learn event list
+
+List local schema-valid learning events without creating sidecar state.
+
+- Audience: `human, agent`
+- Mutation: `read-only`
+- Target writes: `never`
+- Sidecar writes: `never`
+- JSON: `yes`
+- Output schema: `learn_event_list_payload`
+- Route role: `canonical`
+- Canonical command: `learn event list`
+- Docs: `docs/sidecar-retention.md, docs/adr/0005-supervised-learning-ownership-boundaries.md`
+
+Examples:
+
+- `kit learn event list --repo /path/to/repo --json`
+
+Flags:
+
+- `--repo` - Target git repository. Defaults to the current directory.
+- `--json` - Emit machine-readable JSON.
+- `--limit` - Maximum events to list. Use 0 for all events.
+
+### kit learn event record
+
+Record an explicit approved schema-valid event in the repository sidecar.
+
+- Audience: `human, agent`
+- Mutation: `writes-sidecar-on-approved-record`
+- Target writes: `never`
+- Sidecar writes: `conditional`
+- JSON: `yes`
+- Output schema: `learn_event_record_payload`
+- Route role: `canonical`
+- Canonical command: `learn event record`
+- Docs: `docs/backlog.md, docs/harness-engineering.md, docs/sidecar-retention.md, docs/adr/0005-supervised-learning-ownership-boundaries.md`
+
+Examples:
+
+- `kit learn event record --repo /path/to/repo --kind validation --summary 'local validation completed' --outcome confirmed --source human --approved --json`
+
+Flags:
+
+- `--repo` - Target git repository. Defaults to the current directory.
+- `--json` - Emit machine-readable JSON.
+- `--kind` - Explicit event kind.
+- `--summary` - Explicit bounded summary; conversations and feedback are never harvested.
+- `--evidence` - Explicit bounded evidence note. Can be repeated up to ten times.
+- `--outcome` - Observed local outcome.
+- `--source` - Explicit provenance source for this record.
+- `--privacy-label` - Privacy label; defaults to the target policy label.
+- `--approved` - Confirm explicit human approval for this exact event record.
+- `--approval-state` - Optional explicit approval state; only --approved with approved state can write a record.
 
 ### kit learn status
 

@@ -41,7 +41,7 @@ make docs-freshness
 Then run the relevant install/update tests so generated target surfaces are
 covered.
 
-### Supervised learning foundation
+### Supervised learning events
 
 The `supervised-learning` profile is opt-in. Keep its initial target policy at
 `.agent-workflows/learning-policy.json` target-owned, while the five learning
@@ -49,11 +49,16 @@ schemas remain canonical under `workflows/schemas/` and mirrored into
 `templates/common/` for installation. After changing a learning schema, run
 `make workflow-source-export`, then verify the profile installer and
 `kit learn status --repo <temp-target> --json` with an isolated XDG state
-directory.
+directory. Phase 2 also requires an isolated-XDG temporary committed target
+CLI e2e that proves the policy gate, rejected and unapproved no-write paths,
+an approved `kit learn event record --approved`, read-only `kit learn event
+list`, and the caveated derived event count in `kit calibration`.
 
 Do not add `supervised-learning` to a default or named preset without an
-explicit approved rollout decision. Phase 1 must not add proposal or decision
-write commands.
+explicit approved rollout decision. Event records are bounded, explicit CLI
+input only: do not repurpose `kit feedback`, mine threads, harvest
+conversations, inject context, add network calls, or add global writes.
+Proposal, decision, and context write commands remain deferred.
 
 ## CLI Or Installer Changes
 

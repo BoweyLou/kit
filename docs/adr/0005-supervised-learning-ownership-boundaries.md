@@ -23,24 +23,39 @@ Use a three-surface ownership model.
 - Kit owns the canonical schemas in `workflows/schemas/` and their installed
   `templates/common/` mirrors. Targets receive the schemas under `schemas/` as
   managed contract files.
-- Future learning events, proposals, decisions, and context belong in the
+- Learning events, proposals, decisions, and context belong in the
   repository-specific local Kit sidecar. They are not target-repository files
   and are not global tool configuration. Their paths may be reported without
   creating sidecar directories.
 
-`kit learn status --repo <repo> --json` is the sole Phase 1 CLI surface. It is
-read-only and returns policy state, target and future sidecar paths, safe next
-commands, and explicit false target, sidecar, and global write guarantees.
-Phase 1 defines schemas only; it provides no commands that write proposals or
-decisions, and no learning command can modify the target repository or global
-tool checkout.
+`kit learn status --repo <repo> --json` remains read-only and returns policy
+state, target and sidecar paths, safe next commands, and explicit false target,
+sidecar, and global write guarantees.
+
+Phase 2 adds `kit learn event record` and `kit learn event list`. A record is
+permitted only when the target has the installed `supervised-learning` profile,
+its target-owned policy is enabled and supervised, and the exact invocation
+passes `--approved`. The record must validate against the learning-event
+contract before Kit creates the sidecar. It includes a stable event ID,
+timestamp, explicit CLI provenance source, policy-derived or explicit privacy
+label, bounded explicit summary/evidence, outcome, and approved supervision.
+`list` reads only valid local event files and never creates a sidecar. Neither
+command writes target files or global Kit configuration; rejected, unapproved,
+invalid, disabled, or unenrolled record attempts write nothing.
+
+No event command reads conversations, feedback ledgers, thread history, or
+other implicit inputs. Phase 2 still provides no proposal, decision, or context
+write commands, and no learning command can modify the target repository or
+global tool checkout.
 
 ## Consequences
 
 Operators can inspect the foundation safely before opting in. Target-specific
 approval and retention choices stay reviewable in the target policy, while
-potentially sensitive artifacts remain local to the target's sidecar.
+potentially sensitive artifacts remain local to the target's sidecar and are
+recorded only through explicit approved input.
 
 Future phases must add a new ADR or amend this one before broadening writes,
-changing ownership, adding a default preset, or allowing a learning record to
-trigger a target/global action.
+changing ownership, adding a default preset, adding proposal/decision/context
+actions, allowing automatic capture or context injection, or allowing a
+learning record to trigger a target/global action.

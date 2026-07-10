@@ -816,6 +816,176 @@ class RepoContractKitCliTests(unittest.TestCase):
             )
             self.assertTrue((state_home / "repo-contract-kit" / "enrolled-targets.json").exists())
 
+    def test_learn_event_cli_e2e_requires_policy_and_approval_then_lists_and_calibrates_without_target_or_global_writes(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            target = Path(tmp) / "target"
+            state_home = Path(tmp) / "xdg-state"
+            target.mkdir()
+            init_git_repo(target)
+            env = {**os.environ, "XDG_STATE_HOME": str(state_home)}
+
+            def run_learn_event(*args: str):
+                return subprocess.run(
+                    [sys.executable, str(CLI), "learn", "event", *args, "--repo", str(target), "--json"],
+                    cwd=ROOT,
+                    env=env,
+                    capture_output=True,
+                    text=True,
+                    check=False,
+                )
+
+            def target_snapshot() -> dict[str, bytes]:
+                return {
+                    path.relative_to(target).as_posix(): path.read_bytes()
+                    for path in target.rglob("*")
+                    if path.is_file() and ".git" not in path.parts
+                }
+
+            blocked = run_learn_event(
+                "record",
+                "--kind",
+                "validation",
+                "--summary",
+                "event capture is explicit",
+                "--outcome",
+                "confirmed",
+                "--source",
+                "human",
+            )
+            self.assertEqual(blocked.returncode, 2, blocked.stderr)
+            blocked_payload = json.loads(blocked.stdout)
+            self.assertEqual(blocked_payload["command"], "learn event record")
+            self.assertEqual(blocked_payload["gate"]["state"], "not-enrolled")
+            self.assertFalse((state_home / "repo-contract-kit").exists())
+
+            install = subprocess.run(
+                [sys.executable, str(CLI), "setup", "--repo", str(target), "--profile", "supervised-learning", "--json"],
+                cwd=ROOT,
+                env=env,
+                capture_output=True,
+                text=True,
+                check=False,
+            )
+            self.assertEqual(install.returncode, 0, install.stderr)
+            before_target = target_snapshot()
+            registry_path = state_home / "repo-contract-kit" / "enrolled-targets.json"
+            before_registry = registry_path.read_bytes()
+
+            unapproved = run_learn_event(
+                "record",
+                "--kind",
+                "validation",
+                "--summary",
+                "event capture is explicit",
+                "--outcome",
+                "confirmed",
+                "--source",
+                "human",
+            )
+            self.assertEqual(unapproved.returncode, 2, unapproved.stderr)
+            unapproved_payload = json.loads(unapproved.stdout)
+            self.assertEqual(unapproved_payload["gate"]["state"], "approval-required")
+            self.assertFalse(unapproved_payload["sidecar_writes"]["performed"])
+            self.assertEqual(target_snapshot(), before_target)
+            self.assertEqual(registry_path.read_bytes(), before_registry)
+            self.assertFalse(Path(unapproved_payload["learning_paths"]["sidecar"]["root"]).exists())
+
+            rejected = run_learn_event(
+                "record",
+                "--kind",
+                "validation",
+                "--summary",
+                "rejected event stays unwritten",
+                "--outcome",
+                "confirmed",
+                "--source",
+                "human",
+                "--approval-state",
+                "rejected",
+            )
+            self.assertEqual(rejected.returncode, 2, rejected.stderr)
+            rejected_payload = json.loads(rejected.stdout)
+            self.assertEqual(rejected_payload["gate"]["state"], "approval-rejected")
+            self.assertFalse(rejected_payload["sidecar_writes"]["performed"])
+            self.assertEqual(target_snapshot(), before_target)
+            self.assertEqual(registry_path.read_bytes(), before_registry)
+
+            invalid = run_learn_event(
+                "record",
+                "--kind",
+                "validation",
+                "--summary",
+                "x" * 501,
+                "--outcome",
+                "confirmed",
+                "--source",
+                "human",
+                "--approved",
+            )
+            self.assertEqual(invalid.returncode, 2, invalid.stderr)
+            invalid_payload = json.loads(invalid.stdout)
+            self.assertEqual(invalid_payload["gate"]["state"], "schema-invalid")
+            self.assertFalse(invalid_payload["sidecar_writes"]["performed"])
+            self.assertEqual(target_snapshot(), before_target)
+            self.assertEqual(registry_path.read_bytes(), before_registry)
+
+            approved = run_learn_event(
+                "record",
+                "--kind",
+                "validation",
+                "--summary",
+                "event capture is explicit",
+                "--outcome",
+                "confirmed",
+                "--source",
+                "human",
+                "--privacy-label",
+                "private-local",
+                "--approved",
+            )
+            self.assertEqual(approved.returncode, 0, approved.stderr)
+            approved_payload = json.loads(approved.stdout)
+            event = approved_payload["event"]
+            self.assertEqual(event["schema_version"], 1)
+            self.assertEqual(event["provenance"]["source"], "human")
+            self.assertEqual(event["privacy_label"], "private-local")
+            self.assertEqual(event["outcome"], "confirmed")
+            self.assertEqual(event["supervision"]["approval_state"], "approved")
+            self.assertTrue(Path(approved_payload["event_path"]).is_file())
+            self.assertFalse(approved_payload["target_repo_writes"]["performed"])
+            self.assertTrue(approved_payload["sidecar_writes"]["performed"])
+            self.assertEqual(target_snapshot(), before_target)
+            self.assertEqual(registry_path.read_bytes(), before_registry)
+
+            event_before_list = Path(approved_payload["event_path"]).read_bytes()
+            listed = run_learn_event("list")
+            self.assertEqual(listed.returncode, 0, listed.stderr)
+            listed_payload = json.loads(listed.stdout)
+            self.assertEqual(listed_payload["count"], 1)
+            self.assertEqual(listed_payload["events"][0]["event_id"], event["event_id"])
+            self.assertFalse(listed_payload["sidecar_writes"]["performed"])
+            self.assertEqual(Path(approved_payload["event_path"]).read_bytes(), event_before_list)
+            self.assertEqual(target_snapshot(), before_target)
+            self.assertEqual(registry_path.read_bytes(), before_registry)
+
+            calibrated = subprocess.run(
+                [sys.executable, str(CLI), "calibration", "--repo", str(target), "--json"],
+                cwd=ROOT,
+                env=env,
+                capture_output=True,
+                text=True,
+                check=False,
+            )
+            self.assertEqual(calibrated.returncode, 0, calibrated.stderr)
+            calibration_payload = json.loads(calibrated.stdout)
+            learning_events = calibration_payload["metrics"]["learning_events"]
+            self.assertEqual(learning_events["count"], 1)
+            self.assertTrue(learning_events["derived"])
+            self.assertTrue(learning_events["caveat"])
+            self.assertFalse(calibration_payload["sidecar_writes"]["performed"])
+            self.assertEqual(target_snapshot(), before_target)
+            self.assertEqual(registry_path.read_bytes(), before_registry)
+
     def test_command_map_json_catalogs_commands_without_repo_writes(self):
         with tempfile.TemporaryDirectory() as tmp:
             result = subprocess.run(

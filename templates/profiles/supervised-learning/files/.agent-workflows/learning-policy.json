@@ -18,10 +18,11 @@
   },
   "phase_boundary": {
     "enabled_commands": [
-      "learn status"
+      "learn status",
+      "learn event record",
+      "learn event list"
     ],
     "deferred_commands": [
-      "learn event",
       "learn proposal",
       "learn decision",
       "learn context"

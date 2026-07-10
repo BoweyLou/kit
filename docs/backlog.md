@@ -12,11 +12,15 @@ status command reports policy state, future learning paths, safe next commands,
 and explicit false target, sidecar, and global write guarantees. No event,
 proposal, decision, or context write commands exist in this phase.
 
-## Phase 2 — Supervised event capture
+## Phase 2 — Supervised event capture (shipped)
 
-Design and test an explicit event-capture workflow that writes only approved,
-schema-validated sidecar records. It must preserve the target policy boundary,
-record approval state, and remain opt-in.
+`kit learn event record` writes one explicit, schema-validated local sidecar
+record only after the installed target-owned policy is enabled and a human
+passes `--approved`. `kit learn event list` is read-only. Records carry stable
+event IDs, timestamps, provenance, privacy labels, outcomes, and bounded
+explicit text; Kit does not harvest conversations or feedback. Rejected,
+unapproved, disabled, invalid, and unenrolled attempts write no target,
+sidecar, or global state.
 
 ## Phase 3 — Reviewable proposals and decisions
 

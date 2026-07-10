@@ -21,12 +21,20 @@ Use `kit retention --json` to list sidecar directories, privacy labels, retentio
 ## Supervised Learning Records
 
 The opt-in `supervised-learning` profile keeps its policy in the target repo,
-but future learning events, proposals, decisions, and context belong under the
-target's repository-specific local Kit sidecar. Their default privacy label and
-retention window come from the target-owned policy; Phase 1 only reports these
-paths through `kit learn status --json` and does not create records or
-directories.
+but learning events, proposals, decisions, and context belong under the
+target's repository-specific local Kit sidecar. Phase 2 stores approved events
+as schema-valid JSON files under `<sidecar>/learning/events/`; their default
+privacy label and retention window come from the target-owned policy.
+
+`kit learn event record` accepts only bounded explicit CLI fields and requires
+both an installed enabled policy and `--approved`. It records stable IDs,
+timestamps, provenance, privacy labels, outcomes, and approved supervision.
+Rejected, unapproved, invalid, disabled, or unenrolled attempts do not create
+sidecar state. `kit learn event list` and `kit calibration` read existing local
+events without creating paths; calibration labels its event count as derived
+and caveated.
 
 Do not move learning records into global kit state, source code, Git history,
-or a hosted model by default. Preserve approved proposal and decision evidence
-before any later purge workflow is introduced.
+or a hosted model by default. Do not reinterpret, migrate, or implicitly copy
+the separate `kit feedback` ledger into learning events. Preserve approved
+proposal and decision evidence before any later purge workflow is introduced.

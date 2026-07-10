@@ -1,6 +1,6 @@
 {
   "name": "supervised-learning",
-  "description": "Opt-in supervised-learning foundation with a target-owned policy and read-only status surface.",
+  "description": "Opt-in supervised-learning profile with a target-owned policy, read-only status/list surfaces, and explicitly approved local event capture.",
   "files": [
     {
       "source": "files/.agent-workflows/learning-policy.json",

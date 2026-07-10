@@ -17,6 +17,7 @@ import shutil
 import shlex
 import subprocess
 import sys
+import uuid
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from typing import Any
@@ -36,6 +37,13 @@ LEARNING_SCHEMA_FILENAMES = (
     "learning-decision.schema.json",
     "learning-context.schema.json",
 )
+LEARNING_EVENT_KINDS = ("observation", "validation", "feedback", "incident")
+LEARNING_EVENT_OUTCOMES = ("confirmed", "inconclusive", "regressed", "unknown")
+LEARNING_EVENT_SOURCES = ("human", "agent", "automation")
+LEARNING_PRIVACY_LABELS = ("public-ok", "internal", "private-local", "sensitive-local")
+LEARNING_EVENT_MAX_SUMMARY_LENGTH = 500
+LEARNING_EVENT_MAX_EVIDENCE_ITEMS = 10
+LEARNING_EVENT_MAX_EVIDENCE_LENGTH = 500
 DEFAULT_TARGET_IMPORT_EXCLUDES = ("*agent-worktrees*", "*/archive/*")
 DEFAULT_WORKTREE_SCAN_EXCLUDES = (
     ".git",
@@ -1355,6 +1363,7 @@ def cli_metadata() -> dict[str, Any]:
             "agent-preflight --write-sidecar",
             "agent-doctor --write-sidecar",
             "feedback",
+            "learn event record --approved",
             "orient --write-sidecar",
             "review-plan --write-sidecar",
             "docs-propose --write-sidecar",
@@ -2143,6 +2152,58 @@ def command_map_annotations() -> dict[tuple[str, ...], dict[str, Any]]:
                 "global_writes",
                 "exit_code",
             ],
+        },
+        ("learn", "event"): {
+            "audience": ["human", "agent"],
+            "mutation": "namespace",
+            "json_supported": False,
+            "route_role": "namespace",
+            "canonical_command": "learn event",
+            "examples": [public_command("learn", "event", "list", "--repo", "/path/to/repo", "--json")],
+            "output_schema": "subcommand_namespace",
+            "docs": ["docs/backlog.md", "docs/sidecar-retention.md", "docs/adr/0005-supervised-learning-ownership-boundaries.md"],
+        },
+        ("learn", "event", "record"): {
+            "audience": ["human", "agent"],
+            "mutation": "writes-sidecar-on-approved-record",
+            "target_repo_write": "never",
+            "sidecar_write": "conditional",
+            "route_role": "canonical",
+            "canonical_command": "learn event record",
+            "route_note": "Records only explicit, schema-valid event input after an enrolled enabled policy and --approved; rejected, unapproved, and unenrolled attempts do not write state.",
+            "examples": [
+                public_command(
+                    "learn",
+                    "event",
+                    "record",
+                    "--repo",
+                    "/path/to/repo",
+                    "--kind",
+                    "validation",
+                    "--summary",
+                    "local validation completed",
+                    "--outcome",
+                    "confirmed",
+                    "--source",
+                    "human",
+                    "--approved",
+                    "--json",
+                )
+            ],
+            "output_schema": "learn_event_record_payload",
+            "docs": ["docs/backlog.md", "docs/harness-engineering.md", "docs/sidecar-retention.md", "docs/adr/0005-supervised-learning-ownership-boundaries.md"],
+        },
+        ("learn", "event", "list"): {
+            "audience": ["human", "agent"],
+            "mutation": "read-only",
+            "target_repo_write": "never",
+            "sidecar_write": "never",
+            "route_role": "canonical",
+            "canonical_command": "learn event list",
+            "route_note": "Lists locally stored schema-valid learning events without creating sidecar state.",
+            "examples": [public_command("learn", "event", "list", "--repo", "/path/to/repo", "--json")],
+            "output_schema": "learn_event_list_payload",
+            "docs": ["docs/sidecar-retention.md", "docs/adr/0005-supervised-learning-ownership-boundaries.md"],
         },
         ("backlog-status",): {
             "audience": ["human", "agent"],
@@ -4353,7 +4414,7 @@ def learning_policy_payload(policy_path: Path) -> dict[str, Any]:
 
 def learn_status_payload(repo: Path) -> dict[str, Any]:
     sidecar = sidecar_state(repo)
-    sidecar_root = Path(str(sidecar["repo_state_dir"])) / "learning"
+    learning_paths = learning_paths_for(repo, sidecar)
     policy_path = repo / LEARNING_POLICY_PATH
     policy = learning_policy_payload(policy_path)
     schema_paths = {
@@ -4375,17 +4436,7 @@ def learn_status_payload(repo: Path) -> dict[str, Any]:
         "repo": str(repo),
         "policy_state": policy["state"],
         "policy": policy,
-        "learning_paths": {
-            "policy": str(policy_path),
-            "schemas": schema_paths,
-            "sidecar": {
-                "root": str(sidecar_root),
-                "events": str(sidecar_root / "events"),
-                "proposals": str(sidecar_root / "proposals"),
-                "decisions": str(sidecar_root / "decisions"),
-                "context": str(sidecar_root / "context"),
-            },
-        },
+        "learning_paths": {"policy": str(policy_path), "schemas": schema_paths, "sidecar": learning_paths},
         "safe_next_commands": safe_next_commands,
         "write_guarantees": {
             "target_repo_writes": False,
@@ -4399,6 +4450,249 @@ def learn_status_payload(repo: Path) -> dict[str, Any]:
         "sidecar_state": sidecar,
         "exit_code": 0,
     }
+
+
+def learning_paths_for(repo: Path, state: dict[str, Any] | None = None) -> dict[str, str]:
+    sidecar = state or sidecar_state(repo)
+    root = Path(str(sidecar["repo_state_dir"])) / "learning"
+    return {
+        "root": str(root),
+        "events": str(root / "events"),
+        "proposals": str(root / "proposals"),
+        "decisions": str(root / "decisions"),
+        "context": str(root / "context"),
+    }
+
+
+def learning_event_gate(repo: Path, args: argparse.Namespace) -> tuple[dict[str, Any], dict[str, Any], dict[str, Any]]:
+    state = sidecar_state(repo)
+    policy_path = repo / LEARNING_POLICY_PATH
+    policy = read_json(policy_path)
+    policy_status = learning_policy_payload(policy_path)
+    learning_paths = learning_paths_for(repo, state)
+    install = read_json(repo / ".doc-contract-kit" / "install.json")
+    approval_state = getattr(args, "approval_state", None) or (
+        "approved" if getattr(args, "approved", False) else "not-requested"
+    )
+    gate: dict[str, Any] = {
+        "state": "approved",
+        "approval_state": approval_state,
+        "policy_path": str(policy_path),
+        "event_schema_path": str(repo / "schemas" / "learning-event.schema.json"),
+        "reason": "installed target-owned supervised-learning policy and explicit human approval accepted",
+    }
+    if not isinstance(policy, dict) or policy.get("_error") or policy_status["state"] == "not-installed":
+        gate.update({"state": "not-enrolled", "reason": "supervised-learning policy is not installed in the target repository"})
+    elif not isinstance(install, dict) or "supervised-learning" not in (install.get("profiles") or []):
+        gate.update({"state": "not-enrolled", "reason": "target repository is not enrolled with the supervised-learning profile"})
+    elif not (repo / "schemas" / "learning-event.schema.json").is_file():
+        gate.update({"state": "schema-missing", "reason": "installed learning-event schema is missing"})
+    elif (
+        policy.get("schema_version") != 1
+        or policy.get("policy_id") != "supervised-learning"
+        or policy.get("enabled") is not True
+        or policy.get("mode") != "supervised"
+        or policy.get("human_approval_required") is not True
+        or not isinstance(policy.get("ownership"), dict)
+        or policy["ownership"].get("policy") != "target"
+        or policy["ownership"].get("events") != "sidecar"
+    ):
+        gate.update({"state": "policy-invalid", "reason": "policy must be enabled, supervised, target-owned, and require human approval"})
+    elif approval_state == "rejected":
+        gate.update({"state": "approval-rejected", "reason": "rejected human approval cannot create a learning event"})
+    elif not getattr(args, "approved", False) or approval_state != "approved":
+        gate.update({"state": "approval-required", "reason": "pass --approved after explicit human approval to record an event"})
+    return gate, policy_status, {"state": state, "paths": learning_paths, "policy": policy}
+
+
+def learning_event_from_args(args: argparse.Namespace, repo: Path, policy: dict[str, Any]) -> dict[str, Any]:
+    occurred_at = now()
+    evidence = [item.strip() for item in (getattr(args, "evidence", None) or []) if item.strip()]
+    privacy_label = getattr(args, "privacy_label", None) or ((policy.get("retention") or {}).get("privacy_label"))
+    event = {
+        "schema_version": 1,
+        "occurred_at": occurred_at,
+        "policy_id": "supervised-learning",
+        "repo": str(repo),
+        "kind": args.kind,
+        "summary": args.summary.strip(),
+        "evidence": evidence,
+        "outcome": args.outcome,
+        "provenance": {"source": args.source, "capture": "explicit-cli-input"},
+        "privacy_label": privacy_label,
+        "supervision": {
+            "human_approval_required": True,
+            "approval_state": "approved",
+            "approval_flag": True,
+        },
+    }
+    event["event_id"] = "evt-" + uuid.uuid4().hex[:20]
+    return event
+
+
+def learning_event_validation_errors(event: Any) -> list[str]:
+    if not isinstance(event, dict):
+        return ["event must be an object"]
+    required = {
+        "schema_version",
+        "event_id",
+        "occurred_at",
+        "policy_id",
+        "repo",
+        "kind",
+        "summary",
+        "evidence",
+        "outcome",
+        "provenance",
+        "privacy_label",
+        "supervision",
+    }
+    errors: list[str] = []
+    if set(event) != required:
+        errors.append("event fields do not match learning-event schema")
+    if event.get("schema_version") != 1:
+        errors.append("schema_version must be 1")
+    if not isinstance(event.get("event_id"), str) or not re.fullmatch(r"evt-[0-9a-f]{20}", event["event_id"]):
+        errors.append("event_id must be a stable evt- identifier")
+    if not isinstance(event.get("occurred_at"), str) or not re.fullmatch(r"[^\\s]+T[^\\s]+Z", event["occurred_at"]):
+        errors.append("occurred_at must be an RFC3339 UTC timestamp")
+    if event.get("policy_id") != "supervised-learning" or not isinstance(event.get("repo"), str) or not event["repo"]:
+        errors.append("policy_id and repo must identify the supervised-learning target")
+    if event.get("kind") not in LEARNING_EVENT_KINDS:
+        errors.append("kind is not allowed by learning-event schema")
+    summary = event.get("summary")
+    if not isinstance(summary, str) or not summary.strip() or len(summary) > LEARNING_EVENT_MAX_SUMMARY_LENGTH:
+        errors.append("summary must be non-empty and at most 500 characters")
+    evidence = event.get("evidence")
+    if not isinstance(evidence, list) or len(evidence) > LEARNING_EVENT_MAX_EVIDENCE_ITEMS or any(
+        not isinstance(item, str) or not item.strip() or len(item) > LEARNING_EVENT_MAX_EVIDENCE_LENGTH for item in evidence
+    ):
+        errors.append("evidence must contain at most 10 explicit entries of 500 characters or fewer")
+    if event.get("outcome") not in LEARNING_EVENT_OUTCOMES:
+        errors.append("outcome is not allowed by learning-event schema")
+    provenance = event.get("provenance")
+    if not isinstance(provenance, dict) or provenance != {"source": provenance.get("source"), "capture": "explicit-cli-input"} or provenance.get("source") not in LEARNING_EVENT_SOURCES:
+        errors.append("provenance must contain an explicit allowed source and explicit-cli-input capture")
+    if event.get("privacy_label") not in LEARNING_PRIVACY_LABELS:
+        errors.append("privacy_label is not allowed by learning-event schema")
+    supervision = event.get("supervision")
+    if supervision != {"human_approval_required": True, "approval_state": "approved", "approval_flag": True}:
+        errors.append("supervision must record explicit approved human supervision")
+    return errors
+
+
+def learning_event_error_payload(
+    repo: Path,
+    state: dict[str, Any],
+    learning_paths: dict[str, str],
+    policy: dict[str, Any],
+    gate: dict[str, Any],
+    *,
+    errors: list[str] | None = None,
+) -> tuple[dict[str, Any], int]:
+    return (
+        {
+            "schema_version": 1,
+            "command": "learn event record",
+            "action": "error",
+            "repo": str(repo),
+            "policy_state": policy["state"],
+            "policy": policy,
+            "learning_paths": {"sidecar": learning_paths},
+            "gate": gate,
+            "errors": errors or [],
+            "target_repo_writes": target_repo_writes(False, reason="learning event record failed before target writes"),
+            "sidecar_writes": sidecar_writes(False, reason="learning event record failed before sidecar writes"),
+            "global_writes": {"performed": False, "paths": [], "reason": "learning event record does not write global state"},
+            "sidecar_state": state,
+            "exit_code": 2,
+        },
+        2,
+    )
+
+
+def learn_event_record_payload(args: argparse.Namespace, repo: Path) -> tuple[dict[str, Any], int]:
+    gate, policy_status, context = learning_event_gate(repo, args)
+    state = context["state"]
+    learning_paths = context["paths"]
+    policy = context["policy"]
+    if gate["state"] != "approved":
+        return learning_event_error_payload(repo, state, learning_paths, policy_status, gate)
+    event = learning_event_from_args(args, repo, policy)
+    errors = learning_event_validation_errors(event)
+    if errors:
+        gate = {"state": "schema-invalid", "reason": "event failed local learning-event schema validation"}
+        return learning_event_error_payload(repo, state, learning_paths, policy_status, gate, errors=errors)
+    state, init_paths = ensure_sidecar(repo, "learn event record")
+    learning_paths = learning_paths_for(repo, state)
+    events_dir = Path(learning_paths["events"])
+    events_dir.mkdir(parents=True, exist_ok=True)
+    event_path = events_dir / f"{event['event_id']}.json"
+    write_json_file(event_path, event)
+    paths = init_paths + [learning_paths["root"], learning_paths["events"], str(event_path)]
+    return (
+        {
+            "schema_version": 1,
+            "command": "learn event record",
+            "action": "record",
+            "repo": str(repo),
+            "policy_state": policy_status["state"],
+            "policy": policy_status,
+            "learning_paths": {"sidecar": learning_paths},
+            "gate": gate,
+            "event": event,
+            "event_path": str(event_path),
+            "target_repo_writes": target_repo_writes(False, reason="learning events are stored only in the repository sidecar"),
+            "sidecar_writes": sidecar_writes(True, paths=paths, reason="explicit approved learning event record"),
+            "global_writes": {"performed": False, "paths": [], "reason": "learning event record does not write global state"},
+            "sidecar_state": state,
+            "exit_code": 0,
+        },
+        0,
+    )
+
+
+def read_learning_events(events_dir: Path, limit: int = 0) -> tuple[list[dict[str, Any]], list[str]]:
+    if not events_dir.exists():
+        return [], []
+    events: list[dict[str, Any]] = []
+    warnings: list[str] = []
+    for path in sorted(events_dir.glob("*.json")):
+        payload = read_json(path)
+        errors = learning_event_validation_errors(payload)
+        if errors:
+            warnings.append(f"Skipped invalid learning event {path.name}: {'; '.join(errors)}")
+            continue
+        events.append(payload)
+    events.sort(key=lambda event: (event["occurred_at"], event["event_id"]))
+    if limit > 0:
+        events = events[-limit:]
+    return events, warnings
+
+
+def learn_event_list_payload(args: argparse.Namespace, repo: Path) -> tuple[dict[str, Any], int]:
+    state = sidecar_state(repo)
+    learning_paths = learning_paths_for(repo, state)
+    events_path = Path(learning_paths["events"])
+    events, warnings = read_learning_events(events_path, max(args.limit, 0))
+    return (
+        {
+            "schema_version": 1,
+            "command": "learn event list",
+            "action": "list",
+            "repo": str(repo),
+            "events_path": str(events_path),
+            "events": events,
+            "count": len(events),
+            "warnings": warnings,
+            "target_repo_writes": target_repo_writes(False, reason="learn event list is read-only"),
+            "sidecar_writes": sidecar_writes(False, reason="learn event list is read-only"),
+            "global_writes": {"performed": False, "paths": [], "reason": "learn event list is read-only"},
+            "sidecar_state": state,
+            "exit_code": 0,
+        },
+        0,
+    )
 
 
 def config_for(repo: Path, config: str) -> dict[str, Any]:
@@ -6870,6 +7164,8 @@ def calibration_payload(args: argparse.Namespace, repo: Path) -> dict[str, Any]:
     receipts_count = json_file_count(Path(paths["receipts_dir"])) if paths else 0
     task_packets_count = json_file_count(Path(paths["task_packets_dir"])) if paths else 0
     runs_count = json_file_count(Path(paths["runs_dir"])) if paths else 0
+    learning_events_path = Path(learning_paths_for(repo, state)["events"])
+    learning_events, learning_event_warnings = read_learning_events(learning_events_path)
     return {
         "schema_version": 1,
         "command": "calibration",
@@ -6888,10 +7184,18 @@ def calibration_payload(args: argparse.Namespace, repo: Path) -> dict[str, Any]:
             "receipts_count": receipts_count,
             "task_metadata_count": task_packets_count,
             "orientation_run_count": runs_count,
+            "learning_events": {
+                "count": len(learning_events),
+                "derived": True,
+                "source": str(learning_events_path),
+                "invalid_record_count": len(learning_event_warnings),
+                "caveat": "Count is derived only from locally stored schema-valid approved event records; it does not infer conversations, feedback, outcomes, or external learning impact.",
+            },
         },
         "notes": [
             "This report aggregates local sidecar evidence only.",
             "Unknown fields remain explicit instead of inferred.",
+            "Learning-event counts are derived and caveated; this read-only report does not create sidecar state when no events exist.",
         ],
         "exit_code": 0,
     }
@@ -11591,6 +11895,38 @@ def build_parser() -> argparse.ArgumentParser:
         help="Show supervised-learning policy, schema, and future sidecar paths without writes.",
     )
     add_common_repo_args(learn_status)
+    learn_event = learn_subparsers.add_parser(
+        "event",
+        help="Record explicitly approved supervised-learning events or list stored local events.",
+    )
+    learn_event_subparsers = learn_event.add_subparsers(
+        dest="learn_event_command",
+        required=True,
+        parser_class=KitArgumentParser,
+    )
+    learn_event_record = learn_event_subparsers.add_parser(
+        "record",
+        help="Record an explicit approved schema-valid event in the repository sidecar.",
+    )
+    add_common_repo_args(learn_event_record)
+    learn_event_record.add_argument("--kind", required=True, choices=LEARNING_EVENT_KINDS, help="Explicit event kind.")
+    learn_event_record.add_argument("--summary", required=True, help="Explicit bounded summary; conversations and feedback are never harvested.")
+    learn_event_record.add_argument("--evidence", action="append", help="Explicit bounded evidence note. Can be repeated up to ten times.")
+    learn_event_record.add_argument("--outcome", required=True, choices=LEARNING_EVENT_OUTCOMES, help="Observed local outcome.")
+    learn_event_record.add_argument("--source", required=True, choices=LEARNING_EVENT_SOURCES, help="Explicit provenance source for this record.")
+    learn_event_record.add_argument("--privacy-label", choices=LEARNING_PRIVACY_LABELS, help="Privacy label; defaults to the target policy label.")
+    learn_event_record.add_argument("--approved", action="store_true", help="Confirm explicit human approval for this exact event record.")
+    learn_event_record.add_argument(
+        "--approval-state",
+        choices=("not-requested", "pending", "approved", "rejected"),
+        help="Optional explicit approval state; only --approved with approved state can write a record.",
+    )
+    learn_event_list = learn_event_subparsers.add_parser(
+        "list",
+        help="List local schema-valid learning events without creating sidecar state.",
+    )
+    add_common_repo_args(learn_event_list)
+    learn_event_list.add_argument("--limit", type=int, default=50, help="Maximum events to list. Use 0 for all events.")
 
     mode_check = subparsers.add_parser("mode-check", help="Select lite, standard, or release-gated harness mode without writes.")
     add_common_repo_args(mode_check)
@@ -12236,6 +12572,16 @@ def main(argv: list[str] | None = None) -> int:
             for command in payload["safe_next_commands"]:
                 print(f" - {command}")
         return 0
+    if args.command == "learn" and args.learn_command == "event" and args.learn_event_command == "record":
+        payload, exit_code = learn_event_record_payload(args, repo)
+        payload = apply_runtime_mode(payload, raw_argv, args)
+        render_json(payload) if args.json else render_json(payload)
+        return exit_code
+    if args.command == "learn" and args.learn_command == "event" and args.learn_event_command == "list":
+        payload, exit_code = learn_event_list_payload(args, repo)
+        payload = apply_runtime_mode(payload, raw_argv, args)
+        render_json(payload) if args.json else render_json(payload)
+        return exit_code
     if args.command == "mode-check":
         payload = apply_runtime_mode(mode_check_payload(args, repo), raw_argv, args)
         render_json(payload) if args.json else render_json(payload)

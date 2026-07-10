@@ -138,9 +138,21 @@ contract checked in.
    kit learn status --json
    ```
 
-   Phase 1 creates no learning events, proposals, decisions, or context
-   records. `kit learn status` is read-only and creates no target files,
-   sidecar directories, or global tool state.
+   `kit learn status` is read-only and creates no target files, sidecar
+   directories, or global tool state. To add a single Phase 2 event, first
+   obtain explicit human approval for that exact bounded record, then run:
+
+   ```bash
+   kit learn event record --kind validation \
+     --summary "local validation completed" \
+     --outcome confirmed --source human --approved --json
+   kit learn event list --json
+   ```
+
+   The record is stored only in this repository's local sidecar. Without the
+   enabled target-owned policy and `--approved`, Kit writes neither sidecar nor
+   target/global state. Event capture never imports feedback, conversations, or
+   thread history; proposals, decisions, and context remain deferred.
 12. Add hooks if you want faster local feedback.
 13. Add CI adapters only if your host supports them. The core workflow must still run locally.
 14. Later, add generated docs and broader executable doc tests.

@@ -65,6 +65,12 @@ private struct TargetRow: View {
 
 private struct DetailPane: View {
     @ObservedObject var store: KitCompanionStore
+    @ObservedObject private var learningStore: LearningStore
+
+    init(store: KitCompanionStore) {
+        self.store = store
+        self._learningStore = ObservedObject(wrappedValue: store.learningStore)
+    }
 
     var body: some View {
         VStack(alignment: .leading, spacing: 16) {
@@ -91,11 +97,18 @@ private struct DetailPane: View {
                 WorkflowPanelsView(store: store, mode: .workflows)
             case .batch:
                 WorkflowPanelsView(store: store, mode: .batch)
+            case .learning:
+                LearningDashboardView(store: learningStore)
             }
 
             Spacer(minLength: 0)
         }
         .padding(22)
+        .onChange(of: store.dashboardSection) { _, section in
+            if section == .learning {
+                store.loadSelectedLearning()
+            }
+        }
         .confirmationDialog(
             "Run guided closeout?",
             isPresented: $store.isConfirmingCloseoutFix,

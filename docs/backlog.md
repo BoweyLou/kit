@@ -90,3 +90,19 @@ Review it through a normal source task, commit, test, and release. Only after
 that release may a human run `kit self update`, followed by a guarded target
 update or reconcile. Broader enablement remains a human decision and must not
 be added to default presets implicitly.
+
+## Phase 6 — Kit Companion Learning dashboard (shipped)
+
+Add Learning as the fifth optional macOS dashboard section with typed read
+models for policy/status, counts, review queues, histories, reconciliation, and
+evaluation. Launch and Refresh are read-only. Profile setup and policy changes
+remain Terminal-only, and Command Browser remains the discovery/copy fallback.
+
+The app permits exactly six confirmation-gated sidecar writes: event record,
+proposal create, decision record, context build, strict redacted thread-summary
+import through a private temporary file, and sanitized upstream source-review
+candidate export. The generic runner rejects the complete `learn` namespace;
+the typed Learning runner rejects unknown routes, flags, repos, and payloads.
+No learning app action writes target/global state, mines history, executes a
+recommendation, updates source or targets, pushes, releases, or propagates a
+candidate.

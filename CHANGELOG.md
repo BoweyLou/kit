@@ -1,5 +1,23 @@
 # Changelog
 
+## 0.7.0 - 2026-07-13
+
+- Add Learning as Kit Companion's fifth dashboard section, backed by typed read
+  models for policy and lifecycle status, factual counts, review queues,
+  histories, reconciliation, evaluation, and six guided forms.
+- Allow exactly six confirmation-gated learning sidecar writes: event record,
+  proposal create, decision record, context build, strict thread-summary import,
+  and sanitized upstream source-review candidate export.
+- Add safe `--open-dashboard learning` cold launch and read-only refresh, reject
+  malformed or unknown routes inertly, and fail closed when the generic runner
+  receives any `learn` command; the Command Browser remains a Terminal handoff.
+- Keep learning setup and profile changes Terminal-only, with no target/global
+  writes or propagation from the app. Thread-summary import is strict,
+  redacted, local, uses a private temporary file, and never mines history;
+  upstream export creates only a local source-review candidate.
+- Add the Computer Use acceptance lane for exercising the installed Learning
+  dashboard while retaining CLI contracts as the authoritative behavior.
+
 ## 0.6.53 - 2026-07-09
 
 - Promote e2e testing to a first-class test-first boundary decision: task

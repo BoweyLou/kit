@@ -336,6 +336,7 @@ final class KitProcessRunner {
     }
 
     func run(arguments: [String], kitPath: String, workingDirectory: String? = nil) async throws -> KitCommandResult {
+        try Self.rejectLearningCommand(arguments)
         let binary = try resolvedBinaryURL(kitPath: kitPath)
         return try await withCheckedThrowingContinuation { continuation in
             let process = Process()
@@ -410,6 +411,7 @@ final class KitProcessRunner {
 
     static func validateCloseoutFixCommand(_ arguments: [String]) throws {
         let command = arguments.joined(separator: " ")
+        try rejectLearningCommand(arguments)
         guard arguments.first == "closeout-fix" else {
             throw RunnerError.blockedMutatingCommand(command)
         }
@@ -455,6 +457,7 @@ final class KitProcessRunner {
 
     static func validateAllowedWriteCommand(_ arguments: [String]) throws {
         let command = arguments.joined(separator: " ")
+        try rejectLearningCommand(arguments)
 
         func reject() throws -> Never {
             throw RunnerError.blockedMutatingCommand(command)
@@ -504,6 +507,7 @@ final class KitProcessRunner {
 
     static func validateReadOnlyCommand(_ arguments: [String]) throws {
         let command = arguments.joined(separator: " ")
+        try rejectLearningCommand(arguments)
         let mutatingFlags = ["--apply", "--write", "--write-sidecar", "--global"]
         if mutatingFlags.contains(where: { arguments.contains($0) || command.contains($0) }) {
             throw RunnerError.blockedMutatingCommand(command)
@@ -561,6 +565,12 @@ final class KitProcessRunner {
 
     private func renderedCommand(_ arguments: [String]) -> String {
         KitCommandLine.render(arguments: arguments)
+    }
+
+    private static func rejectLearningCommand(_ arguments: [String]) throws {
+        if let first = arguments.first, first.hasPrefix("learn") {
+            throw RunnerError.blockedMutatingCommand(arguments.joined(separator: " "))
+        }
     }
 
     private static func processEnvironment() -> [String: String] {

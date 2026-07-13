@@ -23,6 +23,14 @@ The companion app reads the same JSON contracts used by agents and scripts:
 - `kit worktree prune --root <selected-target> --apply --json`
 - `kit target update-all --apply --json`
 
+Learning is the fifth dashboard section. On selection or Refresh it runs only
+typed read contracts for `learn status`, event/proposal/decision/context/thread
+summary/upstream lists, upstream reconcile, and evaluate. It shows policy,
+privacy and lifecycle status; factual counts; pending proposals and approved
+decisions; guided forms; and event, proposal, decision, context, thread-summary,
+source-review, and reconciliation histories. Refresh never enables a profile,
+changes policy, or performs a sidecar write.
+
 The app opens to a selected-repo overview. The overview shows worktree status,
 closeout state, kit drift, selected mode, one recommended action, closeout
 blockers, copyable next commands, and collapsed technical activity for
@@ -56,6 +64,68 @@ This gives the app feature parity with the global CLI as a navigation and
 status surface without making the command browser a write-capable replacement
 for the CLI.
 
+If the dedicated Learning view is unavailable, use Command Browser to discover
+or copy the CLI route and complete the operation in Terminal. The generic app
+runner rejects every `learn` command; learning execution is accepted only by
+the typed Learning runner's exact route and flag allowlist.
+
+## Learning Sidecar Exceptions
+
+Learning setup remains Terminal-only. Enable the opt-in profile from Terminal
+only after accepting its target-owned policy:
+
+```bash
+kit setup --repo /path/to/repo --profile supervised-learning
+```
+
+The app enables forms only when `learn status` reports that policy as enabled.
+Each form validates the selected absolute repo and bounded typed fields, shows
+the exact command, and requires a separate Confirm action. The only accepted
+learning writes are:
+
+- `kit learn event record ... --approval-state approved --approved --json`:
+  requires the form's explicit event-approval toggle and final confirmation.
+- `kit learn proposal create ... --json`: requires existing schema-valid event
+  lineage, bounded fields, enabled policy, and final confirmation.
+- `kit learn decision record ... --human-review-confirmed --json`: requires an
+  existing pending proposal, the human-review toggle, and final confirmation.
+- `kit learn context build --decision-id <dec-id> ... --json`: requires current
+  approved decision/proposal lineage and final confirmation.
+- `kit learn thread-summary import --input <private-temp-file> --approved
+  --json`: requires strict local validation and final confirmation. The app
+  writes the validated redacted aggregate to a private temporary file, imports
+  from that copy, then deletes it. It never scans or mines thread history, raw
+  transcripts, feedback, or runtime state.
+- `kit learn upstream export --decision-id <dec-id> --privacy-label
+  public-ok|internal --redaction-confirmed --json`: requires current approved
+  lineage, an exportable privacy label, the redaction toggle, and final
+  confirmation. It creates only a local source-review candidate.
+
+Learning writes are serialized per repo, and changing the selected repo makes
+a pending confirmation stale. Invalid fields, disabled policy, unknown routes,
+forbidden flags, mismatched repos, malformed JSON, stale lineage, or failed
+typed payload validation fail closed. These exceptions write only the selected
+repo's local Kit sidecar. They cannot write target files or global Kit state,
+execute a recommendation, update source or a target, push, release, self-update,
+or propagate a candidate.
+
+## Cold Launch Routes
+
+The app accepts one exact route shape:
+
+```bash
+open -a KitCompanion --args --open-dashboard overview
+open -a KitCompanion --args --open-dashboard commands
+open -a KitCompanion --args --open-dashboard workflows
+open -a KitCompanion --args --open-dashboard batch
+open -a KitCompanion --args --open-dashboard learning
+```
+
+`--open-dashboard learning` only opens and focuses the dashboard on the
+Learning section; its initial load is read-only. Malformed argument counts and
+unknown section names are inert: the menu-bar app starts normally without
+opening a dashboard or running a command.
+
 ## Settings
 
 Kit Companion stores app-only preferences in macOS user defaults:
@@ -87,12 +157,13 @@ commands use CLI-supported no-write flags such as `--dry-run` and
 `--no-update`. The runner blocks mutating command flags such as `--apply`,
 `--write`, `--write-sidecar`, and `--global`.
 
-Guided Closeout and Batch Maintenance are the only write-capable app
-exceptions. Guided Closeout is shown from the selected target overview when the
-repo is dirty or closeout has blockers, and requires confirmation before
-starting. The Batch tab can run guided closeout for multiple dirty targets with
-at most two concurrent jobs. Each repo gets its own job card, streamed events,
-result payload, receipt path, and blocker explanations.
+Guided Closeout, Batch Maintenance, and the six Learning sidecar commands above
+are the only write-capable app exceptions. Guided Closeout is shown from the
+selected target overview when the repo is dirty or closeout has blockers, and
+requires confirmation before starting. The Batch tab can run guided closeout
+for multiple dirty targets with at most two concurrent jobs. Each repo gets its
+own job card, streamed events, result payload, receipt path, and blocker
+explanations.
 
 The closeout runner accepts exactly:
 
@@ -123,9 +194,9 @@ integrates clean completed branches through a temporary verified worktree before
 non-force pushing the detected default branch. Active, ambiguous, conflicting,
 or failing work remains `LEFT-UNFINISHED` or `NEEDS-REVIEW`.
 `worktree prune --apply` removes only eligible clean linked worktrees under
-agent-worktrees paths. Setup, install, global tool updates, self updates,
-custom closeout agents, arbitrary target writes, and `--write-sidecar` commands
-remain Terminal handoffs.
+agent-worktrees paths. Setup, install, profile changes, global tool updates,
+self updates, custom closeout agents, arbitrary target writes, and arbitrary
+`--write-sidecar` commands remain Terminal handoffs.
 
 ## Build Locally
 

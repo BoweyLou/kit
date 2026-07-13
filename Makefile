@@ -111,12 +111,30 @@ macos-install:
 
 macos-test:
 	swiftc -o /tmp/KitCompanionChecks \
+		macos/KitCompanion/Sources/KitCompanion/App/LaunchOptions.swift \
 		macos/KitCompanion/Sources/KitCompanion/Models/KitPayloads.swift \
 		macos/KitCompanion/Sources/KitCompanion/Models/CommandMap.swift \
+		macos/KitCompanion/Sources/KitCompanion/Models/LearningPayloads.swift \
+		macos/KitCompanion/Sources/KitCompanion/Models/LearningCommands.swift \
 		macos/KitCompanion/Sources/KitCompanion/Services/LoginItemService.swift \
 		macos/KitCompanion/Sources/KitCompanion/Services/KitProcessRunner.swift \
+		macos/KitCompanion/Sources/KitCompanion/Services/LearningRunner.swift \
+		macos/KitCompanion/Tests/KitCompanionChecks/LearningChecks.swift \
 		macos/KitCompanion/Tests/KitCompanionChecks/main.swift
 	/tmp/KitCompanionChecks
+	swiftc -parse-as-library -o /tmp/KitCompanionLearningStoreChecks \
+		-framework AppKit \
+		-framework Combine \
+		-framework UniformTypeIdentifiers \
+		macos/KitCompanion/Sources/KitCompanion/Models/KitPayloads.swift \
+		macos/KitCompanion/Sources/KitCompanion/Models/CommandMap.swift \
+		macos/KitCompanion/Sources/KitCompanion/Models/LearningPayloads.swift \
+		macos/KitCompanion/Sources/KitCompanion/Models/LearningCommands.swift \
+		macos/KitCompanion/Sources/KitCompanion/Services/KitProcessRunner.swift \
+		macos/KitCompanion/Sources/KitCompanion/Services/LearningRunner.swift \
+		macos/KitCompanion/Sources/KitCompanion/Stores/LearningStore.swift \
+		macos/KitCompanion/Tests/KitCompanionLearningStoreChecks/*.swift
+	/tmp/KitCompanionLearningStoreChecks
 
 macos-dmg:
 	./script/package_macos_dmg.sh

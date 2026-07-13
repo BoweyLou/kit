@@ -17,28 +17,6 @@ enum KitSettings {
     }
 }
 
-enum DashboardSection: String, CaseIterable, Identifiable {
-    case overview
-    case commands
-    case workflows
-    case batch
-
-    var id: String { rawValue }
-
-    var label: String {
-        switch self {
-        case .overview:
-            return "Overview"
-        case .commands:
-            return "Commands"
-        case .workflows:
-            return "Workflows"
-        case .batch:
-            return "Batch"
-        }
-    }
-}
-
 @MainActor
 final class KitCompanionStore: ObservableObject {
     @Published var targets: [KitTarget] = []
@@ -69,13 +47,19 @@ final class KitCompanionStore: ObservableObject {
 
     private let runner: KitProcessRunner
     private let updateService: SparkleUpdateService
+    let learningStore: LearningStore
     private var detailLoadGeneration = 0
     private var batchCloseoutQueue: [KitTarget] = []
     private let closeoutConcurrencyLimit = 2
 
-    init(runner: KitProcessRunner = KitProcessRunner(), updateService: SparkleUpdateService? = nil) {
+    init(
+        runner: KitProcessRunner = KitProcessRunner(),
+        updateService: SparkleUpdateService? = nil,
+        learningStore: LearningStore? = nil
+    ) {
         self.runner = runner
         self.updateService = updateService ?? .shared
+        self.learningStore = learningStore ?? LearningStore()
         if UserDefaults.standard.object(forKey: KitSettingsKeys.automaticallyCheckForUpdates) == nil {
             UserDefaults.standard.set(true, forKey: KitSettingsKeys.automaticallyCheckForUpdates)
         }
@@ -168,6 +152,7 @@ final class KitCompanionStore: ObservableObject {
                 } else if let selectedTargetID, !targets.contains(where: { $0.id == selectedTargetID }) {
                     self.selectedTargetID = targets.first?.id
                 }
+                learningStore.selectRepo(selectedTarget?.root)
                 lastRefresh = Date()
                 message = "\(targets.count) target repos, \(dirtyCount) dirty"
                 if let selectedTarget {
@@ -203,6 +188,7 @@ final class KitCompanionStore: ObservableObject {
         isConfirmingBatchCloseout = false
         isConfirmingWriteAction = false
         commandOutput = nil
+        learningStore.selectRepo(targets.first(where: { $0.id == targetID })?.root)
 
         guard let target = targets.first(where: { $0.id == targetID }) else {
             return
@@ -215,6 +201,10 @@ final class KitCompanionStore: ObservableObject {
             return
         }
         loadDetail(for: selectedTarget)
+    }
+
+    func loadSelectedLearning() {
+        learningStore.selectRepo(selectedTarget?.root)
     }
 
     func loadDetail(for target: KitTarget) {

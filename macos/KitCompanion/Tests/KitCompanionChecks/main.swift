@@ -86,6 +86,8 @@ func makeCommand(
 }
 
 do {
+    try runLearningChecks()
+
     let start = makeCommand(name: "start", flags: ["--repo", "--json", "--no-update"])
     try check(start.appCoverage == .native, "start should use the native overview coverage")
     try check(

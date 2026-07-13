@@ -199,6 +199,44 @@ blocker explanations. The Batch tab can run guided closeout for multiple dirty
 targets with two concurrent jobs; each repo keeps its own job card and result
 payload.
 
+## Supervised Learning In Kit Companion
+
+Learning is the fifth dashboard section. Opening it or pressing Refresh reads
+typed local JSON for policy/status, counts, pending proposals, approved
+decisions, histories, upstream reconciliation, and evaluation. Read-only loads
+do not create sidecar state. Use Command Browser as the discovery and copy
+fallback when you need the authoritative Terminal route.
+
+Profile setup and policy changes remain Terminal-only:
+
+```bash
+kit setup --repo /path/to/repo --profile supervised-learning
+```
+
+With an enabled supervised policy, the app can prepare exactly six writes to
+that repo's local Kit sidecar: event record, proposal create, decision record,
+context build, thread-summary import, and upstream source-review candidate
+export. Every form shows the exact command and requires final confirmation;
+event record also requires explicit approval, decision record requires confirmed
+human review, thread-summary import requires `--approved`, and export requires
+redaction confirmation plus `public-ok` or `internal` privacy.
+
+Thread-summary import accepts one strict, bounded, explicitly redacted local
+aggregate. The app validates it, creates a private temporary copy for the
+confirmed import, deletes the copy afterward, and never mines history or reads
+raw transcripts. Upstream export creates only a local source-review candidate:
+the app cannot self-update, update a target, push, release, execute the proposal,
+or propagate it. It performs no target-repository or global Kit writes.
+
+Cold-launch the read-only Learning view with:
+
+```bash
+open -a KitCompanion --args --open-dashboard learning
+```
+
+Malformed or unknown routes are inert. The optional app never replaces the
+authoritative CLI workflow.
+
 Review proposed replacements under `.doc-contract-kit/updates/` instead of
 copying them blindly over target-owned decisions.
 

@@ -271,6 +271,23 @@ task metadata, that batch closeout lane may first run guarded metadata
 self-heal for missing terminal task receipts or stale in-progress tasks whose
 recorded worktree is already gone.
 
+Learning is the fifth dashboard section. It reads the selected repo's policy,
+status, counts, review queue, histories, reconciliation, and evaluation through
+typed CLI JSON contracts, then offers six narrow confirmation-gated local
+sidecar writes. It never enables the `supervised-learning` profile, changes its
+target-owned policy, writes target/global state, or propagates a recommendation;
+profile setup remains Terminal-only. The Command Browser remains the fallback
+for discovering and copying CLI commands.
+
+Cold-launch the section without running a learning write:
+
+```bash
+open -a KitCompanion --args --open-dashboard learning
+```
+
+Malformed or unknown dashboard routes are inert. The app remains optional and
+the CLI remains authoritative.
+
 Build it only when wanted:
 
 ```bash
